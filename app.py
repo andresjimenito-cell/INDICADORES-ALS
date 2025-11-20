@@ -287,7 +287,8 @@ if 'login_attempt' not in st.session_state:
 
 # Control para mostrar/ocultar elementos nativos de Streamlit (menú, footer, header)
 if 'show_streamlit_ui' not in st.session_state:
-    st.session_state['show_streamlit_ui'] = False
+    # Por defecto mostrar la UI nativa para evitar que quede oculta en deploys públicos
+    st.session_state['show_streamlit_ui'] = True
 
 def _apply_streamlit_ui_visibility():
     if st.session_state.get('show_streamlit_ui'):
