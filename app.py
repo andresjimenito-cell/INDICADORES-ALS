@@ -317,16 +317,6 @@ def _apply_streamlit_ui_visibility():
             """,
             unsafe_allow_html=True,
         )
-
-# Añadir controles rápidos en la barra lateral para restaurar/ocultar el menú
-with st.sidebar.expander('Ajustes de UI', expanded=False):
-    if st.button('Restaurar menú Streamlit', key='restore_menu_btn'):
-        st.session_state['show_streamlit_ui'] = True
-        st.experimental_rerun()
-    if st.button('Ocultar menú Streamlit', key='hide_menu_btn'):
-        st.session_state['show_streamlit_ui'] = False
-        st.experimental_rerun()
-
 # Aplicar la visibilidad en cada carga
 _apply_streamlit_ui_visibility()
 
