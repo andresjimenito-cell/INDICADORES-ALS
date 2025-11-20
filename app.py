@@ -41,11 +41,8 @@ st.markdown(f"""
         background-attachment: fixed;
     }}
     
-    /* OCULTAR ELEMENTOS DE STREAMLIT */
-    #MainMenu, footer, header, .stDeployButton, div[data-testid="stToolbar"] {{
-        visibility: hidden !important;
-        height: 0px !important;
-    }}
+    /* OCULTAR ELEMENTOS DE STREAMLIT (controlado por la UI — usar los botones de la barra lateral) */
+    /* Nota: la visibilidad del menú ya no se oculta aquí de forma permanente. */
     
     /* LOGO */
     .logo-container {{
@@ -287,6 +284,50 @@ if 'username' not in st.session_state:
     st.session_state.username = ""
 if 'login_attempt' not in st.session_state:
     st.session_state.login_attempt = 0
+
+# Control para mostrar/ocultar elementos nativos de Streamlit (menú, footer, header)
+if 'show_streamlit_ui' not in st.session_state:
+    st.session_state['show_streamlit_ui'] = False
+
+def _apply_streamlit_ui_visibility():
+    if st.session_state.get('show_streamlit_ui'):
+        st.markdown(
+            """
+            <style>
+            #MainMenu, footer, header, .stDeployButton, div[data-testid='stToolbar']{
+                visibility: visible !important;
+                height: auto !important;
+                display: block !important;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            """
+            <style>
+            #MainMenu, footer, header, .stDeployButton, div[data-testid='stToolbar']{
+                visibility: hidden !important;
+                height: 0px !important;
+                display: none !important;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+
+# Añadir controles rápidos en la barra lateral para restaurar/ocultar el menú
+with st.sidebar.expander('Ajustes de UI', expanded=False):
+    if st.button('Restaurar menú Streamlit', key='restore_menu_btn'):
+        st.session_state['show_streamlit_ui'] = True
+        st.experimental_rerun()
+    if st.button('Ocultar menú Streamlit', key='hide_menu_btn'):
+        st.session_state['show_streamlit_ui'] = False
+        st.experimental_rerun()
+
+# Aplicar la visibilidad en cada carga
+_apply_streamlit_ui_visibility()
 
 # === LÓGICA DE EJECUCIÓN DEL MÓDULO (IN-PROCESS) ===
 if 'launch_module_path' in st.session_state and st.session_state.get('launch_module_path'):
