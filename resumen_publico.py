@@ -1,0 +1,1397 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+from datetime import datetime, timedelta
+import os
+import requests
+import re
+import html
+import plotly.graph_objects as go
+import plotly.express as px
+
+# Intentar usar el módulo de procesamiento compartido si existe
+try:
+    from processing import perform_initial_calculations as shared_perform_initial_calculations
+except Exception:
+    shared_perform_initial_calculations = None
+
+# --- IMPORTACIONES RESTAURADAS ---
+try:
+    from theme import get_colors
+    from grafico import generar_grafico_resumen
+    import mtbf as mtbf_mod
+except ImportError as e:
+    st.error(f"Error importando módulos locales: {e}.")
+    def get_colors(): return {'primary': '#2563eb', 'secondary': '#64748b', 'text': '#0f172a', 'text_faded': '#64748b', 'container_bg': '#ffffff'}
+    def generar_grafico_resumen(df_bd, df_f9, fecha): return go.Figure(), None
+    class mtbf_mod:
+        @staticmethod
+        def calcular_mtbf(df, f): return 0, None
+
+# --- CONFIGURACIÓN DE PÁGINA ---
+try:
+    st.set_page_config(
+        page_title='Dashboard Operacional',
+        layout='wide',
+        initial_sidebar_state='collapsed',
+        page_icon="📊"
+    )
+except Exception:
+    pass
+
+# --- COLORES ---
+# Usamos colores base, pero el CSS se encargará de la adaptación al tema
+colors = get_colors()
+PRIMARY = colors.get('primary', '#3b82f6')
+
+# --- CSS DINÁMICO Y COMPACTO ---
+DASHBOARD_CSS = f"""
+<style>
+:root {{
+    /* 🎨 PALETA DE COLORES VIBRANTE */
+    --color-primary: #6366f1;
+    --color-secondary: #8b5cf6;
+    --color-accent-pink: #ec4899;
+    --color-accent-orange: #f97316;
+    --color-accent-cyan: #06b6d4;
+    --color-accent-green: #10b981;
+    --color-accent-yellow: #fbbf24;
+    --color-dark: #0f172a;
+    --color-light: #f8fafc;
+    
+    /* 🌈 GRADIENTES ÉPICOS */
+    --gradient-fire: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 25%, #c44569 50%, #a73667 75%, #8b2760 100%);
+    --gradient-ocean: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+    --gradient-sunset: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    --gradient-aurora: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+    --gradient-cosmic: linear-gradient(135deg, #5f2c82 0%, #49a09d 100%);
+    --gradient-neon: linear-gradient(135deg, #00f260 0%, #0575e6 100%);
+    
+    /* 📐 ESPACIADO Y FORMAS */
+    --radius-xl: 24px;
+    --radius-mega: 32px;
+    --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.5);
+    --shadow-intense: 0 20px 60px rgba(0, 0, 0, 0.4);
+    
+    /* ⚡ ANIMACIONES */
+    --transition-fast: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}}
+
+/* 🌟 ANIMACIONES KEYFRAMES */
+@keyframes float {{
+    0%, 100% {{ transform: translateY(0px); }}
+    50% {{ transform: translateY(-10px); }}
+}}
+
+@keyframes pulse-glow {{
+    0%, 100% {{ box-shadow: 0 0 20px rgba(99, 102, 241, 0.5), 0 0 40px rgba(139, 92, 246, 0.3); }}
+    50% {{ box-shadow: 0 0 40px rgba(99, 102, 241, 0.8), 0 0 80px rgba(139, 92, 246, 0.6); }}
+}}
+
+@keyframes gradient-shift {{
+    0% {{ background-position: 0% 50%; }}
+    50% {{ background-position: 100% 50%; }}
+    100% {{ background-position: 0% 50%; }}
+}}
+
+@keyframes shimmer {{
+    0% {{ transform: translateX(-100%); }}
+    100% {{ transform: translateX(100%); }}
+}}
+
+@keyframes rotate-border {{
+    0% {{ transform: rotate(0deg); }}
+    100% {{ transform: rotate(360deg); }}
+}}
+
+/* 🎯 ESTILOS GLOBALES */
+.stApp {{
+    background: transparent;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}}
+
+.main .block-container {{
+    padding: 1.2rem 1.8rem;
+    max-width: 100%;
+}}
+
+/* 🔥 HEADER MEGA IMPACTANTE */
+.dashboard-header {{
+    background: var(--gradient-cosmic);
+    background-size: 200% 200%;
+    animation: gradient-shift 8s ease infinite;
+    padding: 3rem 3rem;
+    border-radius: var(--radius-mega);
+    margin-bottom: 3rem;
+    position: relative;
+    overflow: hidden;
+    
+    box-shadow: 
+        0 0 60px rgba(99, 102, 241, 0.6),
+        0 20px 80px rgba(0, 0, 0, 0.5),
+        inset 0 0 100px rgba(255, 255, 255, 0.1);
+    
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    transition: all var(--transition-smooth);
+}}
+
+.dashboard-header::before {{
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    animation: rotate-border 15s linear infinite;
+}}
+
+.dashboard-header:hover {{
+    transform: translateY(-8px) scale(1.01);
+    box-shadow: 
+        0 0 100px rgba(236, 72, 153, 0.8),
+        0 30px 100px rgba(0, 0, 0, 0.6),
+        inset 0 0 150px rgba(255, 255, 255, 0.15);
+}}
+
+.header-title {{
+    font-size: 3.5rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, #fff 0%, #a78bfa 50%, #ec4899 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 5px 20px rgba(255, 255, 255, 0.3);
+    letter-spacing: -1px;
+    position: relative;
+    z-index: 1;
+}}
+
+.header-date {{
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    padding: 1rem 2.5rem;
+    border-radius: 50px;
+    font-weight: 800;
+    font-size: 1.2rem;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    box-shadow: 
+        0 0 30px rgba(99, 102, 241, 0.5),
+        inset 0 0 20px rgba(255, 255, 255, 0.1);
+    position: relative;
+    z-index: 1;
+    transition: all var(--transition-fast);
+}}
+
+.header-date:hover {{
+    transform: scale(1.05);
+    box-shadow: 0 0 50px rgba(236, 72, 153, 0.8);
+}}
+
+/* 💎 KPI CARDS EXPLOSIVOS */
+.kpi-card {{
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(15px);
+    border: 2px solid rgba(99, 102, 241, 0.25);
+    border-radius: var(--radius-xl);
+    padding: 1.2rem 1rem;
+    position: relative;
+    overflow: hidden;
+    
+    box-shadow: 
+        0 0 20px rgba(99, 102, 241, 0.2),
+        0 5px 20px rgba(0, 0, 0, 0.1);
+    
+    transition: all var(--transition-smooth);
+    animation: pulse-glow 4s ease-in-out infinite;
+    min-height: 160px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}}
+
+.kpi-card::before {{
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+}}
+
+.kpi-card:hover::before {{
+    left: 100%;
+}}
+
+.kpi-card:hover {{
+    transform: translateY(-10px) rotateZ(-2deg) scale(1.03);
+    border-color: rgba(236, 72, 153, 0.6);
+    box-shadow: 
+        0 0 60px rgba(236, 72, 153, 0.8),
+        0 20px 60px rgba(0, 0, 0, 0.5);
+    animation: none;
+}}
+
+.kpi-icon {{
+    font-size: 2rem;
+    line-height: 1;
+    margin-bottom: 0.6rem;
+    transition: all var(--transition-smooth);
+    display: inline-block;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+}}
+
+.kpi-card:hover .kpi-icon {{
+    transform: scale(1.15) rotate(-5deg);
+    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3));
+}}
+
+.kpi-label {{
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    background: linear-gradient(135deg, #a78bfa, #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    opacity: 0.9;
+}}
+
+.kpi-value {{
+    font-size: 2rem;
+    font-weight: 900;
+    color: white;
+    text-shadow: 
+        0 0 20px rgba(99, 102, 241, 0.8),
+        0 5px 15px rgba(0, 0, 0, 0.5);
+    line-height: 1.2;
+}}
+
+/* ⚡ BOTONES LATERALES NEÓN EXTREMO */
+.neon-card {{
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(10px);
+    border-radius: var(--radius-xl);
+    padding: 1.2rem 1rem;
+    margin-bottom: 0.6rem;
+    position: relative;
+    border: 2px solid;
+    transition: all var(--transition-smooth);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 120px;
+}}
+
+.neon-card::after {{
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+    opacity: 0.3;
+}}
+
+.neon-card:hover::after {{
+    width: 300px;
+    height: 300px;
+}}
+
+/* Barra lateral animada */
+.neon-card::before {{
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 8px;
+    height: 100%;
+    transition: all var(--transition-fast);
+}}
+
+.neon-card:hover {{
+    transform: translateX(12px) scale(1.04);
+}}
+
+/* 🌈 VARIANTES DE COLOR EXPLOSIVAS */
+.neon-success {{
+    border-color: rgba(16, 185, 129, 0.4);
+}}
+.neon-success::before {{
+    background: var(--gradient-neon);
+}}
+.neon-success::after {{
+    background: radial-gradient(circle, #10b981, transparent);
+}}
+.neon-success:hover {{
+    box-shadow: 
+        0 0 50px rgba(16, 185, 129, 1),
+        inset 0 0 30px rgba(16, 185, 129, 0.3);
+    border-color: #10b981;
+}}
+
+.neon-danger {{
+    border-color: rgba(239, 68, 68, 0.4);
+}}
+.neon-danger::before {{
+    background: var(--gradient-fire);
+}}
+.neon-danger::after {{
+    background: radial-gradient(circle, #ef4444, transparent);
+}}
+.neon-danger:hover {{
+    box-shadow: 
+        0 0 50px rgba(239, 68, 68, 1),
+        inset 0 0 30px rgba(239, 68, 68, 0.3);
+    border-color: #ef4444;
+}}
+
+.neon-info {{
+    border-color: rgba(6, 182, 212, 0.4);
+}}
+.neon-info::before {{
+    background: var(--gradient-ocean);
+}}
+.neon-info::after {{
+    background: radial-gradient(circle, #06b6d4, transparent);
+}}
+.neon-info:hover {{
+    box-shadow: 
+        0 0 50px rgba(6, 182, 212, 1),
+        inset 0 0 30px rgba(6, 182, 212, 0.3);
+    border-color: #06b6d4;
+}}
+
+.neon-neutral {{
+    border-color: rgba(139, 92, 246, 0.4);
+}}
+.neon-neutral::before {{
+    background: var(--gradient-aurora);
+}}
+.neon-neutral::after {{
+    background: radial-gradient(circle, #8b5cf6, transparent);
+}}
+.neon-neutral:hover {{
+    box-shadow: 
+        0 0 50px rgba(139, 92, 246, 1),
+        inset 0 0 30px rgba(139, 92, 246, 0.3);
+    border-color: #8b5cf6;
+}}
+
+.neon-label {{
+    font-weight: 800;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.4rem;
+}}
+
+.neon-label .emoji-icon {{
+    font-size: 1.5rem;
+    line-height: 1;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}}
+
+.neon-value {{
+    font-weight: 900;
+    font-size: 1.8rem;
+    background: linear-gradient(135deg, #a78bfa, #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 1px;
+    text-align: center;
+    margin-top: 0.2rem;
+    padding: 0;
+}}
+    color: white;
+    text-shadow: 0 0 20px currentColor;
+}}
+
+/* 📊 CONTENEDORES DE GRÁFICOS PREMIUM */
+div[data-testid="stVerticalBlockBorderWrapper"] {{
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(99, 102, 241, 0.2);
+    border-radius: var(--radius-mega);
+    padding: 1.5rem 1.3rem;
+    margin-bottom: 0.8rem;
+    position: relative;
+    overflow: hidden;
+    
+    box-shadow: 
+        0 0 20px rgba(99, 102, 241, 0.2),
+        0 10px 30px rgba(0, 0, 0, 0.1);
+    
+    transition: all var(--transition-smooth);
+}}
+
+div[data-testid="stVerticalBlockBorderWrapper"]::before {{
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-mega);
+    padding: 2px;
+    background: linear-gradient(135deg, #6366f1, #ec4899, #f97316, #06b6d4);
+    background-size: 300% 300%;
+    animation: gradient-shift 6s ease infinite;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}}
+
+div[data-testid="stVerticalBlockBorderWrapper"]:hover::before {{
+    opacity: 1;
+}}
+
+div[data-testid="stVerticalBlockBorderWrapper"]:hover {{
+    transform: translateY(-5px);
+    box-shadow: 
+        0 0 80px rgba(236, 72, 153, 0.6),
+        0 20px 70px rgba(0, 0, 0, 0.4);
+}}
+
+h5 {{
+    font-size: 1.2rem !important;
+    font-weight: 900;
+    margin-bottom: 0.8rem !important;
+    padding-bottom: 0.5rem;
+    position: relative;
+    
+    background: linear-gradient(135deg, #fff, #a78bfa, #ec4899);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}}
+
+h5::after {{
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 120px;
+    height: 3px;
+    background: linear-gradient(90deg, #6366f1, #ec4899, #f97316);
+    border-radius: 4px;
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.8);
+}}
+
+/* 🎯 ESTILOS ESPECÍFICOS PARA EMOJIS */
+.emoji, [role="img"], .emoji-icon {{
+    font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif !important;
+    font-style: normal !important;
+    font-weight: normal !important;
+    line-height: 1 !important;
+    vertical-align: middle;
+    display: inline-block;
+}}
+
+/* Asegurar que los emojis NO sean afectados por gradientes de texto */
+* {{
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}}
+
+/* Hack para emojis en elementos con background-clip */
+.kpi-icon, .neon-label {{
+    -webkit-text-fill-color: initial !important;
+    background-clip: border-box !important;
+    -webkit-background-clip: border-box !important;
+}}
+
+</style>
+"""
+
+def _read_simple(f):
+    if f is None: return None
+    try:
+        if f.name.lower().endswith('.csv'):
+            return pd.read_csv(f, encoding='latin1', low_memory=False)
+        else:
+            return pd.read_excel(f)
+    except:
+        f.seek(0)
+        return pd.read_csv(f, encoding='latin1', low_memory=False, on_bad_lines='skip')
+
+
+def get_last_day_of_previous_month():
+    today = datetime.now().date()
+    first_day_of_current_month = today.replace(day=1)
+    last_day_prev = first_day_of_current_month - timedelta(days=1)
+    return last_day_prev
+
+
+def _download_onedrive(url, dest_path):
+    """Descarga una URL de OneDrive/SharePoint; si devuelve HTML intenta extraer la URL real."""
+    try:
+        r = requests.get(url, timeout=30, allow_redirects=True)
+        r.raise_for_status()
+        content = r.content
+        content_type = r.headers.get('content-type','')
+        is_html = 'text/html' in content_type or (isinstance(content, (bytes,bytearray)) and b'<html' in content[:400].lower())
+        if is_html:
+            txt = content.decode('utf-8', errors='ignore')
+            m = re.search(r'FileGetUrl"\s*:\s*"([^"]+)"', txt) or re.search(r'FileUrlNoAuth"\s*:\s*"([^"]+)"', txt)
+            if m:
+                download_url = m.group(1).replace('\\u0026', '&').replace('\\/', '/')
+                download_url = html.unescape(download_url)
+                r2 = requests.get(download_url, timeout=30, allow_redirects=True)
+                r2.raise_for_status()
+                with open(dest_path, 'wb') as fh:
+                    fh.write(r2.content)
+                return True
+            else:
+                # guardar HTML para diagnóstico
+                with open(dest_path, 'wb') as fh:
+                    fh.write(content)
+                return True
+        else:
+            with open(dest_path, 'wb') as fh:
+                fh.write(content)
+            return True
+    except Exception:
+        return False
+
+def _calc_basic_kpis(df_bd, df_f9, fecha_eval):
+    # (Lógica original de cálculo KPI)
+    fecha_eval = pd.to_datetime(fecha_eval)
+    df = df_bd.copy()
+    for c in ['FECHA_RUN', 'FECHA_PULL', 'FECHA_FALLA']:
+        if c in df.columns: df[c] = pd.to_datetime(df[c], errors='coerce')
+
+    extraidos = 0
+    running = 0
+    fallados = 0
+    pozos_on = 0
+    
+    if 'FECHA_RUN' in df.columns:
+        cond = (df['FECHA_RUN'] <= fecha_eval)
+        if 'FECHA_PULL' in df.columns: cond &= (df['FECHA_PULL'].isna() | (df['FECHA_PULL'] > fecha_eval))
+        running = int(cond.sum())
+
+    if 'FECHA_FALLA' in df.columns:
+        cond = (df['FECHA_FALLA'].notna()) & (df['FECHA_FALLA'] <= fecha_eval)
+        if 'FECHA_PULL' in df.columns: cond &= (df['FECHA_PULL'].isna() | (df['FECHA_PULL'] > fecha_eval))
+        fallados = int(cond.sum())
+
+    if 'FECHA_PULL' in df.columns:
+        extraidos = int((df['FECHA_PULL'].notna() & (df['FECHA_PULL'] <= fecha_eval)).sum())
+
+    if df_f9 is not None and not df_f9.empty:
+        df_f9 = df_f9.copy()
+        fecha_col = next((c for c in df_f9.columns if 'FECHA' in c), None)
+        dias_col = next((c for c in df_f9.columns if 'DIAS' in c), None)
+        pozo_col = next((c for c in df_f9.columns if 'POZO' in c), None)
+        if fecha_col and dias_col and pozo_col:
+            df_f9[fecha_col] = pd.to_datetime(df_f9[fecha_col], errors='coerce')
+            mask = (df_f9[fecha_col].dt.year == fecha_eval.year) & (df_f9[fecha_col].dt.month == fecha_eval.month)
+            pozos_on = int(df_f9[mask][df_f9[mask][dias_col] > 0][pozo_col].nunique())
+
+    pozos_operativos = max(0, running - fallados)
+    pozos_off = max(0, pozos_operativos - pozos_on)
+    try:
+        mtbf_val, _ = mtbf_mod.calcular_mtbf(df, fecha_eval)
+        mtbf_str = f"{mtbf_val:.1f}" if mtbf_val else "N/D"
+    except:
+        mtbf_str = "N/D"
+        mtbf_val = None
+
+    return {
+        'extraidos': extraidos, 'running': running, 'fallados': fallados,
+        'pozos_on': pozos_on, 'pozos_off': pozos_off, 'mtbf': mtbf_str,"operativos": pozos_operativos
+    }
+
+def _render_top_kpi(icon, label, value, unit=""):
+    """Tarjeta superior simple y limpia."""
+    return f"""
+    <div class='kpi-card'>
+        <div style='display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%;'>
+            <div class='kpi-icon' style='margin-bottom: 0.6rem;'>{icon}</div>
+            <div style='text-align: center; width: 100%;'>
+                <span class='kpi-label' style='justify-content: center; font-size: 0.8rem;'>{label}</span>
+                <div class='kpi-value' style='margin-top: 0.4rem; font-size: 2rem;'>{value} <small style='font-size:0.6rem; opacity:0.6;'>{unit}</small></div>
+            </div>
+        </div>
+    </div>
+    """
+
+def _render_neon_button(icon, label, value, style_class="neon-neutral"):
+    """Botón lateral compacto con efecto neón/glow."""
+    return f"""
+    <div class='neon-card {style_class}'>
+        <div style='display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;'>
+            <span style='font-size: 1.3rem; flex-shrink: 0;'>{icon}</span>
+            <span class='neon-label' style='margin: 0; margin-left: 0;'>{label}</span>
+        </div>
+        <span class='neon-value' style='margin-top: auto; padding-top: 0.6rem;'>{value}</span>
+    </div>
+    """
+
+def generar_grafico_radar(kpis):
+    """Radar con fondo transparente y altura fija."""
+    vals = [kpis.get('running',0), kpis.get('pozos_on',0), kpis.get('pozos_off',0), kpis.get('fallados',0),kpis.get('operativos',0)]
+    cats = ['Running', 'Pozos ON', 'Pozos OFF', 'Fallados', 'Operativos']
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatterpolar(
+        r=vals, theta=cats, fill='toself',
+        line_color=PRIMARY,
+        fillcolor='rgba(59, 130, 246, 0.2)',
+    ))
+    fig.update_layout(
+        polar=dict(
+            # Se usa el mismo tamaño de cuadrícula para mantener la proporción visual
+            radialaxis=dict(visible=True, showticklabels=False, gridcolor='rgba(128,128,128,0.2)'),
+            angularaxis=dict(gridcolor='rgba(128,128,128,0.2)', color='gray'),
+            bgcolor='rgba(0,0,0,0)' # Transparente total
+        ),
+        margin=dict(l=30, r=30, t=10, b=10),
+        height=280, # ALTURA FIJA PARA SIMETRÍA CON EL GRÁFICO DE BARRAS
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        showlegend=False
+    )
+    return fig
+
+
+def get_color_sequence(mode=None):
+    return [
+        '#00A2FF',
+        '#5EFF00',
+        '#0011D1',
+        '#00F5FF',
+        '#4B0073',
+        '#000980',
+        '#A1039D'
+    ]
+
+
+def _normalize_cols_upper(df):
+    if df is None: return None
+    df = df.copy()
+    df.columns = [str(c).upper().strip() for c in df.columns]
+    # Normalizaciones ocasionales
+    if 'SISTEMA ALS' in df.columns and 'ALS' not in df.columns:
+        df = df.rename(columns={'SISTEMA ALS': 'ALS'})
+    return df
+
+
+def _prepare_and_run(df_forma9_raw, df_bd_raw, fecha_evaluacion):
+    """
+    Limpia y normaliza los DataFrames (similar a `cargar_y_limpiar_datos` de INDICADORES)
+    y luego aplica la lógica de `perform_initial_calculations` para devolver
+    (df_forma9_proc, df_bd_proc).
+    """
+    if df_forma9_raw is None or df_bd_raw is None:
+        return None, None
+
+    df_forma9 = df_forma9_raw.copy()
+    df_bd = df_bd_raw.copy()
+
+    try:
+        # Normalizar nombres
+        df_forma9.columns = [str(col).upper().strip().replace('#', '').replace('.', '').replace('POZO NO', 'POZO') for col in df_forma9.columns]
+        fecha_col_forma9 = next((col for col in df_forma9.columns if 'FECHA' in col), None)
+        dias_col = next((col for col in df_forma9.columns if 'DIAS' in col), None)
+        pozo_col_forma9 = next((col for col in df_forma9.columns if 'POZO' in col), None)
+        rename_map = {}
+        if fecha_col_forma9: rename_map[fecha_col_forma9] = 'FECHA_FORMA9'
+        if dias_col: rename_map[dias_col] = 'DIAS TRABAJADOS'
+        if pozo_col_forma9: rename_map[pozo_col_forma9] = 'POZO'
+        if rename_map:
+            df_forma9 = df_forma9.rename(columns=rename_map)
+
+        # Coerciones
+        if 'FECHA_FORMA9' in df_forma9.columns:
+            df_forma9['FECHA_FORMA9'] = pd.to_datetime(df_forma9['FECHA_FORMA9'], errors='coerce')
+        if 'DIAS TRABAJADOS' in df_forma9.columns:
+            df_forma9['DIAS TRABAJADOS'] = pd.to_numeric(df_forma9['DIAS TRABAJADOS'], errors='coerce').fillna(0)
+        if 'POZO' in df_forma9.columns:
+            df_forma9 = df_forma9.dropna(subset=['FECHA_FORMA9', 'POZO']) if 'FECHA_FORMA9' in df_forma9.columns else df_forma9.dropna(subset=['POZO'])
+    except Exception:
+        pass
+
+    try:
+        # BD cleaning
+        df_bd.columns = [str(col).upper().strip().replace('#', '').replace('.', '') for col in df_bd.columns]
+        run_col_bd = next((col for col in df_bd.columns if 'RUN' in col), None)
+        fecha_run_col = next((col for col in df_bd.columns if 'FECHA RUN' in col), None)
+        pozo_col_bd = next((col for col in df_bd.columns if 'POZO' in col), None)
+        fecha_falla_col = next((col for col in df_bd.columns if 'FECHA FALLA' in col), None)
+        fecha_pull_col = next((col for col in df_bd.columns if 'FECHA PULL' in col), None)
+        operando_col = next((col for col in df_bd.columns if 'OPERANDO' in col), None)
+        indicador_col = next((col for col in df_bd.columns if 'INDICADOR MTBF' in col), None)
+        proveedor_col = next((col for col in df_bd.columns if 'PROVEEDOR' in col), None)
+        als_col = next((col for col in df_bd.columns if 'ALS' in col), None)
+        activo_col = next((col for col in df_bd.columns if 'ACTIVO' in col), None)
+        severidad_col = next((col for col in df_bd.columns if 'SEVERIDAD' in col.upper() or 'SEVERIDAD' in col.upper()), None)
+
+        rename_map_bd = {}
+        if run_col_bd: rename_map_bd[run_col_bd] = 'RUN'
+        if fecha_run_col: rename_map_bd[fecha_run_col] = 'FECHA_RUN'
+        if fecha_falla_col: rename_map_bd[fecha_falla_col] = 'FECHA_FALLA'
+        if fecha_pull_col: rename_map_bd[fecha_pull_col] = 'FECHA_PULL'
+        if operando_col: rename_map_bd[operando_col] = 'OPERANDO_ESTADO'
+        if indicador_col: rename_map_bd[indicador_col] = 'INDICADOR_MTBF'
+        if pozo_col_bd: rename_map_bd[pozo_col_bd] = 'POZO'
+        if proveedor_col: rename_map_bd[proveedor_col] = 'PROVEEDOR'
+        if als_col: rename_map_bd[als_col] = 'ALS'
+        if activo_col: rename_map_bd[activo_col] = 'ACTIVO'
+        if severidad_col: rename_map_bd[severidad_col] = 'SEVERIDAD'
+        if rename_map_bd:
+            df_bd = df_bd.rename(columns=rename_map_bd)
+
+        df_bd['FECHA_RUN'] = pd.to_datetime(df_bd.get('FECHA_RUN'), errors='coerce')
+        df_bd['FECHA_FALLA'] = pd.to_datetime(df_bd.get('FECHA_FALLA'), errors='coerce')
+        df_bd['FECHA_PULL'] = pd.to_datetime(df_bd.get('FECHA_PULL'), errors='coerce')
+        if 'INDICADOR_MTBF' in df_bd.columns:
+            df_bd['INDICADOR_MTBF'] = pd.to_numeric(df_bd['INDICADOR_MTBF'], errors='coerce').fillna(0)
+        if 'SEVERIDAD' in df_bd.columns:
+            df_bd['SEVERIDAD'] = pd.to_numeric(df_bd['SEVERIDAD'], errors='coerce').fillna(0)
+        else:
+            df_bd['SEVERIDAD'] = np.nan
+
+        df_bd = df_bd.dropna(subset=['FECHA_RUN', 'POZO']) if 'FECHA_RUN' in df_bd.columns and 'POZO' in df_bd.columns else df_bd
+    except Exception:
+        pass
+
+    # Aplicar lógica de perform_initial_calculations (simplificada y adaptada)
+    try:
+        fecha_eval_ts = pd.to_datetime(fecha_evaluacion)
+    except Exception:
+        fecha_eval_ts = pd.to_datetime(df_forma9['FECHA_FORMA9'].max()) if ('FECHA_FORMA9' in df_forma9.columns and not df_forma9['FECHA_FORMA9'].isna().all()) else pd.to_datetime('today')
+
+    try:
+        # RUN LIFE
+        df_bd['RUN LIFE'] = np.where(
+            df_bd['FECHA_FALLA'].notna(),
+            (df_bd['FECHA_FALLA'] - df_bd['FECHA_RUN']).dt.days,
+            np.where(
+                df_bd['FECHA_PULL'].notna(),
+                (df_bd['FECHA_PULL'] - df_bd['FECHA_RUN']).dt.days,
+                np.where(
+                    df_bd['FECHA_PULL'].isna(),
+                    (fecha_eval_ts - df_bd['FECHA_RUN']).dt.days,
+                    np.nan
+                )
+            )
+        )
+
+        df_bd['NICK'] = df_bd['POZO'].astype(str) + '-' + df_bd['RUN'].astype(str)
+
+        df_forma9['FECHA_FORMA9'] = pd.to_datetime(df_forma9['FECHA_FORMA9'], errors='coerce')
+        df_forma9_copy = df_forma9.copy()
+
+        df_bd_filtered = df_bd[df_bd['FECHA_RUN'] <= fecha_eval_ts].copy()
+
+        merged_df = pd.merge(df_forma9_copy.reset_index(), df_bd_filtered[['POZO', 'RUN', 'PROVEEDOR', 'FECHA_RUN', 'FECHA_PULL']], on='POZO', how='left')
+
+        merged_df['is_match'] = (merged_df['FECHA_FORMA9'] >= merged_df['FECHA_RUN']) & \
+                                 (merged_df['FECHA_FORMA9'] < merged_df['FECHA_PULL'].fillna(pd.to_datetime(fecha_evaluacion)))
+
+        best_matches_idx = merged_df[merged_df['is_match']].groupby('index')['FECHA_RUN'].idxmax()
+        best_matches_df = merged_df.loc[best_matches_idx]
+
+        df_forma9_copy['RUN'] = best_matches_df.set_index('index')['RUN']
+        df_forma9_copy['PROVEEDOR'] = best_matches_df.set_index('index')['PROVEEDOR']
+
+        df_forma9_copy[['RUN', 'PROVEEDOR']] = df_forma9_copy[['RUN', 'PROVEEDOR']].fillna('NO DATA✍️')
+        df_forma9_copy['NICK'] = df_forma9_copy['POZO'].astype(str) + '-' + df_forma9_copy['RUN'].astype(str)
+    except Exception:
+        pass
+
+    return df_forma9_copy, df_bd
+
+
+
+
+
+def render_bopd_vs_runlife(df_bd, df_f9, fecha_eval):
+    """Renderiza la sección 'BOPD vs Run Life'. Se ajusta la altura del gráfico de barras.
+    """
+    import pandas as _pd
+    import numpy as _np
+    try:
+        from theme import styled_title as _styled_title, get_plotly_layout as _get_plotly_layout, get_colors as _get_colors
+    except Exception:
+        def _styled_title(t):
+            return t
+        def _get_plotly_layout():
+            return {}
+        def _get_colors():
+            return {'primary': '#0a84ff', 'text': '#0f1724', 'background': None}
+
+    colors_local = _get_colors()
+    COLOR_PRINCIPAL = colors_local.get('primary', '#0a84ff')
+    COLOR_FUENTE = colors_local.get('text', '#0f1724')
+    _bg_raw = colors_local.get('background', None)
+    if isinstance(_bg_raw, str) and _bg_raw.strip().lower() in ('#ffffff', 'white'):
+        COLOR_FONDO_OSCURO = None
+    else:
+        COLOR_FONDO_OSCURO = _bg_raw
+
+    # ... (Se mantiene la lógica de cálculo de datos del gráfico de barras - BOPD vs Run Life)
+    try:
+        fecha_eval = _pd.to_datetime(fecha_eval)
+        df_runs_validos = df_bd[df_bd['FECHA_RUN'] <= fecha_eval].copy() if 'FECHA_RUN' in df_bd.columns else df_bd.copy()
+        if df_runs_validos.empty:
+            st.info('No hay RUNs previos a la fecha de evaluación para los pozos filtrados.')
+        df_last_run = df_runs_validos.sort_values('FECHA_RUN').groupby('POZO', as_index=False).last() if 'FECHA_RUN' in df_runs_validos.columns else df_runs_validos.copy()
+        try:
+            if 'FECHA_PULL' in df_last_run.columns:
+                df_last_run['FECHA_PULL'] = _pd.to_datetime(df_last_run['FECHA_PULL'], errors='coerce')
+            else:
+                df_last_run['FECHA_PULL'] = _pd.NaT
+            if 'FECHA_FALLA' in df_last_run.columns:
+                df_last_run['FECHA_FALLA'] = _pd.to_datetime(df_last_run['FECHA_FALLA'], errors='coerce')
+            else:
+                df_last_run['FECHA_FALLA'] = _pd.NaT
+            df_last_run['FECHA_RUN'] = _pd.to_datetime(df_last_run['FECHA_RUN'], errors='coerce')
+
+            mask_operativos = (
+                (df_last_run['FECHA_RUN'] <= fecha_eval) &
+                ((df_last_run['FECHA_PULL'].isna()) | (df_last_run['FECHA_PULL'] > fecha_eval)) &
+                ((df_last_run['FECHA_FALLA'].isna()) | (df_last_run['FECHA_FALLA'] > fecha_eval))
+            )
+            df_last_run = df_last_run[mask_operativos].copy()
+        except Exception as e:
+            st.warning(f"No se pudo aplicar el filtro de pozos operativos al conjunto de RUNs: {e}")
+    except Exception:
+        df_last_run = df_bd.copy()
+
+    # Procesar FORMA9 por mes de evaluación
+    df_f9_local = df_f9.copy() if df_f9 is not None else _pd.DataFrame()
+    df_f9_sum = _pd.DataFrame(columns=['POZO', 'BOPD'])
+    try:
+        if 'FECHA_FORMA9' in df_f9_local.columns:
+            df_f9_local['FECHA_FORMA9'] = _pd.to_datetime(df_f9_local['FECHA_FORMA9'], errors='coerce')
+            fecha_eval = _pd.to_datetime(fecha_eval)
+            df_f9_month = df_f9_local[(df_f9_local['FECHA_FORMA9'].dt.year == fecha_eval.year) & (df_f9_local['FECHA_FORMA9'].dt.month == fecha_eval.month)].copy()
+
+            dias_col = next((c for c in df_f9_month.columns if 'DIAS' in str(c).upper()), None)
+            bopd_col = next((c for c in df_f9_month.columns if 'BOPD' in str(c).upper()), None)
+
+            if dias_col is not None:
+                df_f9_month[dias_col] = _pd.to_numeric(df_f9_month[dias_col], errors='coerce').fillna(0)
+                df_f9_month = df_f9_month[df_f9_month[dias_col] > 0].copy()
+
+            if not df_f9_month.empty and bopd_col is not None:
+                df_f9_month[bopd_col] = _pd.to_numeric(df_f9_month[bopd_col], errors='coerce').fillna(0)
+                df_f9_sum = df_f9_month.groupby('POZO', as_index=False).agg({bopd_col: 'sum'})
+                df_f9_sum.rename(columns={bopd_col: 'BOPD'}, inplace=True)
+            else:
+                df_f9_sum = _pd.DataFrame(columns=['POZO', 'BOPD'])
+        else:
+            df_f9_sum = _pd.DataFrame(columns=['POZO', 'BOPD'])
+    except Exception as e:
+        st.warning(f"Error al procesar FORMA9 para mes de evaluación: {e}")
+        df_f9_sum = _pd.DataFrame(columns=['POZO', 'BOPD'])
+
+    # Mapear BOPD al RUN correspondiente
+    if not df_f9_sum.empty:
+        try:
+            df_f9_month_raw = df_f9_local[(df_f9_local['FECHA_FORMA9'].dt.year == fecha_eval.year) & (df_f9_local['FECHA_FORMA9'].dt.month == fecha_eval.month)].copy()
+        except Exception:
+            df_f9_month_raw = _pd.DataFrame()
+
+        if not df_f9_month_raw.empty:
+            df_f9_lastdate = df_f9_month_raw.sort_values('FECHA_FORMA9').groupby('POZO', as_index=False).last()[['POZO', 'FECHA_FORMA9']]
+            df_f9_sum = df_f9_sum.copy()
+            df_f9_merge = _pd.merge(df_f9_sum, df_f9_lastdate, on='POZO', how='left')
+        else:
+            df_f9_merge = df_f9_sum.copy()
+            df_f9_merge['FECHA_FORMA9'] = _pd.NaT
+
+        bd_match = df_bd.copy()
+        for dtcol in ['FECHA_RUN', 'FECHA_PULL', 'FECHA_FALLA']:
+            if dtcol in bd_match.columns:
+                bd_match[dtcol] = _pd.to_datetime(bd_match[dtcol], errors='coerce')
+            else:
+                bd_match[dtcol] = _pd.NaT
+
+        if not df_f9_merge.empty:
+            df_f9_merge['_idx'] = range(len(df_f9_merge))
+            merged_df = _pd.merge(df_f9_merge, bd_match[['POZO', 'RUN', 'FECHA_RUN', 'FECHA_PULL', 'RUN LIFE']], on='POZO', how='left')
+            merged_df['FECHA_FORMA9'] = _pd.to_datetime(merged_df['FECHA_FORMA9'], errors='coerce')
+            merged_df['FECHA_PULL_FILL'] = merged_df['FECHA_PULL'].fillna(fecha_eval)
+            merged_df['is_match'] = (merged_df['FECHA_FORMA9'] >= merged_df['FECHA_RUN']) & (merged_df['FECHA_FORMA9'] < merged_df['FECHA_PULL_FILL'])
+
+            runlife_map = {}
+            try:
+                matched = merged_df[merged_df['is_match']].copy()
+                if not matched.empty:
+                    best_idx = matched.groupby('_idx')['FECHA_RUN'].idxmax()
+                    best_matches = merged_df.loc[best_idx]
+                    runlife_map = best_matches.set_index('_idx')['RUN LIFE'].to_dict()
+            except Exception:
+                runlife_map = {}
+
+            missing_idxs = [i for i in range(len(df_f9_merge)) if i not in runlife_map]
+            if missing_idxs:
+                for i in missing_idxs:
+                    try:
+                        candidate = merged_df[(merged_df['_idx'] == i) & (merged_df['FECHA_RUN'] <= merged_df.loc[merged_df['_idx'] == i, 'FECHA_FORMA9'].iloc[0])]
+                        if not candidate.empty:
+                            idx_choice = candidate['FECHA_RUN'].idxmax()
+                            runlife_map[i] = merged_df.loc[idx_choice, 'RUN LIFE']
+                    except Exception:
+                        continue
+
+            df_f9_merge['RUN LIFE'] = df_f9_merge.index.map(lambda i: runlife_map.get(i, _np.nan))
+
+            try:
+                total_pozos = len(df_f9_merge)
+                mapeados = df_f9_merge['RUN LIFE'].notna().sum()
+                no_mapeados = total_pozos - int(mapeados)
+                st.markdown(f"**Pozos en FORMA9 (mes):** {total_pozos} — **Con RUN asociado:** {mapeados} — **Sin RUN:** {no_mapeados}")
+            except Exception:
+                pass
+            merged = df_f9_merge[['POZO', 'BOPD', 'FECHA_FORMA9', 'RUN LIFE']].copy()
+        else:
+            merged = _pd.DataFrame(columns=['POZO', 'BOPD', 'FECHA_FORMA9', 'RUN LIFE'])
+    else:
+        merged = _pd.DataFrame(columns=['POZO', 'BOPD', 'FECHA_FORMA9', 'RUN LIFE'])
+
+    merged['BOPD'] = _pd.to_numeric(merged['BOPD'], errors='coerce').fillna(0)
+    merged['RUN LIFE'] = _pd.to_numeric(merged['RUN LIFE'], errors='coerce').fillna(0)
+
+    def bucket_runlife(days):
+        years = days / 365.0
+        if _pd.isna(days):
+            return 'Sin Datos'
+        if years < 2:
+            return '<2 años'
+        if 2 <= years < 4:
+            return '2-4 años'
+        if 4 <= years < 6:
+            return '4-6 años'
+        return '>6 años'
+
+    if not merged.empty:
+        merged['RunLifeBucket'] = merged['RUN LIFE'].apply(bucket_runlife)
+
+        agg = merged.groupby(['RunLifeBucket']).agg(
+            BOPD_sum=_pd.NamedAgg(column='BOPD', aggfunc='sum'),
+            Pozos=_pd.NamedAgg(column='POZO', aggfunc=lambda x: x.nunique())
+        ).reset_index()
+
+        bucket_order = ['<2 años', '2-4 años', '4-6 años', '>6 años']
+        agg = agg.set_index('RunLifeBucket').reindex(bucket_order).fillna({'BOPD_sum': 0, 'Pozos': 0}).reset_index()
+
+        if agg.empty:
+            st.info('No hay datos suficientes para generar la gráfica por buckets de Run Life.')
+        else:
+            # Gráfico de barras
+            fig2 = px.bar(
+                agg,
+                x='RunLifeBucket',
+                y='BOPD_sum',
+                color='RunLifeBucket',
+                color_discrete_sequence=get_color_sequence(),
+                labels={'RunLifeBucket': 'Run Life (años)', 'BOPD_sum': 'BOPD (suma)'},
+                title=_styled_title('BOPD total por Run Life')
+            )
+            
+            # --- AJUSTES CLAVE PARA LA SIMETRÍA Y LIMPIEZA ---
+            max_y = agg['BOPD_sum'].max() if not agg['BOPD_sum'].empty else 0
+            
+            # 1. Aplicar la misma altura que el gráfico de radar (280px)
+            # 2. Reducir los márgenes para maximizar el área de trazado
+            layout = _get_plotly_layout()
+            layout.update(
+                height=280, # Altura fija de 280px para simetría
+                margin=dict(l=30, r=30, t=30, b=10), # Margen ajustado
+                showlegend=False # Se remueve la leyenda para ahorrar espacio
+            )
+            fig2.update_layout(**layout)
+            # Forzar fondo transparente para evitar que Plotly o el layout lo pongan en blanco
+            fig2.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+
+
+            for i, row in agg.iterrows():
+                y_val = float(row['BOPD_sum'])
+                
+                # Modificación: Anotación justo encima de la barra
+                y_ann = y_val + (max_y * 0.05) if max_y > 0 else 1 # 5% sobre el valor o un valor mínimo
+                
+                font_dict = {'size': 12, 'color': 'black'} # Color de fuente por defecto
+                if COLOR_FONDO_OSCURO:
+                    font_dict['color'] = COLOR_FUENTE
+
+                fig2.add_annotation(
+                    x=row['RunLifeBucket'],
+                    y=y_ann, # Posición ajustada
+                    text=f"{int(row['Pozos'])}",
+                    showarrow=False,
+                    font=font_dict,
+                    align='center',
+                    # Removidos el bgcolor/bordercolor para que sea un texto flotante y limpio.
+                    bgcolor='rgba(0,0,0,0)', 
+                    bordercolor='rgba(0,0,0,0)', 
+                    opacity=1,
+                    valign='bottom'
+                )
+
+            st.plotly_chart(fig2, use_container_width=True)
+    else:
+        st.info('No hay datos de RUN o de FORMA9 disponibles para el filtro actual.')
+
+def show_resumen():
+    st.markdown(DASHBOARD_CSS, unsafe_allow_html=True)
+    
+    if 'df_bd_calculated' not in st.session_state: st.session_state['df_bd_calculated'] = None
+    if 'df_forma9_calculated' not in st.session_state: st.session_state['df_forma9_calculated'] = None
+    if 'resumen_publico_calculated' not in st.session_state: st.session_state['resumen_publico_calculated'] = False
+
+    # Intentar cargar datos desde saved_uploads o descargar desde enlaces por defecto
+    upload_dir = os.path.join(os.getcwd(), 'saved_uploads')
+    os.makedirs(upload_dir, exist_ok=True)
+    f9_path = os.path.join(upload_dir, 'forma9_online.xlsx')
+    bd_path = os.path.join(upload_dir, 'bd_online.xlsx')
+
+    # Si no hay datos en session_state, intentar leer desde disco
+    if st.session_state.get('df_forma9_calculated') is None or st.session_state.get('df_bd_calculated') is None:
+        loaded = False
+        try:
+            if os.path.exists(f9_path) and os.path.exists(bd_path):
+                try:
+                    with open(f9_path, 'rb') as f:
+                        st.session_state['df_forma9_calculated'] = _read_simple(f)
+                    with open(bd_path, 'rb') as f:
+                        st.session_state['df_bd_calculated'] = _read_simple(f)
+                    loaded = True
+                except Exception:
+                    loaded = False
+        except Exception:
+            loaded = False
+
+        # Si no se pudieron leer, intentar descargar desde los enlaces por defecto
+        if not loaded:
+            default_f9 = "https://1drv.ms/x/c/06cc4035ad46ff97/IQAlCua1BGOXRbcSzUY0OVyzAS8KOoDNxuvUqrsORhjMcKM?e=o8FZyJ"
+            default_bd = "https://1drv.ms/x/c/06cc4035ad46ff97/IQBFUqV7GWUfTqIPciLZeNEIAdlrMygqQITAR9Ku5frPrZE?e=P0xf75"
+            try:
+                ok1 = _download_onedrive(default_f9, f9_path)
+                ok2 = _download_onedrive(default_bd, bd_path)
+                if ok1 and ok2:
+                    try:
+                        with open(f9_path, 'rb') as f:
+                            st.session_state['df_forma9_calculated'] = _read_simple(f)
+                        with open(bd_path, 'rb') as f:
+                            st.session_state['df_bd_calculated'] = _read_simple(f)
+                        loaded = True
+                    except Exception as e:
+                        st.warning(f"No se pudieron leer los archivos descargados: {e}")
+                else:
+                    st.warning('No se pudieron descargar los archivos por defecto; revisa conectividad o enlaces.')
+            except Exception as e:
+                st.warning(f"Error al descargar archivos por defecto: {e}")
+
+    df_bd = st.session_state.get('df_bd_calculated')
+    df_f9 = st.session_state.get('df_forma9_calculated')
+
+    # Normalizar silenciosamente columnas 'FECHA' (sin mostrar diagnóstico)
+    try:
+        def _silent_fix_fecha(df):
+            if df is None:
+                return df
+            try:
+                cols = [c for c in df.columns if 'FECHA' in str(c).upper()]
+                if not cols:
+                    return df
+                col = cols[0]
+                import pandas as _pd
+                if not _pd.api.types.is_datetime64_any_dtype(df[col]):
+                    df[col] = _pd.to_datetime(df[col], dayfirst=True, errors='coerce', infer_datetime_format=True)
+            except Exception:
+                pass
+            return df
+
+        df_bd = _silent_fix_fecha(df_bd)
+        df_f9 = _silent_fix_fecha(df_f9)
+    except Exception:
+        pass
+
+    # Validar que los DataFrames contengan columnas mínimas esperadas
+    def _has_required_cols_df_forma9(df):
+        if df is None: return False
+        cols = [str(c).upper() for c in df.columns]
+        return any('FECHA' in c for c in cols) and any('POZO' in c for c in cols)
+
+    def _has_required_cols_df_bd(df):
+        if df is None: return False
+        cols = [str(c).upper() for c in df.columns]
+        return any('FECHA' in c for c in cols) and any('POZO' in c for c in cols)
+
+    data_ok = True
+    if not _has_required_cols_df_forma9(df_f9) or not _has_required_cols_df_bd(df_bd):
+        data_ok = False
+        st.error('Los archivos cargados parecen no contener las columnas mínimas esperadas (FECHA, POZO).')
+        try:
+            # Mostrar información de archivos en saved_uploads para diagnóstico
+            upload_dir = os.path.join(os.getcwd(), 'saved_uploads')
+            f9_path = os.path.join(upload_dir, 'forma9_online.xlsx')
+            bd_path = os.path.join(upload_dir, 'bd_online.xlsx')
+            info_lines = []
+            if os.path.exists(f9_path):
+                info_lines.append(f"FORMA9: {f9_path} — {os.path.getsize(f9_path)} bytes")
+            else:
+                info_lines.append("FORMA9: no existe en saved_uploads")
+            if os.path.exists(bd_path):
+                info_lines.append(f"BD: {bd_path} — {os.path.getsize(bd_path)} bytes")
+            else:
+                info_lines.append("BD: no existe en saved_uploads")
+            st.info('\n'.join(info_lines))
+        except Exception:
+            pass
+
+        # Botón para forzar re-descarga desde los enlaces por defecto
+        if st.button('🔁 Forzar redescarga desde OneDrive (sobrescribir)', key='force_redownload'):
+            default_f9 = "https://1drv.ms/x/c/06cc4035ad46ff97/IQAlCua1BGOXRbcSzUY0OVyzAS8KOoDNxuvUqrsORhjMcKM?e=o8FZyJ"
+            default_bd = "https://1drv.ms/x/c/06cc4035ad46ff97/IQBFUqV7GWUfTqIPciLZeNEIAdlrMygqQITAR9Ku5frPrZE?e=P0xf75"
+            try:
+                _download_onedrive(default_f9, f9_path)
+                _download_onedrive(default_bd, bd_path)
+                st.success('Intentada redescarga. Pulsa nuevamente "Calcular Datos Iniciales".')
+                st.experimental_rerun()
+            except Exception as e:
+                st.error(f'Error al intentar redescargar: {e}')
+
+
+    # Fecha por defecto: último día del mes anterior (no editable en resumen público)
+    default_date = get_last_day_of_previous_month()
+    if 'fecha_eval' not in st.session_state:
+        st.session_state['fecha_eval'] = default_date
+    fecha_eval = st.session_state.get('fecha_eval', default_date)
+    fecha_fmt = pd.to_datetime(fecha_eval).strftime('%d %b %Y')
+
+    # HEADER COMPACTO
+    st.markdown(f"""
+    <div class='dashboard-header' style='padding: 1.5rem 2rem; margin-bottom: 1rem;'>
+        <div style='display:flex; align-items:center; gap:0.8rem;'>
+            <span style='font-size:1.5rem;'>🚀</span>
+            <div>
+                <h1 class='header-title' style='font-size: 1.8rem; margin-bottom: 0.2rem;'>ALS FRONTERA - ESTADO DE SISTEMAS</h1>
+                <small style='opacity:0.5; font-size: 0.75rem;'>Visión General de Rendimiento</small>
+            </div>
+        </div>
+        <div class='header-date' style='font-size: 0.9rem;'>📅 {fecha_fmt}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # CÁLCULO manual mediante botón (igual que INDICADORES.py)
+    col_calc = st.columns([1])[0]
+    with col_calc:
+        calcular_btn = st.button("🔄 DOBLE CLIP PARA MOSTRAR DATOS", key="calcular_btn_resumen", use_container_width=True, help="Procesar datos y mostrar KPIs")
+
+    # Si el botón fue presionado y tenemos los DataFrames, normalizar columnas y marcar calculado
+    if calcular_btn:
+        if df_bd is None or df_f9 is None:
+            st.error('No hay datos disponibles para calcular. Revisa saved_uploads o la conectividad.')
+        else:
+            try:
+                # Primero limpiar/normalizar con la rutina local
+                processed_f9, processed_bd = _prepare_and_run(df_f9, df_bd, fecha_eval)
+                # Si existe la implementación compartida más fiel (desde INDICADORES), usarla
+                if shared_perform_initial_calculations is not None and processed_f9 is not None and processed_bd is not None:
+                    try:
+                        proc_f9_2, proc_bd_2 = shared_perform_initial_calculations(processed_f9.copy(), processed_bd.copy(), fecha_eval)
+                        # Si la llamada no devolvió None, preferir ese resultado (más cercano a INDICADORES.py)
+                        if proc_f9_2 is not None and proc_bd_2 is not None:
+                            processed_f9, processed_bd = proc_f9_2, proc_bd_2
+                    except Exception:
+                        # Si falla, quedarnos con la versión local
+                        pass
+                if processed_f9 is None or processed_bd is None:
+                    st.error('No se pudieron procesar los datos. Revisa los archivos en saved_uploads.')
+                else:
+                    st.session_state['df_bd_calculated'] = processed_bd
+                    st.session_state['df_forma9_calculated'] = processed_f9
+                    st.session_state['resumen_publico_calculated'] = True
+                    st.success('Cálculos iniciales procesados y guardados; ahora se muestran los KPIs.')
+            except Exception as e:
+                st.error(f'Error al preparar los datos para cálculo: {e}')
+
+    # Si aún no se ha calculado, detener para evitar mostrar KPIs vacíos
+    if not st.session_state.get('resumen_publico_calculated'):
+        st.info('Pulsa "Calcular Datos Iniciales" para generar el resumen con los enlaces por defecto.')
+        st.stop()
+
+    # CÁLCULOS
+    kpis = _calc_basic_kpis(df_bd, df_f9, fecha_eval)
+    
+    rl_avg = 0.0
+    if 'RUN LIFE' in df_bd.columns:
+        v = pd.to_numeric(df_bd['RUN LIFE'], errors='coerce').dropna()
+        if not v.empty: rl_avg = float(v.mean())
+        
+    # Índice de falla: preferimos cálculo sobre últimos 365 días (pozos fallados / pozos ON según FORMA9)
+    try:
+        fecha_eval_ts = pd.to_datetime(fecha_eval)
+        # Intentar usar la misma función y fuente que usa kpis.py
+        try:
+            from indice_falla import calcular_indice_falla_anual
+        except Exception:
+            calcular_indice_falla_anual = None
+
+        # Determinar ALS seleccionado (la app usa 'kpis_als_filter')
+        sel_raw = st.session_state.get('kpis_als_filter', 'TODOS')
+        sel_als = sel_raw if sel_raw and sel_raw != 'TODOS' else None
+
+        # Calcular resumen global (sin filtrar ALS)
+        if calcular_indice_falla_anual is not None:
+            try:
+                indice_resumen_global, _ = calcular_indice_falla_anual(df_bd.copy(), df_f9.copy(), fecha_eval_ts)
+            except Exception:
+                indice_resumen_global = None
+        else:
+            indice_resumen_global = None
+
+        # Calcular resumen para ALS específico si se seleccionó uno
+        indice_resumen_als = None
+        if sel_als and calcular_indice_falla_anual is not None:
+            try:
+                df_bd_als = df_bd.copy() if df_bd is not None else pd.DataFrame()
+                df_f9_als = df_f9.copy() if df_f9 is not None else pd.DataFrame()
+                if 'ALS' in df_bd_als.columns:
+                    df_bd_als = df_bd_als[df_bd_als['ALS'] == sel_als]
+                if 'ALS' in df_f9_als.columns:
+                    df_f9_als = df_f9_als[df_f9_als['ALS'] == sel_als]
+                indice_resumen_als, _ = calcular_indice_falla_anual(df_bd_als, df_f9_als, fecha_eval_ts)
+            except Exception:
+                indice_resumen_als = None
+
+        # Extraer valores EXACTOS como hace kpis.get_if_val
+        def _get_if_from_df(df_if, indicador):
+            try:
+                if df_if is None: return None
+                if 'Indicador' in df_if.columns and 'Valor' in df_if.columns:
+                    row = df_if[df_if['Indicador'] == indicador]
+                    if not row.empty:
+                        return str(row['Valor'].values[0])
+                return None
+            except Exception:
+                return None
+
+        if_on_raw = _get_if_from_df(indice_resumen_global, 'Índice de Falla ON')
+        if_als_on_raw = _get_if_from_df(indice_resumen_als if indice_resumen_als is not None else indice_resumen_global, 'Índice de Falla ALS ON')
+
+        # Convertir strings tipo '1.23%' a valores numéricos para el KPI principal (fail_idx)
+        def _pctstr_to_float(s):
+            try:
+                if s is None: return None
+                s2 = str(s).strip()
+                if s2.endswith('%'):
+                    s2 = s2.replace('%', '')
+                if s2.endswith('%%'):
+                    s2 = s2.replace('%%', '')
+                return float(s2.replace(',', '.'))
+            except Exception:
+                return None
+
+        parsed_if_on = _pctstr_to_float(if_on_raw)
+        fail_idx = parsed_if_on if parsed_if_on is not None else ( (kpis.get('fallados',0) / max(1, kpis.get('running',0) + kpis.get('fallados',0))) * 100 )
+
+        if_on_str = if_on_raw if if_on_raw is not None else 'N/D'
+        if_als_on_str = if_als_on_raw if if_als_on_raw is not None else 'N/D'
+
+    except Exception:
+        den = (kpis.get('running', 0) + kpis.get('fallados', 0))
+        fail_idx = (kpis.get('fallados', 0) / den) * 100 if den > 0 else 0.0
+        if_on_str = "N/D"
+        if_als_on_str = "N/D"
+
+    # --- TABLERO DASHBOARD: Fila 1 con 5 KPIs principales ---
+    try:
+        selected_als_display = st.session_state.get('kpis_als_filter', 'TODOS')
+    except Exception:
+        selected_als_display = 'TOTAL'
+    
+    # Calcular porcentaje de extracción
+    total_corridas = kpis['extraidos'] + kpis['running']
+    pct_extraccion = (kpis['extraidos'] / total_corridas * 100) if total_corridas > 0 else 0
+    
+    # Fila 1: 5 KPIs principales
+    kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns([1, 1, 1, 1, 1])
+    
+    with kpi1: st.markdown(_render_top_kpi("⏱️", "MTBF Estimado", kpis['mtbf'], "días"), unsafe_allow_html=True)
+    with kpi2: st.markdown(_render_top_kpi("📈", "Run Life Prom.", f"{rl_avg:.1f}", "días"), unsafe_allow_html=True)
+    with kpi3: st.markdown(_render_top_kpi("📉", "Índice Falla ON", if_on_str, "%"), unsafe_allow_html=True)
+    with kpi4: st.markdown(_render_top_kpi("🎯", "Índice Falla ALS", if_als_on_str, "%"), unsafe_allow_html=True)
+    with kpi5: st.markdown(_render_top_kpi("🔄", "Extracción %", f"{pct_extraccion:.1f}", "%"), unsafe_allow_html=True)
+
+    st.markdown("<div style='height: 2rem;'></div>", unsafe_allow_html=True)
+
+    # --- LAYOUT DASHBOARD COMPACTO (Gráficos 2x2) ---
+    # Fila superior: Gráfico histórico (ancho completo, altura reducida)
+    with st.container(border=True):
+        st.markdown("##### 📉 Tendencia Histórica")
+        try:
+            fig1, _ = generar_grafico_resumen(df_bd, df_f9, fecha_eval)
+            if fig1:
+                fig1.update_layout(
+                    margin=dict(l=20,r=20,t=10,b=20),
+                    height=250,
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    legend=dict(orientation="h", y=1.1)
+                )
+                st.plotly_chart(fig1, use_container_width=True)
+        except: st.error("Error en gráfico histórico")
+
+    st.markdown("<div style='height: 0.5rem;'></div>", unsafe_allow_html=True)
+
+    # Fila central: Dos gráficos simétricos (BOPD y Radar) - altura uniforme
+    col_a, col_b = st.columns([1, 1])
+
+    with col_a:
+        with st.container(border=True):
+            st.markdown("##### 📌 BOPD vs Run Life")
+            try:
+                render_bopd_vs_runlife(df_bd, df_f9, fecha_eval)
+            except Exception as e:
+                st.error(f"Error en BOPD vs Run Life: {e}")
+
+    with col_b:
+        with st.container(border=True):
+            st.markdown("##### 🕸️ Distribución de Estado")
+            try:
+                fig2 = generar_grafico_radar(kpis)
+                st.plotly_chart(fig2, use_container_width=True)
+            except: st.error("Error en radar")
+
+    st.markdown("<div style='height: 0.5rem;'></div>", unsafe_allow_html=True)
+
+    # --- BOTONES SIMÉTRICOS EN 2 FILAS (3 columnas cada una) ---
+    st.markdown("<div style='margin-top: 0.8rem;'></div>", unsafe_allow_html=True)
+    st.markdown("#### 📊 Estado Operacional")
+    
+    # Fila 1 de botones - Equipos en operación
+    btn1, btn2, btn3 = st.columns(3)
+    with btn1: st.markdown(_render_neon_button("🟢", "Running", kpis['running'], "neon-success"), unsafe_allow_html=True)
+    with btn2: st.markdown(_render_neon_button("🔴", "Fallados", kpis['fallados'], "neon-danger"), unsafe_allow_html=True)
+    with btn3: st.markdown(_render_neon_button("💡", "Pozos ON", kpis['pozos_on'], "neon-info"), unsafe_allow_html=True)
+
+    # Fila 2 de botones - Equipos fuera de operación
+    btn4, btn5, btn6 = st.columns(3)
+    with btn4: st.markdown(_render_neon_button("⚫", "Pozos OFF", kpis['pozos_off'], "neon-neutral"), unsafe_allow_html=True)
+    with btn5: st.markdown(_render_neon_button("🔧", "Extraídos", kpis['extraidos'], "neon-danger"), unsafe_allow_html=True)
+    with btn6: st.markdown(_render_neon_button("📊", "Total Corridas", str(kpis['extraidos']+kpis['running']), "neon-info"), unsafe_allow_html=True)
+
+if __name__ == '__main__':
+    show_resumen()
