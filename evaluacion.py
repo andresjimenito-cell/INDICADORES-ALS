@@ -8,6 +8,7 @@ from io import BytesIO
 import openpyxl
 from PIL import Image
 import base64
+import re
 import os
 import theme as _theme_mod
 
@@ -769,10 +770,33 @@ if motor_choice == 'RESUMEN EJECUTIVO':
             compliance_final_d81 = summary.get('Compliance_Final_D81')
         
         def _is_cumple(val):
-            if val is None: return False
-            if isinstance(val, (int, float)): return bool(val)
+            """Determina si 'val' indica que se cumple la condición.
+            - Si contiene un porcentaje numérico (ej. '85% cumplimiento'), se compara contra 80% (mayor que 80 => cumple).
+            - Si contiene palabras explícitas ('cumple','si','sí','ok', etc.) devuelve True.
+            - Valores numéricos se tratan como booleanos (no cero => True).
+            """
+            import re
+            if val is None:
+                return False
+            if isinstance(val, (int, float)):
+                return bool(val)
             s = str(val).strip().lower()
-            return any(x in s for x in ['si', 'sí', 'cumple', 'ok', 'yes', 'true'])
+            # Detectar porcentaje numérico
+            m = re.search(r"(\d+(?:[\.,]\d+)?)\s*%", s)
+            if m:
+                try:
+                    num = float(m.group(1).replace(',', '.'))
+                    return num > 80.0
+                except Exception:
+                    pass
+            # Palabras que indican cumplimiento
+            positives = ['si', 'sí', 'cumple', 'ok', 'yes', 'true', 'cumplido']
+            negatives = ['no cumple', 'no cumple', 'no', 'false', 'falso']
+            # Si hay una negación explícita, consideramos no cumple
+            for neg in negatives:
+                if neg in s:
+                    return False
+            return any(x in s for x in positives)
         
         technical_data.append({
             'Archivo': p['name'],
@@ -805,165 +829,256 @@ if motor_choice == 'RESUMEN EJECUTIVO':
             '3½" Fijo': p['am_3_5_fixed']
         })
 
-    # ===== SISTEMA DE SCORING Y RANKING =====
-    
-    # Crear sistema de puntuación integral
-    provider_scores = {}
-    
-    for p in processed:
-        prov_name = p['name']
-        provider_scores[prov_name] = {
-            'economico': 0,
-            'tecnico': 0,
-            'energetico': 0,
-            'total': 0,
-            'details': {}
-        }
-    
-    # 1. SCORING ECONÓMICO (40 puntos)
-    all_economic_offers = []
-    for p in processed:
-        for t in p.get('fronteraTables', []):
-            data = t['data']
-            if not data or len(data) < 13: continue
-            
-            provider = t['providerName']
-            pump = t['pumpName']
-            pipe = t['pipeSize']
-            
-            total_row = None
-            for row in data:
-                if len(row) >= 1 and "equipo+servicios+tlcc" in str(row[0]).lower():
-                    total_row = row
-                    break
-            if not total_row or len(total_row) < 4: continue
-            
-            def clean_val(val):
-                if pd.isna(val): return 0.0
-                s = str(val).replace("$", "").replace(",", "").replace("USD", "").strip()
-                try: return float(s)
-                except: return 0.0
-            
-            for i, cat in enumerate(['FULL PRICE', 'R-R-I-G-O', 'ALT AHORRO'], 1):
-                val = clean_val(total_row[i])
-                if val > 0:
-                    all_economic_offers.append({
-                        'provider': provider,
-                        'pump': pump,
-                        'pipe': pipe,
-                        'category': cat,
-                        'value': val,
-                        'filename': p['name']
-                    })
-    
-    if all_economic_offers:
-        df_econ = pd.DataFrame(all_economic_offers)
-        # Puntuar: menor costo = mayor puntaje
-        # Agrupar por combinación (category, pipe) para comparar propuestas homogéneas
-        group_list = list(df_econ.groupby(['category', 'pipe']).groups.keys())
-        num_groups = len(group_list)
-        total_econ_points = 40.0
-        if num_groups == 0:
-            # no hay grupos válidos, saltar
-            pass
-        else:
-            # repartir los 40 puntos equitativamente entre los grupos existentes
-            group_max = total_econ_points / num_groups
+    # ===== SISTEMA DE SCORING Y RANKING (refactorizado para AM/PMM) =====
 
-            # Para cada grupo (categoría + tubería) ordenar por costo ascendente
-            # y asignar puntos proporcionalmente: el mejor obtiene group_max,
-            # el último obtiene 0 (si hay >1 participantes). Si sólo hay 1, obtiene group_max.
-            for (cat, pipe), df_group in df_econ.groupby(['category', 'pipe']):
-                df_sorted = df_group.sort_values('value').reset_index(drop=True)
-                n = len(df_sorted)
+    allowed_tables = {
+        'AM': [3, 4],
+        'PMM': [2, 1]
+    }
+
+    def compute_scores(view):
+        # view: 'AM' or 'PMM'
+        provider_scores = {}
+        for p in processed:
+            provider_scores[p['name']] = {
+                'economico': 0,
+                'tecnico': 0,
+                'energetico': 0,
+                'total': 0,
+                'details': {}
+            }
+
+        # 1) SCORING ECONÓMICO (40 pts) - usar solo tablas permitidas para la vista
+        all_economic_offers = []
+        for p in processed:
+            for t in p.get('fronteraTables', []):
+                data = t['data']
+                if not data or len(data) < 1:
+                    continue
+                title_lower = (t.get('title') or '').lower()
+                m = re.search(r'tabla\s*(\d+)', title_lower)
+                table_num = int(m.group(1)) if m else None
+                if table_num is None or table_num not in allowed_tables.get(view, []):
+                    continue
+
+                provider = t.get('providerName')
+                pump = t.get('pumpName')
+                pipe = t.get('pipeSize')
+
+                total_row = None
+                for row in data:
+                    if len(row) >= 1 and 'equipo+servicios+tlcc' in str(row[0]).lower():
+                        total_row = row
+                        break
+                if not total_row or len(total_row) < 4:
+                    continue
+
+                def clean_val(v):
+                    if pd.isna(v): return 0.0
+                    s = str(v).replace('$', '').replace(',', '').replace('USD', '').strip()
+                    try: return float(s)
+                    except: return 0.0
+
+                for i, cat in enumerate(['FULL PRICE', 'R-R-I-G-O', 'ALT AHORRO'], 1):
+                    val = clean_val(total_row[i])
+                    if val > 0:
+                        all_economic_offers.append({
+                            'provider': provider,
+                            'pump': pump,
+                            'pipe': pipe,
+                            'category': cat,
+                            'value': val,
+                            'filename': p['name']
+                        })
+
+        # calcular PEF (Puntuación Económica Final) basado en las 3 categorías
+        if all_economic_offers:
+            df_econ = pd.DataFrame(all_economic_offers)
+            categories_list = ['FULL PRICE', 'R-R-I-G-O', 'ALT AHORRO']
+            # categorías válidas (las que tienen al menos una oferta)
+            valid_categories = [c for c in categories_list if c in df_econ['category'].unique()]
+            num_valid = len(valid_categories)
+
+            # puntos por posición dentro de cada categoría
+            points_map = [40, 35, 30, 25, 20, 15, 10, 5]
+
+            # preparar estructura para puntos por categoría
+            per_cat_points = {c: {} for c in valid_categories}
+            providers = [p['name'] for p in processed if p.get('name')]
+
+            # asignar puntos por posición en cada categoría (mejor valor -> 1er puesto)
+            for cat in valid_categories:
+                df_cat = df_econ[df_econ['category'] == cat]
+                if df_cat.empty:
+                    continue
+                # por proveedor tomar la mejor (mínima) oferta en la categoría
+                df_best = df_cat.groupby('filename', as_index=False)['value'].min()
+                df_sorted = df_best.sort_values('value').reset_index(drop=True)
                 for idx, row in df_sorted.iterrows():
-                    if n == 1:
-                        points = group_max
-                    else:
-                        # idx 0 -> best -> points = group_max
-                        # idx n-1 -> worst -> points = 0
-                        points = group_max * (1 - (idx / (n - 1)))
-                        if points < 0:
-                            points = 0.0
+                    pos = idx
+                    pts = points_map[pos] if pos < len(points_map) else 0
+                    per_cat_points[cat][row['filename']] = pts
 
-                    fname = row['filename']
-                    # Asegurar que la llave exista en provider_scores (por filename)
-                    if fname not in provider_scores:
-                        provider_scores[fname] = {
-                            'economico': 0,
-                            'tecnico': 0,
-                            'energetico': 0,
-                            'total': 0,
-                            'details': {}
-                        }
+            # construir PBO (Puntaje Bruto Obtenido) por proveedor sumando por categorías válidas
+            pbo_map = {prov: 0.0 for prov in providers}
+            # si un proveedor no tiene oferta en una categoría válida, recibe 10 pts para esa categoría
+            for cat in valid_categories:
+                for prov in providers:
+                    pts = per_cat_points.get(cat, {}).get(prov)
+                    if pts is None:
+                        # si el proveedor no participó en la categoría, 10 puntos mínimos
+                        pts = 10
+                    pbo_map[prov] = pbo_map.get(prov, 0.0) + float(pts)
 
-                    provider_scores[fname]['economico'] += points
-                    # Detalle por grupo para trazabilidad
-                    provider_scores[fname]['details'].setdefault('econ_breakdown', []).append({
-                        'category': cat,
-                        'pipe': pipe,
-                        'value': float(row['value']),
-                        'points': float(points),
-                        'rank': int(idx + 1),
-                        'provider': row.get('provider'),
-                        'filename': fname
-                    })
-    
-    # 2. SCORING TÉCNICO (35 puntos)
-    for p in processed:
-        diseno = p.get('disenoData') or {}
-        summary = diseno.get('summary', {})
-        compliance_final_d81 = p.get('compliance_final_d81')
-        if compliance_final_d81 is None:
-            compliance_final_d81 = (p.get('oferta_meta') or {}).get('D81')
-        if compliance_final_d81 is None:
-            compliance_final_d81 = summary.get('Compliance_Final_D81')
-        
-        def _is_cumple(val):
-            if val is None: return False
-            if isinstance(val, (int, float)): return bool(val)
-            s = str(val).strip().lower()
-            return any(x in s for x in ['si', 'sí', 'cumple', 'ok', 'yes', 'true'])
-        
-        if _is_cumple(compliance_final_d81):
-            provider_scores[p['name']]['tecnico'] = 35
-            provider_scores[p['name']]['details']['tech_status'] = 'CUMPLE'
-        else:
-            provider_scores[p['name']]['tecnico'] = 0
-            provider_scores[p['name']]['details']['tech_status'] = 'NO CUMPLE'
-    
-    # 3. SCORING ENERGÉTICO (25 puntos)
-    all_energy_costs = []
-    for p in processed:
-        pmm_45 = p['TLCC PMM_4_5']['totalCost']
-        pmm_35 = p['TLCC PMM_3_5']['totalCost']
-        am_45 = p['am_4_5']['totalCost']
-        am_35 = p['am_3_5']['totalCost']
-        
-        avg_cost = np.mean([x for x in [pmm_45, pmm_35, am_45, am_35] if x > 0])
-        if avg_cost > 0:
-            all_energy_costs.append({
-                'provider': p['name'],
-                'avg_cost': avg_cost
-            })
-    
-    if all_energy_costs:
-        df_energy = pd.DataFrame(all_energy_costs).sort_values('avg_cost')
-        for idx, row in df_energy.iterrows():
-            points = 25 * (1 - df_energy.index.get_loc(idx)/len(df_energy))
-            provider_scores[row['provider']]['energetico'] = points
-            provider_scores[row['provider']]['details']['energy_avg'] = row['avg_cost']
-    
-    # Calcular totales
-    for prov in provider_scores:
-        provider_scores[prov]['total'] = (
-            provider_scores[prov]['economico'] + 
-            provider_scores[prov]['tecnico'] + 
-            provider_scores[prov]['energetico']
-        )
-    
-    # Ordenar por puntaje total
-    ranked_providers = sorted(provider_scores.items(), key=lambda x: x[1]['total'], reverse=True)
+            # PBP = 40 * número de categorías válidas
+            pbp = 40 * num_valid if num_valid > 0 else 0
+
+            # calcular PD (porcentaje de desempeño) por proveedor
+            pd_map = {}
+            for prov, pbo in pbo_map.items():
+                pd_pct = (pbo / pbp * 100.0) if pbp > 0 else 0.0
+                pd_map[prov] = pd_pct
+
+            # Asignar puntos económicos discretos por posición basada en PBO
+            # Ordenar proveedores por PBO (desc)
+            sorted_by_pbo = sorted(pbo_map.items(), key=lambda x: (x[1], x[0]), reverse=True)
+            rank_points = [40, 35, 30, 25, 20, 15, 10, 5]
+            assigned_points = {}
+            for idx, (prov, pbo_val) in enumerate(sorted_by_pbo):
+                pts = rank_points[idx] if idx < len(rank_points) else 0
+                assigned_points[prov] = pts
+
+            # Guardar en provider_scores
+            for prov in pbo_map.keys():
+                provider_scores.setdefault(prov, {
+                    'economico': 0,
+                    'tecnico': 0,
+                    'energetico': 0,
+                    'total': 0,
+                    'details': {}
+                })
+                provider_scores[prov]['economico'] = float(assigned_points.get(prov, 0))
+                provider_scores[prov]['details']['PBO'] = float(pbo_map.get(prov, 0.0))
+                provider_scores[prov]['details']['PD'] = float(pd_map.get(prov, 0.0))
+                provider_scores[prov]['details']['Rank_Econ'] = int([i for i, (pp, _) in enumerate(sorted_by_pbo) if pp == prov][0]) + 1
+                provider_scores[prov]['details']['Pts_Assigned'] = float(assigned_points.get(prov, 0))
+
+            # Mostrar tabla de diagnóstico económica para depuración (opcional)
+            try:
+                diag_rows = []
+                for prov in providers:
+                    row = {'Proveedor': prov, 'PBO': pbo_map.get(prov, 0.0), 'PD': pd_map.get(prov, 0.0), 'PEF': pef_map.get(prov, 0.0)}
+                    # añadir puntos por categoría
+                    for cat in valid_categories:
+                        row[f'Pts_{cat}'] = per_cat_points.get(cat, {}).get(prov, 10)
+                    diag_rows.append(row)
+                df_diag = pd.DataFrame(diag_rows)
+                st.expander('📋 Diagnóstico Económico (PBO / PD / PEF) - desplegar para ver detalles', expanded=False)
+                with st.expander('📋 Diagnóstico Económico (PBO / PD / PEF) - desplegar para ver detalles'):
+                    st.dataframe(df_diag.sort_values('PEF', ascending=False).reset_index(drop=True))
+            except Exception:
+                pass
+
+        # 2) SCORING TÉCNICO (35 pts) - igual para AM y PMM
+        for p in processed:
+            diseno = p.get('disenoData') or {}
+            summary = diseno.get('summary', {})
+            compliance_final_d81 = p.get('compliance_final_d81')
+            if compliance_final_d81 is None:
+                compliance_final_d81 = (p.get('oferta_meta') or {}).get('D81')
+            if compliance_final_d81 is None:
+                compliance_final_d81 = summary.get('Compliance_Final_D81')
+
+            def _is_cumple(val):
+                if val is None:
+                    return False
+                if isinstance(val, (int, float)):
+                    return bool(val)
+                s = str(val).strip().lower()
+                m = re.search(r"(\d+(?:[\.,]\d+)?)\s*%", s)
+                if m:
+                    try:
+                        num = float(m.group(1).replace(',', '.'))
+                        return num > 80.0
+                    except Exception:
+                        pass
+                positives = ['si', 'sí', 'cumple', 'ok', 'yes', 'true', 'cumplido']
+                negatives = ['no cumple', 'no', 'false', 'falso']
+                for neg in negatives:
+                    if neg in s:
+                        return False
+                return any(x in s for x in positives)
+
+            if _is_cumple(compliance_final_d81):
+                provider_scores[p['name']]['tecnico'] = 35
+                provider_scores[p['name']]['details']['tech_status'] = 'CUMPLE'
+            else:
+                provider_scores[p['name']]['tecnico'] = 0
+                provider_scores[p['name']]['details']['tech_status'] = 'NO CUMPLE'
+
+        # 3) SCORING ENERGÉTICO (25 pts) - usar solo AM o solo PMM según view
+        all_energy_costs = []
+        for p in processed:
+            if view == 'AM':
+                v45 = p.get('am_4_5', {}).get('totalCost', 0)
+                v35 = p.get('am_3_5', {}).get('totalCost', 0)
+            else:
+                v45 = p.get('TLCC PMM_4_5', {}).get('totalCost', 0)
+                v35 = p.get('TLCC PMM_3_5', {}).get('totalCost', 0)
+            avg_cost = np.mean([x for x in [v45, v35] if x > 0]) if any(x > 0 for x in [v45, v35]) else 0
+            if avg_cost > 0:
+                all_energy_costs.append({'provider': p['name'], 'avg_cost': avg_cost})
+
+        if all_energy_costs:
+            df_energy = pd.DataFrame(all_energy_costs).sort_values('avg_cost').reset_index(drop=True)
+            energy_points = [25, 20, 15, 10, 5, 0]
+            values = df_energy['avg_cost'].tolist()
+            first_pos = {}
+            for i, v in enumerate(values):
+                if v not in first_pos:
+                    first_pos[v] = i
+            for idx, row in df_energy.iterrows():
+                rank_idx = first_pos[row['avg_cost']]
+                pts = energy_points[rank_idx] if rank_idx < len(energy_points) else 0
+                provider_scores[row['provider']]['energetico'] = pts
+                provider_scores[row['provider']]['details']['energy_avg'] = row['avg_cost']
+
+        # totales y orden
+        for prov in provider_scores:
+            provider_scores[prov]['total'] = (
+                provider_scores[prov]['economico'] +
+                provider_scores[prov]['tecnico'] +
+                provider_scores[prov]['energetico']
+            )
+
+        ranked = sorted(provider_scores.items(), key=lambda x: x[1]['total'], reverse=True)
+        return provider_scores, ranked
+
+    # UI: botones para evaluar AM y PMM por separado
+    st.markdown('### Evaluar por tipo de motor')
+    eval_cols = st.columns(2)
+    am_pressed = eval_cols[0].button('Evaluar AM')
+    pmm_pressed = eval_cols[1].button('Evaluar PMM')
+
+    # Si se presiona un botón, guardamos la vista en session_state y la usamos
+    if am_pressed:
+        prov_scores_am, ranked_am = compute_scores('AM')
+        ranked_providers = ranked_am
+        provider_scores = prov_scores_am
+        st.session_state['evaluation_view'] = 'AM'
+        current_view = 'AM'
+        st.success('✅ Evaluación AM completada')
+    elif pmm_pressed:
+        prov_scores_pmm, ranked_pmm = compute_scores('PMM')
+        ranked_providers = ranked_pmm
+        provider_scores = prov_scores_pmm
+        st.session_state['evaluation_view'] = 'PMM'
+        current_view = 'PMM'
+        st.success('✅ Evaluación PMM completada')
+    else:
+        # usar la vista almacenada en session_state o PMM por defecto
+        current_view = st.session_state.get('evaluation_view', 'PMM')
+        provider_scores, ranked_providers = compute_scores(current_view)
     
     # ===== CARD DEL GANADOR =====
     if ranked_providers:
@@ -1115,27 +1230,38 @@ if motor_choice == 'RESUMEN EJECUTIVO':
     
     # ===== CLASIFICACIÓN POR ALTERNATIVAS ECONÓMICAS (3 RANKINGS) =====
     st.markdown('<div class="section-header">🏷️ Clasificación por Alternativa Económica</div>', unsafe_allow_html=True)
-    # all_economic_offers fue construido arriba; si no existe, reconstruir a partir de processed
+    # Reconstruir `all_economic_offers` a partir de `processed`, filtrando por la vista seleccionada
     if 'all_economic_offers' not in locals() or not all_economic_offers:
         all_economic_offers = []
+        view_sel = current_view if 'current_view' in locals() else st.session_state.get('evaluation_view', 'PMM')
         for p in processed:
             for t in p.get('fronteraTables', []):
-                data = t['data']
-                if not data or len(data) < 13: continue
-                provider = t['providerName']
-                pump = t['pumpName']
-                pipe = t['pipeSize']
+                data = t.get('data')
+                if not data or len(data) < 1:
+                    continue
+                title_lower = (t.get('title') or '').lower()
+                m = re.search(r'tabla\s*(\d+)', title_lower)
+                table_num = int(m.group(1)) if m else None
+                if table_num is None or table_num not in allowed_tables.get(view_sel, []):
+                    continue
+
+                provider = t.get('providerName')
+                pump = t.get('pumpName')
+                pipe = t.get('pipeSize')
                 total_row = None
                 for row in data:
                     if len(row) >= 1 and "equipo+servicios+tlcc" in str(row[0]).lower():
                         total_row = row
                         break
-                if not total_row or len(total_row) < 4: continue
+                if not total_row or len(total_row) < 4:
+                    continue
+
                 def clean_val(val):
                     if pd.isna(val): return 0.0
                     s = str(val).replace("$", "").replace(", ", "").replace(",", "").replace("USD", "").strip()
                     try: return float(s)
                     except: return 0.0
+
                 for i, cat in enumerate(['FULL PRICE', 'R-R-I-G-O', 'ALT AHORRO'], 1):
                     val = clean_val(total_row[i])
                     if val > 0:
@@ -1148,40 +1274,44 @@ if motor_choice == 'RESUMEN EJECUTIVO':
                             'filename': p['name']
                         })
 
-    def compute_category_ranking(category, all_offers, base_provider_scores):
-        # Calcula puntaje económico (40 pts) solo dentro de la categoría,
-        # distribuyendo puntos por cada grupo homogéneo de tubería.
+    def compute_category_ranking(category, all_offers, base_provider_scores=None):
+        """Ranking económico por categoría.
+        - Solo considera la parte económica (sin técnico/energético).
+        - Para cada tubería (pipe) asigna puntos fijos por posición: 1->40,2->35,3->30,4->25,...
+        - Suma puntos por proveedor a través de las tuberías y devuelve lista ordenada.
+        """
+        points_map = [40, 35, 30, 25, 20, 15, 10, 5]
         df_cat = pd.DataFrame([o for o in all_offers if o['category'] == category])
-        econ_scores = {}
-        total_econ_points = 40.0
         if df_cat.empty:
             return []
-        groups = list(df_cat.groupby(['pipe']).groups.keys())
-        if len(groups) == 0:
-            return []
-        group_max = total_econ_points / len(groups)
+
+        econ_scores = {}
+        # Para cada tubería, ordenar por valor ascendente y asignar puntos por posición
         for pipe, df_group in df_cat.groupby('pipe'):
             df_sorted = df_group.sort_values('value').reset_index(drop=True)
-            n = len(df_sorted)
             for idx, row in df_sorted.iterrows():
-                if n == 1:
-                    points = group_max
-                else:
-                    points = group_max * (1 - (idx / (n - 1)))
-                    if points < 0: points = 0.0
+                pos = idx  # 0-based
+                pts = points_map[pos] if pos < len(points_map) else 0
                 fname = row['filename']
-                econ_scores[fname] = econ_scores.get(fname, 0.0) + float(points)
+                econ_scores[fname] = econ_scores.get(fname, 0) + pts
+        # Asegurar que todos los proveedores aparezcan en el ranking.
+        all_providers = [p.get('name') for p in processed if p.get('name')]
+        # proveedores que sí tuvieron oferta en esta categoría
+        providers_with_offer = set(econ_scores.keys())
 
-        # Construir ranking combinando económico (por categoría) + técnico + energético
+        # Construir ranking: si no hay oferta, asignar 10 puntos y marcar has_offer=False
         ranking = []
-        for prov in set(list(base_provider_scores.keys()) + list(econ_scores.keys())):
-            econ = econ_scores.get(prov, 0.0)
-            tech = float(base_provider_scores.get(prov, {}).get('tecnico', 0.0))
-            energy = float(base_provider_scores.get(prov, {}).get('energetico', 0.0))
-            total = econ + tech + energy
-            ranking.append({'provider': prov, 'econ': econ, 'tech': tech, 'energy': energy, 'total': total})
+        for prov in all_providers:
+            if prov in providers_with_offer:
+                pts = econ_scores.get(prov, 0)
+                has_offer = True
+            else:
+                pts = 10
+                has_offer = False
+            ranking.append({'provider': prov, 'econ_points': pts, 'has_offer': has_offer})
 
-        return sorted(ranking, key=lambda x: x['total'], reverse=True)
+        ranking = sorted(ranking, key=lambda x: x['econ_points'], reverse=True)
+        return ranking
 
     # Crear tres rankings: FULL PRICE, R-R-I-G-O, ALTERNATIVA AHORRO
     base_scores = provider_scores  # ya contiene tecnico y energetico calculados antes
@@ -1201,18 +1331,20 @@ if motor_choice == 'RESUMEN EJECUTIVO':
             if not ranking_list:
                 show_no_data_message('Sin Datos', 'No hay propuestas')
                 continue
-            # Mostrar top 5 con tarjetas compactas
+            # Mostrar top 5 con tarjetas compactas (solo económico)
             for j, item in enumerate(ranking_list[:5], 1):
-                prov = item['provider']
-                econ = item['econ']
-                tech = item['tech']
-                energy = item['energy']
-                tot = item['total']
+                prov = item.get('provider')
+                econ_pts = item.get('econ_points', 0)
+                has_offer = item.get('has_offer', True)
+                nota = "" if has_offer else " — sin oferta"
+                display_sub = f"Puntos Econ: {econ_pts}"
+                if not has_offer:
+                    display_sub += " (sin oferta)"
                 st.markdown(
                     f"<div style='background: linear-gradient(135deg, {cstart} 0%, {cend} 100%); padding:10px; border-radius:10px; margin-bottom:8px;'>"
                     f"<div style='display:flex; justify-content:space-between; align-items:center;'>"
-                    f"<div><strong style='font-size:1.05rem;'>{j}. {prov}</strong><div style='font-size:0.85rem; opacity:0.9;'>Econ: {econ:.1f} / Tec: {tech:.1f} / Eng: {energy:.1f}</div></div>"
-                    f"<div style='text-align:right;'><div style='font-weight:800; font-size:1.2rem;'>{tot:.1f}</div><div style='font-size:0.8rem; opacity:0.9;'>de 100</div></div>"
+                    f"<div><strong style='font-size:1.05rem;'>{j}. {prov}{nota}</strong><div style='font-size:0.85rem; opacity:0.9;'>{display_sub}</div></div>"
+                    f"<div style='text-align:right;'><div style='font-weight:800; font-size:1.2rem;'>{econ_pts}</div></div>"
                     f"</div></div>", unsafe_allow_html=True)
 
     st.markdown('---')
@@ -1229,14 +1361,23 @@ if motor_choice == 'RESUMEN EJECUTIVO':
         rrigo_offers = []
         alt_offers = []
 
+        view_sel = current_view if 'current_view' in locals() else st.session_state.get('evaluation_view', 'PMM')
         for p in processed:
             for t in p.get('fronteraTables', []):
-                data = t['data']
-                if not data or len(data) < 13: continue
+                data = t.get('data')
+                if not data or len(data) < 1:
+                    continue
 
-                provider = t['providerName']
-                pump = t['pumpName']
-                pipe = t['pipeSize']
+                # Filtrar tablas según la vista seleccionada (AM/PMM)
+                title_lower = (t.get('title') or '').lower()
+                m = re.search(r'tabla\s*(\d+)', title_lower)
+                table_num = int(m.group(1)) if m else None
+                if table_num is None or table_num not in allowed_tables.get(view_sel, []):
+                    continue
+
+                provider = t.get('providerName')
+                pump = t.get('pumpName')
+                pipe = t.get('pipeSize')
                 title = f"{provider} - {pump}"
 
                 total_row = None
@@ -1244,7 +1385,8 @@ if motor_choice == 'RESUMEN EJECUTIVO':
                     if len(row) >= 1 and "equipo+servicios+tlcc" in str(row[0]).lower():
                         total_row = row
                         break
-                if not total_row or len(total_row) < 4: continue
+                if not total_row or len(total_row) < 4:
+                    continue
 
                 def clean_val(val):
                     if pd.isna(val): return 0.0
@@ -1353,10 +1495,25 @@ if motor_choice == 'RESUMEN EJECUTIVO':
             compliance = p.get('compliance_final_d81')
             
             def _is_cumple(val):
-                if val is None: return False
-                if isinstance(val, (int, float)): return bool(val)
+                import re
+                if val is None:
+                    return False
+                if isinstance(val, (int, float)):
+                    return bool(val)
                 s = str(val).strip().lower()
-                return any(x in s for x in ['si', 'sí', 'cumple', 'ok', 'yes', 'true'])
+                m = re.search(r"(\d+(?:[\.,]\d+)?)\s*%", s)
+                if m:
+                    try:
+                        num = float(m.group(1).replace(',', '.'))
+                        return num > 80.0
+                    except Exception:
+                        pass
+                positives = ['si', 'sí', 'cumple', 'ok', 'yes', 'true', 'cumplido']
+                negatives = ['no cumple', 'no', 'false', 'falso']
+                for neg in negatives:
+                    if neg in s:
+                        return False
+                return any(x in s for x in positives)
             
             technical_summary.append({
                 'Proveedor': p['name'],
@@ -1549,6 +1706,9 @@ if motor_choice == 'RESUMEN EJECUTIVO':
 elif motor_choice == 'COSTOS':
     st.markdown('<div class="section-header">💰 Ranking Económico por Categoría y Tamaño de Tubería</div>', unsafe_allow_html=True)
 
+    # Añadir selector para ver tablas AM o PMM (mapeo provisto por el usuario)
+    view_choice = st.radio('Ver tablas', ['AM', 'PMM'], index=0, horizontal=True, help='Selecciona si quieres ver las tablas AM o PMM')
+
     ROW_MAP = {
         'NOMBRE BOMBA': 2,
         'EQUIPO DE SUPERFICIE': 3,
@@ -1563,28 +1723,55 @@ elif motor_choice == 'COSTOS':
     }
 
     raw_data = []
+    # Mapeo de tablas por vista (según lo indicado):
+    # AM: tabla 3 -> AM 4-1/2", tabla 4 -> AM 3-1/2"
+    # PMM: tabla 2 -> PMM 4-1/2", tabla 1 -> PMM 3-1/2"
+    allowed_tables = {
+        'AM': [3, 4],
+        'PMM': [2, 1]
+    }
+
+    import re
     for p in processed:
         filename = p['name']
         for t in p.get('fronteraTables', []):
             data = t['data']
             if not data or len(data) < 13: continue
 
+            # Determinar número de tabla a partir del título (p.ej. 'Tabla 1: ...')
+            title_lower = (t.get('title') or '').lower()
+            m = re.search(r'tabla\s*(\d+)', title_lower)
+            table_num = int(m.group(1)) if m else None
+            if table_num is None or table_num not in allowed_tables.get(view_choice, []):
+                # ignorar tablas que no correspondan a la vista seleccionada
+                continue
+
             provider = t['providerName']
             pump = t['pumpName']
             pipe = t['pipeSize']
 
-            def get_val(row_idx, col_idx):
-                if row_idx < len(data) and col_idx < len(data[row_idx]):
-                    val = data[row_idx][col_idx]
-                    if pd.isna(val): return 0.0
-                    s = str(val).replace(", ", "").replace(",", "").replace("USD", "").strip()
-                    try: return float(s)
-                    except: return 0.0
-                return 0.0
+            # Buscar dinámicamente la fila que contiene 'EQUIPO+SERVICIOS+TLCC'
+            total_idx = None
+            for i, row in enumerate(data):
+                if len(row) >= 1 and 'equipo+servicios+tlcc' in str(row[0]).lower():
+                    total_idx = i
+                    break
+            if total_idx is None:
+                # no se encontró la fila de totales; saltar
+                continue
 
-            full_total = get_val(12, 1)
-            rrigo_total = get_val(12, 2)
-            alt_total = get_val(12, 3)
+            def clean_num(val):
+                if pd.isna(val): return 0.0
+                s = str(val).replace("$", "").replace("USD", "").replace(",", "").strip()
+                s = re.sub(r"[^0-9.\-]", "", s)
+                try:
+                    return float(s) if s not in ['', None] else 0.0
+                except:
+                    return 0.0
+
+            full_total = clean_num(data[total_idx][1]) if len(data[total_idx]) > 1 else 0.0
+            rrigo_total = clean_num(data[total_idx][2]) if len(data[total_idx]) > 2 else 0.0
+            alt_total = clean_num(data[total_idx][3]) if len(data[total_idx]) > 3 else 0.0
 
             if full_total > 0:
                 raw_data.append({'cat': 'FULL PRICE', 'pipe': pipe, 'prov': provider, 'pump': pump, 'filename': filename, 'col': 1, 'data': data})
@@ -1671,10 +1858,18 @@ elif motor_choice == 'COSTOS':
     rrigo_offers = []
     alt_offers = []
 
+    import re
     for p in processed:
         for t in p.get('fronteraTables', []):
             data = t['data']
             if not data or len(data) < 13: continue
+
+            # Filtrar según la selección AM/PMM (usar mismas tablas permitidas)
+            title_lower = (t.get('title') or '').lower()
+            m = re.search(r'tabla\s*(\d+)', title_lower)
+            table_num = int(m.group(1)) if m else None
+            if table_num is None or table_num not in allowed_tables.get(view_choice, []):
+                continue
 
             provider = t['providerName']
             pump = t['pumpName']
@@ -1713,13 +1908,17 @@ elif motor_choice == 'COSTOS':
             if alt > 0:
                 alt_offers.append({**offer, 'value': alt})
 
-    def get_best(df, category):
-        if df.empty: return None, None
-        df_35 = df[df['pipe'] == '3-1/2"']
-        df_45 = df[df['pipe'] == '4-1/2"']
-        best_35 = df_35.sort_values('value').iloc[0] if not df_35.empty else None
-        best_45 = df_45.sort_values('value').iloc[0] if not df_45.empty else None
-        return best_35, best_45
+    def get_best_per_pipe(df):
+        # Retorna un dict: { pipe: best_row }
+        out = {}
+        if df.empty:
+            return out
+        for pipe_val in df['pipe'].unique():
+            df_pipe = df[df['pipe'] == pipe_val]
+            if not df_pipe.empty:
+                best_row = df_pipe.sort_values('value').iloc[0]
+                out[pipe_val] = best_row
+        return out
 
     st.markdown('<div class="section-header">🏆 Ganadores por Categoría y Tubería</div>', unsafe_allow_html=True)
     cols = st.columns(3)
@@ -1729,16 +1928,15 @@ elif motor_choice == 'COSTOS':
         st.markdown("**💎 FULL PRICE**")
         df_full = pd.DataFrame(full_offers)
         if not df_full.empty:
-            b35, b45 = get_best(df_full, 'FULL PRICE')
-            winners['FULL PRICE'] = (b35, b45)
-            if b35 is not None:
-                st.success(f"**3½\"**: {b35['title']} → **${b35['value']:,.0f}**")
-            else:
-                show_no_data_message("Sin Propuesta 3½\"", "No hay ofertas")
-            if b45 is not None:
-                st.success(f"**4½\"**: {b45['title']} → **${b45['value']:,.0f}**")
-            else:
-                show_no_data_message("Sin Propuesta 4½\"", "No hay ofertas")
+            best_map = get_best_per_pipe(df_full)
+            winners['FULL PRICE'] = best_map
+            for pipe in pipes:
+                st.markdown(f"**🔧 Tubería {pipe}**")
+                best = best_map.get(pipe)
+                if not best is None:
+                    st.success(f"**{pipe}**: {best['title']} → **${best['value']:,.0f}**")
+                else:
+                    show_no_data_message(f"Sin Propuesta {pipe}", "No hay ofertas")
         else:
             show_no_data_message("Sin Ofertas", "No hay propuestas FULL PRICE")
 
@@ -1746,16 +1944,15 @@ elif motor_choice == 'COSTOS':
         st.markdown("**🔄 R-R-I-G-O**")
         df_rrigo = pd.DataFrame(rrigo_offers)
         if not df_rrigo.empty:
-            b35, b45 = get_best(df_rrigo, 'R-R-I-G-O')
-            winners['R-R-I-G-O'] = (b35, b45)
-            if b35 is not None:
-                st.success(f"**3½\"**: {b35['title']} → **${b35['value']:,.0f}**")
-            else:
-                show_no_data_message("Sin Propuesta 3½\"", "No hay ofertas")
-            if b45 is not None:
-                st.success(f"**4½\"**: {b45['title']} → **${b45['value']:,.0f}**")
-            else:
-                show_no_data_message("Sin Propuesta 4½\"", "No hay ofertas")
+            best_map = get_best_per_pipe(df_rrigo)
+            winners['R-R-I-G-O'] = best_map
+            for pipe in pipes:
+                st.markdown(f"**🔧 Tubería {pipe}**")
+                best = best_map.get(pipe)
+                if not best is None:
+                    st.success(f"**{pipe}**: {best['title']} → **${best['value']:,.0f}**")
+                else:
+                    show_no_data_message(f"Sin Propuesta {pipe}", "No hay ofertas")
         else:
             show_no_data_message("Sin Ofertas", "No hay propuestas R-R-I-G-O")
 
@@ -1763,16 +1960,15 @@ elif motor_choice == 'COSTOS':
         st.markdown("**💰 ALTERNATIVA AHORRO**")
         df_alt = pd.DataFrame(alt_offers)
         if not df_alt.empty:
-            b35, b45 = get_best(df_alt, 'ALTERNATIVA AHORRO')
-            winners['ALTERNATIVA AHORRO'] = (b35, b45)
-            if b35 is not None:
-                st.success(f"**3½\"**: {b35['title']} → **${b35['value']:,.0f}**")
-            else:
-                show_no_data_message("Sin Propuesta 3½\"", "No hay ofertas")
-            if b45 is not None:
-                st.success(f"**4½\"**: {b45['title']} → **${b45['value']:,.0f}**")
-            else:
-                show_no_data_message("Sin Propuesta 4½\"", "No hay ofertas")
+            best_map = get_best_per_pipe(df_alt)
+            winners['ALTERNATIVA AHORRO'] = best_map
+            for pipe in pipes:
+                st.markdown(f"**🔧 Tubería {pipe}**")
+                best = best_map.get(pipe)
+                if not best is None:
+                    st.success(f"**{pipe}**: {best['title']} → **${best['value']:,.0f}**")
+                else:
+                    show_no_data_message(f"Sin Propuesta {pipe}", "No hay ofertas")
         else:
             show_no_data_message("Sin Ofertas", "No hay propuestas ALTERNATIVA AHORRO")
 
@@ -1786,12 +1982,25 @@ elif motor_choice == 'EV TECNICA':
     comp_maximo = []
 
     def _is_cumple(val):
+        import re
         if val is None:
             return False
         if isinstance(val, (int, float)):
             return bool(val)
         s = str(val).strip().lower()
-        return any(x in s for x in ['si', 'sí', 'cumple', 'ok', 'yes', 'true'])
+        m = re.search(r"(\d+(?:[\.,]\d+)?)\s*%", s)
+        if m:
+            try:
+                num = float(m.group(1).replace(',', '.'))
+                return num > 80.0
+            except Exception:
+                pass
+        positives = ['si', 'sí', 'cumple', 'ok', 'yes', 'true', 'cumplido']
+        negatives = ['no cumple', 'no', 'false', 'falso']
+        for neg in negatives:
+            if neg in s:
+                return False
+        return any(x in s for x in positives)
 
     def color_compliance_cell(row):
         styles = [''] * len(row) 
