@@ -1,17 +1,25 @@
 import pandas as pd
 import streamlit as st
 import plotly.express as px
-import theme as _theme_mod
+from theme import get_colors, get_plotly_layout, styled_title
 
-COLOR_PRINCIPAL = getattr(_theme_mod, 'COLOR_PRINCIPAL', '#00ff99')
-COLOR_FONDO_OSCURO = getattr(_theme_mod, 'COLOR_FONDO_OSCURO', '#1a1a2e')
-get_color_sequence = getattr(_theme_mod, 'get_color_sequence', lambda mode=None: [COLOR_PRINCIPAL, '#00cfff', '#FFDE31', '#5AFFDA'])
-get_plotly_layout = getattr(_theme_mod, 'get_plotly_layout', lambda xa=None, ya=None, mode=None: {
-    'plot_bgcolor': COLOR_FONDO_OSCURO,
-    'paper_bgcolor': COLOR_FONDO_OSCURO,
-    'font_color': getattr(_theme_mod, 'COLOR_FUENTE', '#FFFFFF')
-})
-styled_title = getattr(_theme_mod, 'styled_title', lambda text, mode=None: f"<span style=\"color:{COLOR_PRINCIPAL}; text-shadow: 0 0 5px {COLOR_PRINCIPAL};\">{text}</span>")
+_colors = get_colors()
+COLOR_PRINCIPAL = _colors.get('primary', '#00ff99')
+_bg_raw = _colors.get('background', None)
+if isinstance(_bg_raw, str) and _bg_raw.strip().lower() in ('#ffffff', 'white'):
+    COLOR_FONDO_OSCURO = None
+else:
+    COLOR_FONDO_OSCURO = _bg_raw or '#1a1a2e'
+get_color_sequence = _colors.get('color_sequence', lambda mode=None: [
+    '#00A2FF',  # 1. Azul Zafiro Eléctrico
+    '#5EFF00',  # 2. Verde Lima Neón
+    '#0011D1',  # 3. Azul Cobalto Profundo
+    '#00FF0D',  # 4. Verde Neón Puro
+    '#4B0073',  # 5. Morado Índigo Profundo
+    '#000980'   # 6. Azul Ultra Oscuro Medianoche
+])
+get_plotly_layout = get_plotly_layout
+styled_title = styled_title
 
 def calcular_mtbf(df_bd, fecha_evaluacion):
     """
@@ -122,9 +130,10 @@ def graficar_historico_mtbf(df_hist):
             labels={'Mes': 'Mes', 'MTBF Promedio': 'MTBF Promedio (días)', 'ACTIVO': 'ACTIVO'},
             color_discrete_sequence=color_sequence
         )
+        # Obtener layout desde theme (respetará si Streamlit gestiona el fondo)
         layout = get_plotly_layout()
-        # asegurar orden de categorias y colores de ejes
-        layout.update({'xaxis': {'categoryorder': 'category ascending', 'color': COLOR_PRINCIPAL}, 'yaxis': {'color': COLOR_PRINCIPAL}})
+        # asegurar orden de categorias y colores de ejes si vienen en layout
+        layout.update({'xaxis': {'categoryorder': 'category ascending'}, 'yaxis': {}})
         fig.update_layout(**layout)
         st.plotly_chart(fig, use_container_width=True)
     else:
