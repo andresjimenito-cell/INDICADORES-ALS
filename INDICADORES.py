@@ -40,455 +40,257 @@ from datetime import datetime, timedelta
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import theme as _theme_mod
+from theme import get_colors, get_plotly_layout as theme_get_plotly_layout, styled_title as theme_styled_title
+import requests
+import tempfile
+import os
+import re
+import html
 
-# =================== CONFIGURACIÓN DE TEMA Y COLORES ===================
-COLOR_PRINCIPAL = getattr(_theme_mod, 'COLOR_PRINCIPAL', '#00ff99')
-COLOR_FONDO_OSCURO = getattr(_theme_mod, 'COLOR_FONDO_OSCURO', '#0a0e27')
-COLOR_FONDO_CONTENEDOR = getattr(_theme_mod, 'COLOR_FONDO_CONTENEDOR', 'rgba(15, 20, 40, 0.85)')
-COLOR_SOMBRA = getattr(_theme_mod, 'COLOR_SOMBRA', 'rgba(0, 255, 153, 0.6)')
-COLOR_FUENTE = getattr(_theme_mod, 'COLOR_FUENTE', '#E8F1F5')
+# Obtener una paleta sencilla y no intrusiva desde `theme.py`.
+# Usamos valores neutros para evitar efectos (sombras, bordes, grillas) que
+# oculten controles o filtors en la UI.
+_colors = get_colors()
+COLOR_PRINCIPAL = _colors.get('primary', '#0a84ff')
+COLOR_FUENTE = _colors.get('text', '#0f1724')
+# El background devuelto por theme puede ser None o un color concreto. Evitar
+# forzar blanco por defecto: si el tema devuelve blanco explícito, tratamos
+# eso como 'no forzar' para dejar que Streamlit controle el fondo.
+_bg_raw = _colors.get('background', None)
+if isinstance(_bg_raw, str) and _bg_raw.strip().lower() in ('#ffffff', 'white'):
+    COLOR_FONDO_OSCURO = None
+else:
+    COLOR_FONDO_OSCURO = _bg_raw
 
-# Colores adicionales para el diseño premium
-COLOR_ACENTO_1 = '#00d4ff'
-COLOR_ACENTO_2 = '#a855f7'
-COLOR_ACENTO_3 = '#fbbf24'
-COLOR_GRID = 'rgba(0, 255, 153, 0.08)'
-COLOR_BORDE = 'rgba(0, 255, 153, 0.3)'
+COLOR_FONDO_CONTENEDOR = _colors.get('container_bg', 'transparent')
+COLOR_SOMBRA = 'transparent'
 
-get_color_sequence = getattr(_theme_mod, 'get_color_sequence', lambda mode=None: [
-    COLOR_PRINCIPAL, COLOR_ACENTO_2, COLOR_ACENTO_1, COLOR_ACENTO_3
-])
+# Tonos de acento discretos
+COLOR_ACENTO_1 = COLOR_PRINCIPAL
+COLOR_ACENTO_2 = _colors.get('muted', '#888888')
+COLOR_ACENTO_3 = COLOR_ACENTO_2
+COLOR_GRID = 'rgba(0,0,0,0)'
+COLOR_BORDE = 'rgba(0,0,0,0)'
+
+# Paleta de colores ULTRA-SATURADOS con nombres descriptivos
+get_color_sequence = lambda mode=None: [
+    '#00A2FF',  # 1. Azul Zafiro Eléctrico (Súper Intenso)
+    '#5EFF00',  # 2. Verde Lima Neón (Saturación Máxima)
+    '#0011D1',  # 3. Azul Cobalto Profundo
+    '#00F5FF',  # 4. Verde Neón Puro
+    '#4B0073',  # 5. Morado Índigo Profundo
+    '#000980',  # 6. Azul Ultra Oscuro Medianoche
+    "#A1039D"  # 7. Magenta Vibrante
+]
 
 
 def get_theme(mode: str = 'dark') -> dict:
-    """
-    Devuelve un diccionario con los colores y utilidades del tema.
-    Si el módulo `theme` expone una función o variables, las usa; si no,
-    devuelve valores por defecto ya definidos arriba.
-    """
     return {
-        'COLOR_PRINCIPAL': getattr(_theme_mod, 'COLOR_PRINCIPAL', COLOR_PRINCIPAL),
-        'COLOR_FUENTE': getattr(_theme_mod, 'COLOR_FUENTE', COLOR_FUENTE),
-        'COLOR_FONDO_OSCURO': getattr(_theme_mod, 'COLOR_FONDO_OSCURO', COLOR_FONDO_OSCURO),
-        'COLOR_FONDO_CONTENEDOR': getattr(_theme_mod, 'COLOR_FONDO_CONTENEDOR', COLOR_FONDO_CONTENEDOR),
-        'COLOR_SOMBRA': getattr(_theme_mod, 'COLOR_SOMBRA', COLOR_SOMBRA),
-        'get_color_sequence': getattr(_theme_mod, 'get_color_sequence', lambda mode=None: [
-            COLOR_PRINCIPAL, COLOR_ACENTO_2, COLOR_ACENTO_1, COLOR_ACENTO_3
-        ])
+        'COLOR_PRINCIPAL': COLOR_PRINCIPAL,
+        'COLOR_FUENTE': COLOR_FUENTE,
+        'COLOR_FONDO_OSCURO': COLOR_FONDO_OSCURO,
+        'COLOR_FONDO_CONTENEDOR': COLOR_FONDO_CONTENEDOR,
+        'COLOR_SOMBRA': COLOR_SOMBRA,
+        'get_color_sequence': get_color_sequence,
     }
 
 
 def get_plotly_layout(xaxis_color: str = None, yaxis_color: str = None) -> dict:
-    """
-    Devuelve un layout base para Plotly. Usa la implementación en `theme.py` si existe,
-    de lo contrario construye un layout por defecto coherente con los colores del archivo.
-    """
+    """Delegar al layout de `theme.py` cuando sea posible; usar valores neutrales si falla."""
     try:
-        # Si el módulo theme define la función, la usamos directamente
-        if hasattr(_theme_mod, 'get_plotly_layout') and callable(_theme_mod.get_plotly_layout):
-            return _theme_mod.get_plotly_layout(xaxis_color, yaxis_color)
+        return theme_get_plotly_layout(xaxis_color, yaxis_color)
     except Exception:
-        # Si falla por alguna razón, seguimos con el layout por defecto
-        pass
-
-    xa = xaxis_color or COLOR_PRINCIPAL
-    ya = yaxis_color or COLOR_PRINCIPAL
-
-    borde_shape = {
-        'type': 'rect',
-        'xref': 'paper',
-        'yref': 'paper',
-        'x0': 0,
-        'y0': 0,
-        'x1': 1,
-        'y1': 1,
-        'line': {'color': COLOR_PRINCIPAL, 'width': 1},
-        'layer': 'below'
-    }
-
-    return {
-        'plot_bgcolor': COLOR_FONDO_OSCURO,
-        'paper_bgcolor': COLOR_FONDO_OSCURO,
-        'font_color': COLOR_FUENTE,
-        'title_font_color': COLOR_PRINCIPAL,
-        'xaxis': {'color': xa, 'gridcolor': COLOR_GRID},
-        'yaxis': {'color': ya, 'gridcolor': COLOR_GRID},
-        'shapes': [borde_shape]
-    }
+        xa = xaxis_color or COLOR_FUENTE
+        ya = yaxis_color or COLOR_FUENTE
+        # Forzar fondo completamente transparente para las gráficas (usuario lo solicitó)
+        bg = 'rgba(0,0,0,0)'
+        return {
+            'plot_bgcolor': bg,
+            'paper_bgcolor': bg,
+            'font_color': COLOR_FUENTE,
+            'title_font_color': COLOR_PRINCIPAL,
+            'xaxis': {'color': xa, 'gridcolor': COLOR_GRID},
+            'yaxis': {'color': ya, 'gridcolor': COLOR_GRID},
+        }
 
 # =================== ESTILOS CSS MEJORADOS ===================
-st.set_page_config(page_title="🚀 Indicadores ALS Premium", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Indicadores ALS", layout="wide", initial_sidebar_state="auto")
 
-st.markdown(f"""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+# Bloque CSS inicial: tarjetas, botones y inputs con gradientes y efecto 3D sutil
+_css_lines = []
+_css_lines.append("<style>")
+# Fondos y colores base según theme
+if COLOR_FONDO_OSCURO:
+    _css_lines.append(".stApp { background-color: %s !important; }" % COLOR_FONDO_OSCURO)
+    if COLOR_FUENTE:
+        _css_lines.append(".stApp, .stApp * { color: %s !important; }" % COLOR_FUENTE)
+
+_css_lines.append("h1, h2, h3 { color: %s !important; text-shadow: 0 2px 10px %s33; }" % (COLOR_PRINCIPAL, COLOR_PRINCIPAL))
+
+_container_bg = COLOR_FONDO_CONTENEDOR if COLOR_FONDO_CONTENEDOR else 'transparent'
+# Tarjetas principales con efecto glass + 3D
+_css_lines.append(
+    "div[data-testid=\"stMetric\"] { background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)) !important; "
+    "backdrop-filter: blur(6px) saturate(120%%); border-radius: 12px !important; padding: 12px !important; margin-bottom: 12px !important; "
+    "box-shadow: 0 10px 30px %s33, 0 4px 8px rgba(0,0,0,0.25) !important; border: 1px solid rgba(255,255,255,0.03) !important; }" % COLOR_PRINCIPAL
+)
+
+_css_lines.append(".stDataFrame, .stTable { background: %s !important; color: %s !important; border-radius: 10px !important; box-shadow: 0 8px 30px rgba(0,0,0,0.25) !important; }" % (_container_bg, COLOR_FUENTE))
+
+# Botones con gradiente, borde brillante y efecto 3D al pasar el puntero
+_css_lines.append(
+    ".stButton>button { background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)) !important; "
+    "border: 1px solid %s !important; color: %s !important; border-radius: 10px !important; padding: 10px 14px !important; "
+    "box-shadow: 0 6px 18px rgba(0,0,0,0.35), 0 2px 6px rgba(0,0,0,0.2) inset !important; transition: transform 180ms ease, box-shadow 180ms ease; }" % (COLOR_PRINCIPAL, COLOR_PRINCIPAL)
+)
+_css_lines.append(
+    ".stButton>button:hover { transform: translateY(-3px) rotateX(1deg); "
+    "box-shadow: 0 18px 50px %s33, 0 6px 20px rgba(0,0,0,0.45) !important; color: #ffffff !important; background: linear-gradient(90deg, %s, #a1039d) !important; }" % (COLOR_PRINCIPAL, COLOR_PRINCIPAL)
+)
+
+# Inputs: suavizar bordes y sombra interior
+_css_lines.append(".stSelectbox>div>div, .stTextInput>div>div>input, .stDateInput>div>input, .stFileUploader { background: rgba(255,255,255,0.02) !important; border: 1px solid rgba(255,255,255,0.04) !important; border-radius: 8px !important; padding: 8px !important; box-shadow: inset 0 2px 6px rgba(0,0,0,0.2); }")
+
+# Sidebar base transparente para poder customizar secciones
+_css_lines.append("[data-testid=\"stSidebar\"] { background: transparent !important; border: none !important; padding: 10px 12px !important; }")
+
+# Efecto sutil en gráficas Plotly
+_css_lines.append(".stPlotlyChart > div[role='figure'], .plotly-graph-div { background: rgba(0,0,0,0) !important; border-radius: 10px !important; box-shadow: 0 12px 40px rgba(0,0,0,0.35) !important; }")
+
+# Forzar transparencia dentro de los SVG de Plotly y rects de fondo
+_css_lines.append(".plotly .bg, .plotly .plotbg, .plotly .bgrect, .plotly .cartesianlayer .bg { fill: rgba(0,0,0,0) !important; }")
+_css_lines.append(".plotly svg { background: transparent !important; }")
+
+# Compact card used in upload area
+_css_lines.append(
+    ".compact-card { background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)); "
+    "padding: 8px 12px; border-radius: 10px; display: inline-block; font-weight:700; color: inherit; box-shadow: 0 8px 20px rgba(0,0,0,0.25); margin-bottom:8px; }"
+)
+
+# Mejorar estilo de compact-card (tarjetas de carga) y uploader
+_css_lines.append(
+    # Estilo base de la tarjeta (Fondo oscuro, borde neón)
+    ".compact-card, .upload-card { transition: all 0.3s ease; display: inline-block; padding: 18px 24px; border-radius: 16px; font-weight: 700; "
     
-    /* ============ FONDO PRINCIPAL CON EFECTO DE PROFUNDIDAD ============ */
-    .stApp {{
-        background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1419 100%);
-        background-attachment: fixed;
-        font-family: 'Rajdhani', sans-serif;
-        color: {COLOR_FUENTE};
-    }}
+    # Color de Texto limpio (Sin text-shadow)
+    "color: #00FF99; " +
     
-    /* Grid pattern overlay para efecto tech */
-    .stApp::before {{
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-image: 
-            linear-gradient(0deg, transparent 24%, {COLOR_GRID} 25%, {COLOR_GRID} 26%, transparent 27%, transparent 74%, {COLOR_GRID} 75%, {COLOR_GRID} 76%, transparent 77%, transparent),
-            linear-gradient(90deg, transparent 24%, {COLOR_GRID} 25%, {COLOR_GRID} 26%, transparent 27%, transparent 74%, {COLOR_GRID} 75%, {COLOR_GRID} 76%, transparent 77%, transparent);
-        background-size: 50px 50px;
-        pointer-events: none;
-        opacity: 0.4;
-        z-index: 0;
-    }}
+    # Fondo de la tarjeta y Borde (Marco de neón - lo mantenemos para la estructura)
+    "background-color: #0a0e27; " +
+    "border: 1px solid rgba(0, 255, 153, 0.4); " + # Borde más sutil
     
-    /* ============ HEADER CON EFECTO HOLOGRÁFICO ============ */
-    h1, h2, h3 {{
-        font-family: 'Orbitron', sans-serif !important;
-        background: linear-gradient(135deg, {COLOR_PRINCIPAL} 0%, {COLOR_ACENTO_1} 50%, {COLOR_ACENTO_2} 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        text-shadow: 0 0 30px {COLOR_SOMBRA};
-        letter-spacing: 2px;
-        position: relative;
-    }}
+    # Sombra: La tarjeta 'brilla' de forma muy sutil. Valores de blur bajos y opacidades bajas.
+    # El brillo más intenso es el "inset" para que parezca que la luz está DENTRO de la tarjeta.
+    "box-shadow: 0 0 3px rgba(0, 255, 153, 0.5), inset 0 0 2px rgba(0, 255, 153, 0.3); " +
+    "cursor: default; }"
+)
+
+# Estilo al pasar el ratón (Hover): El brillo aumenta de forma apenas perceptible
+_css_lines.append(
+    ".compact-card:hover, .upload-card:hover { "
+    # Aumentamos muy ligeramente el blur y la opacidad para el efecto hover
+    "box-shadow: 0 0 6px rgba(0, 255, 153, 0.7), inset 0 0 3px rgba(0, 255, 153, 0.5); " +
+    "transform: translateY(-1px); }"
+)
+
+# Aumentar altura de selectboxes y estilo para facilitar lectura
+_css_lines.append(
+    ".stSelectbox>div>div, .stTextInput>div>div>input, .stDateInput>div>input, .stFileUploader { min-height:48px; padding:12px 14px !important; font-size:14px !important; border-radius:10px !important; }"
+)
+
+# Específicos para sidebar selectboxes (más altos)
+_css_lines.append(
+    ".stSidebar .stSelectbox>div>div, .stSidebar .stSelectbox>div>div>div { min-height:48px; padding:12px 14px; font-size:14px; background: linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius:10px; }"
+)
+
+# Estilo para el área de subida personalizada
+_css_lines.append(
+    ".upload-area { padding:10px; border-radius:10px; background: linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border:1px dashed rgba(255,255,255,0.06); box-shadow: inset 0 4px 12px rgba(0,0,0,0.06); margin-top:8px; }"
+)
+
+_css_lines.append("</style>")
+st.markdown('\n'.join(_css_lines), unsafe_allow_html=True)
+
+# Asegúrate de importar la librería html si no lo has hecho:
+import html 
+
+# Asumiendo que esta variable está definida en el ámbito global o antes de usar la función:
+# COLOR_PRIMARIO = '#00FF99'     # Tu Verde Neón Principal
+# COLOR_FUENTE = '#E8F5E9'       # Tu Gris Casi Blanco
+
+def show_success_box(msg: str):
+    """
+    Muestra un mensaje de éxito con estilo Ciberpunk simple,
+    manteniendo la estructura original del código.
+    """
     
-    h1 {{
-        font-size: 3.5rem !important;
-        font-weight: 900 !important;
-        margin-bottom: 0.3rem !important;
-        animation: glow-pulse 3s ease-in-out infinite;
-    }}
+    # Asignamos la variable para la inyección de CSS. 
+    # Usaremos COLOR_PRIMARIO como nuestro COLOR_PRINCIPAL.
+    COLOR_PRINCIPAL = '#00FF99' 
+    COLOR_FONDO_OSCURO_BOX = '#0a0e27' # Fondo oscuro para la caja
     
-    @keyframes glow-pulse {{
-        0%, 100% {{ filter: drop-shadow(0 0 20px {COLOR_SOMBRA}); }}
-        50% {{ filter: drop-shadow(0 0 40px {COLOR_PRINCIPAL}); }}
-    }}
+    # Escapar el mensaje
+    safe_msg = html.escape(str(msg))
     
-    /* ============ TARJETAS PREMIUM CON GLASSMORPHISM ============ */
-    div[data-testid="stMetric"] {{
-        background: linear-gradient(135deg, 
-            rgba(15, 20, 40, 0.7) 0%, 
-            rgba(20, 30, 50, 0.5) 100%);
-        backdrop-filter: blur(15px) saturate(180%);
-        border: 1px solid {COLOR_BORDE};
-        border-radius: 20px;
-        padding: 25px 20px;
-        box-shadow: 
-            0 8px 32px rgba(0, 0, 0, 0.4),
-            inset 0 1px 0 rgba(255, 255, 255, 0.1),
-            0 0 20px {COLOR_SOMBRA};
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        overflow: hidden;
-    }}
-    
-    /* Efecto de línea animada en el borde */
-    div[data-testid="stMetric"]::before {{
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 3px;
-        background: linear-gradient(90deg, transparent, {COLOR_PRINCIPAL}, transparent);
-        transition: left 0.5s;
-    }}
-    
-    div[data-testid="stMetric"]:hover::before {{
-        left: 100%;
-    }}
-    
-    div[data-testid="stMetric"]:hover {{
-        transform: translateY(-8px) scale(1.02);
-        border-color: {COLOR_PRINCIPAL};
-        box-shadow: 
-            0 20px 60px rgba(0, 0, 0, 0.6),
-            0 0 40px {COLOR_SOMBRA},
-            inset 0 1px 0 rgba(255, 255, 255, 0.2);
-    }}
-    
-    /* Labels de métricas */
-    div[data-testid="stMetric"] label {{
-        color: {COLOR_ACENTO_1} !important;
-        font-weight: 600 !important;
-        font-size: 0.95rem !important;
-        text-transform: uppercase;
-        letter-spacing: 1.5px;
-    }}
-    
-    /* Valores de métricas */
-    div[data-testid="stMetric"] [data-testid="stMetricValue"] {{
-        color: {COLOR_PRINCIPAL} !important;
-        font-size: 2.5rem !important;
-        font-weight: 700 !important;
-        font-family: 'Orbitron', monospace !important;
-        text-shadow: 0 0 15px {COLOR_SOMBRA};
-    }}
-    
-    /* ============ CONTENEDORES Y EXPANDERS ============ */
-    .element-container {{
-        position: relative;
-        z-index: 1;
-    }}
-    
-    [data-testid="stExpander"] {{
-        background: linear-gradient(135deg, 
-            rgba(10, 15, 30, 0.9) 0%, 
-            rgba(20, 25, 45, 0.7) 100%);
-        border: 1px solid {COLOR_BORDE};
-        border-radius: 15px;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        margin: 15px 0;
-    }}
-    
-    [data-testid="stExpander"]:hover {{
-        border-color: {COLOR_PRINCIPAL};
-        box-shadow: 0 8px 32px rgba(0, 255, 153, 0.2);
-    }}
-    
-    /* ============ TABLAS ESTILIZADAS ============ */
-    .stDataFrame {{
-        background: rgba(10, 15, 30, 0.95) !important;
-        border-radius: 15px !important;
-        overflow: hidden !important;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
-        border: 1px solid {COLOR_BORDE} !important;
-    }}
-    
-    .stDataFrame table {{
-        background: transparent !important;
-    }}
-    
-    .stDataFrame thead tr th {{
-        background: linear-gradient(135deg, 
-            rgba(0, 255, 153, 0.2) 0%, 
-            rgba(0, 212, 255, 0.1) 100%) !important;
-        color: {COLOR_PRINCIPAL} !important;
-        font-weight: 700 !important;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        padding: 15px 10px !important;
-        border-bottom: 2px solid {COLOR_PRINCIPAL} !important;
-    }}
-    
-    .stDataFrame tbody tr {{
-        transition: all 0.3s ease;
-    }}
-    
-    .stDataFrame tbody tr:hover {{
-        background: rgba(0, 255, 153, 0.08) !important;
-        transform: scale(1.01);
-    }}
-    
-    .stDataFrame tbody tr td {{
-        color: {COLOR_FUENTE} !important;
-        padding: 12px 10px !important;
-        border-bottom: 1px solid rgba(0, 255, 153, 0.1) !important;
-    }}
-    
-    /* ============ BOTONES PREMIUM ============ */
-    .stButton>button {{
-        background: linear-gradient(135deg, 
-            rgba(0, 255, 153, 0.2) 0%, 
-            rgba(0, 212, 255, 0.2) 100%);
-        color: {COLOR_PRINCIPAL} !important;
-        border: 2px solid {COLOR_PRINCIPAL};
-        border-radius: 12px;
-        padding: 15px 30px;
-        font-weight: 700;
-        font-size: 1.05rem;
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-        transition: all 0.3s ease;
-        position: relative;
-        overflow: hidden;
-        box-shadow: 0 4px 15px rgba(0, 255, 153, 0.3);
-    }}
-    
-    .stButton>button::before {{
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 0;
-        height: 0;
-        border-radius: 50%;
-        background: rgba(0, 255, 153, 0.4);
-        transform: translate(-50%, -50%);
-        transition: width 0.6s, height 0.6s;
-    }}
-    
-    .stButton>button:hover::before {{
-        width: 300px;
-        height: 300px;
-    }}
-    
-    .stButton>button:hover {{
-        background: linear-gradient(135deg, 
-            {COLOR_PRINCIPAL} 0%, 
-            {COLOR_ACENTO_1} 100%);
-        color: {COLOR_FONDO_OSCURO} !important;
-        border-color: {COLOR_PRINCIPAL};
-        box-shadow: 0 8px 30px rgba(0, 255, 153, 0.6);
-        transform: translateY(-3px);
-    }}
-    
-    /* ============ INPUTS Y SELECTBOX ============ */
-    .stSelectbox>div>div, 
-    .stDateInput>div>input,
-    .stTextInput>div>div>input,
-    .stFileUploader {{
-        background: rgba(15, 20, 40, 0.8) !important;
-        border: 2px solid {COLOR_BORDE} !important;
-        border-radius: 10px !important;
-        color: {COLOR_FUENTE} !important;
-        padding: 12px !important;
-        transition: all 0.3s ease !important;
-    }}
-    
-    .stSelectbox>div>div:focus-within,
-    .stDateInput>div>input:focus,
-    .stTextInput>div>div>input:focus,
-    .stFileUploader:focus-within {{
-        border-color: {COLOR_PRINCIPAL} !important;
-        box-shadow: 0 0 20px {COLOR_SOMBRA} !important;
-        background: rgba(15, 20, 40, 0.95) !important;
-    }}
-    
-    /* ============ SIDEBAR PREMIUM ============ */
-    [data-testid="stSidebar"] {{
-        background: linear-gradient(180deg, 
-            rgba(10, 15, 30, 0.98) 0%, 
-            rgba(15, 20, 40, 0.95) 100%);
-        border-right: 2px solid {COLOR_BORDE};
-        backdrop-filter: blur(10px);
-    }}
-    
-    [data-testid="stSidebar"] .sidebar-link {{
-        background: rgba(0, 255, 153, 0.05);
-        border-left: 3px solid transparent;
-        border-radius: 0 10px 10px 0;
-        padding: 12px 15px;
-        margin: 8px 0;
-        transition: all 0.3s ease;
-        color: {COLOR_FUENTE} !important;
-        text-decoration: none !important;
-    }}
-    
-    [data-testid="stSidebar"] .sidebar-link:hover {{
-        background: rgba(0, 255, 153, 0.15);
-        border-left-color: {COLOR_PRINCIPAL};
-        transform: translateX(8px);
-        box-shadow: 0 4px 15px rgba(0, 255, 153, 0.3);
-        color: {COLOR_PRINCIPAL} !important;
-    }}
-    
-    /* ============ SEPARADORES CON EFECTO GLOW ============ */
-    hr {{
-        border: none;
-        height: 2px;
-        background: linear-gradient(90deg, 
-            transparent 0%, 
-            {COLOR_PRINCIPAL} 50%, 
-            transparent 100%);
-        box-shadow: 0 0 10px {COLOR_SOMBRA};
-        margin: 3rem 0;
-        opacity: 0.8;
-    }}
-    
-    /* ============ CONTENEDORES COMPACTOS ============ */
-    .compact-card {{
-        background: linear-gradient(135deg, 
-            rgba(15, 20, 40, 0.9) 0%, 
-            rgba(20, 30, 50, 0.7) 100%);
-        border: 1px solid {COLOR_BORDE};
-        border-radius: 15px;
-        padding: 20px;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        transition: all 0.3s ease;
-    }}
-    
-    .compact-card:hover {{
-        border-color: {COLOR_PRINCIPAL};
-        box-shadow: 0 12px 40px rgba(0, 255, 153, 0.2);
-        transform: translateY(-5px);
-    }}
-    
-    .compact-card span {{
-        color: {COLOR_PRINCIPAL};
-        font-weight: 700;
-        font-size: 1.1rem;
-        text-transform: uppercase;
-        letter-spacing: 1.5px;
-    }}
-    
-    /* ============ ALERTAS PERSONALIZADAS ============ */
-    .stAlert {{
-        background: linear-gradient(135deg, 
-            rgba(0, 255, 153, 0.1) 0%, 
-            rgba(0, 212, 255, 0.05) 100%) !important;
-        border-left: 4px solid {COLOR_PRINCIPAL} !important;
-        border-radius: 10px !important;
-        backdrop-filter: blur(10px) !important;
-        color: {COLOR_FUENTE} !important;
-    }}
-    
-    /* ============ ANIMACIONES Y EFECTOS ============ */
-    @keyframes float {{
-        0%, 100% {{ transform: translateY(0px); }}
-        50% {{ transform: translateY(-10px); }}
-    }}
-    
-    @keyframes pulse-border {{
-        0%, 100% {{ border-color: {COLOR_BORDE}; }}
-        50% {{ border-color: {COLOR_PRINCIPAL}; }}
-    }}
-    
-    /* ============ SCROLLBAR PERSONALIZADO ============ */
-    ::-webkit-scrollbar {{
-        width: 12px;
-        height: 12px;
-    }}
-    
-    ::-webkit-scrollbar-track {{
-        background: rgba(10, 15, 30, 0.5);
-        border-radius: 10px;
-    }}
-    
-    ::-webkit-scrollbar-thumb {{
-        background: linear-gradient(135deg, {COLOR_PRINCIPAL} 0%, {COLOR_ACENTO_1} 100%);
-        border-radius: 10px;
-        border: 2px solid rgba(10, 15, 30, 0.5);
-    }}
-    
-    ::-webkit-scrollbar-thumb:hover {{
-        background: linear-gradient(135deg, {COLOR_ACENTO_1} 0%, {COLOR_PRINCIPAL} 100%);
-    }}
-    
-    /* ============ PLOTLY CHARTS PERSONALIZADOS ============ */
-    .js-plotly-plot {{
-        border-radius: 15px;
-        overflow: hidden;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-        border: 1px solid {COLOR_BORDE};
-    }}
-</style>
-""", unsafe_allow_html=True)
+    # Renderizar el HTML y CSS
+    st.markdown(f"""
+        <div class='success-box'>
+            <div class='success-check'>☑</div>
+            <div class='success-body'>
+                <div class='success-title'>OPERACIÓN HECHA</div>
+                <div class='success-message'>{safe_msg}</div>
+            </div>
+        </div>
+        <style>
+            /* === ESTILOS CIBERPUNK INYECTADOS === */
+            .success-box {{ 
+                display:flex; 
+                align-items:center; 
+                gap: 1rem; /* Espaciado ajustado */
+                padding: 1.2rem 1.5rem; 
+                border-radius: 12px; 
+                
+                /* Fondo y Borde Neón */
+                background: {COLOR_FONDO_OSCURO_BOX}99; /* Fondo muy oscuro, semi-transparente */
+                border: 1px solid {COLOR_PRINCIPAL}aa; 
+                
+                /* Sombra para el efecto GLOW (reemplaza la caja 3D) */
+                box-shadow: 0 0 15px {COLOR_PRINCIPAL}55, inset 0 0 5px {COLOR_PRINCIPAL}22; 
+                margin-bottom: 1rem;
+            }}
+            
+            .success-check {{ 
+                font-size: 2rem; /* Ícono grande para impacto */
+                line-height: 1;
+                /* El icono ☑ ya brilla con el filtro de la caja, no requiere más estilos aquí */
+            }}
+            
+            .success-title {{ 
+                font-weight: 700; 
+                color: {COLOR_PRINCIPAL}; /* Título verde neón */
+                font-size: 1.15rem;
+                text-transform: uppercase;
+                letter-spacing: 1.5px;
+                /* Sombra de texto sutil */
+                text-shadow: 0 0 5px {COLOR_PRINCIPAL}33; 
+            }}
+            
+            .success-message {{ 
+                color: "#ffffff"; /* Color del texto del mensaje */
+                opacity: 0.9; 
+                font-size: 0.95rem;
+                margin-top: 0.2rem;
+            }}
+        </style>
+    """, unsafe_allow_html=True)
 
 # =================== FUNCIONES AUXILIARES (mantener igual) ===================
 def styled_title(text: str) -> str:
-    return f"<span style=\"color:{COLOR_PRINCIPAL}; text-shadow: 0 0 5px {COLOR_SOMBRA};\">{text}</span>"
+    try:
+        # preferir la función del módulo theme si está disponible
+        return theme_styled_title(text)
+    except Exception:
+        return f"<span style=\"color:{COLOR_PRINCIPAL};\">{text}</span>"
 # ======================================================================================
 # Funciones de Procesamiento de Datos
 # ======================================================================================
@@ -605,6 +407,16 @@ def perform_initial_calculations(df_forma9, df_bd, fecha_evaluacion):
     Realiza los cálculos iniciales en BD y luego en FORMA 9 de manera vectorizada y eficiente,
     basado en una fecha de evaluación.
     """
+    # Si no se pasa fecha_evaluacion, preferir la máxima FECHA_FORMA9 disponible
+    if fecha_evaluacion is None:
+        try:
+            if df_forma9 is not None and 'FECHA_FORMA9' in df_forma9.columns:
+                tmp_dates = pd.to_datetime(df_forma9['FECHA_FORMA9'], errors='coerce')
+                if not tmp_dates.dropna().empty:
+                    fecha_evaluacion = tmp_dates.max()
+        except Exception:
+            fecha_evaluacion = None
+
     fecha_evaluacion = pd.to_datetime(fecha_evaluacion)
     
     df_bd['RUN LIFE'] = np.where(
@@ -667,6 +479,16 @@ def generar_reporte_completo(df_bd, df_forma9, fecha_evaluacion):
     """
     Genera el reporte de RUNES. Todos los cálculos están anclados a la fecha de evaluación.
     """
+    # Si no se pasa fecha_evaluacion, preferir la máxima FECHA_FORMA9 disponible
+    if fecha_evaluacion is None:
+        try:
+            if df_forma9 is not None and 'FECHA_FORMA9' in df_forma9.columns:
+                tmp_dates = pd.to_datetime(df_forma9['FECHA_FORMA9'], errors='coerce')
+                if not tmp_dates.dropna().empty:
+                    fecha_evaluacion = tmp_dates.max()
+        except Exception:
+            fecha_evaluacion = None
+
     fecha_evaluacion = pd.to_datetime(fecha_evaluacion)
     
     df_bd['FECHA_PULL_DATE'] = pd.to_datetime(df_bd['FECHA_PULL'], errors='coerce')
@@ -763,224 +585,200 @@ def highlight_problema(s):
     is_problema = s['Cantidad de Fallas'] > 1
     if is_problema:
         # Personaliza aquí el color de fondo y texto
-        return [f'background-color: {COLOR_PRINCIPAL}; color:{COLOR_FUENTE}; font-weight: bold;'] * len(s)
+        # Calcular contraste para asegurar legibilidad: elegir blanco o negro
+        def _hex_to_rgb(h):
+            h = h.lstrip('#')
+            return tuple(int(h[i:i+2], 16) for i in (0, 2, 4)) if len(h) == 6 else (0, 0, 0)
+
+        def _luminance(rgb):
+            r, g, b = [c/255.0 for c in rgb]
+            for i, v in enumerate((r, g, b)):
+                if v <= 0.03928:
+                    v = v/12.92
+                else:
+                    v = ((v+0.055)/1.055) ** 2.4
+                if i == 0:
+                    r = v
+                elif i == 1:
+                    g = v
+                else:
+                    b = v
+            return 0.2126*r + 0.7152*g + 0.0722*b
+
+        try:
+            rgb = _hex_to_rgb(COLOR_PRINCIPAL)
+            lum = _luminance(rgb)
+            # Si luminancia alta -> texto oscuro, sino texto blanco
+            text_color = '#000000' if lum > 0.5 else '#FFFFFF'
+        except Exception:
+            text_color = COLOR_FUENTE if COLOR_FUENTE else 'inherit'
+
+        return [f'background-color: {COLOR_PRINCIPAL}; color: {text_color}; font-weight: bold;'] * len(s)
     else:
         return [''] * len(s)
 
-st.set_page_config(page_title="🚀 Indicadores ALS", layout="wide")
+# Título principal y logo grande (estilos específicos por secciones)
+# === NUEVAS VARIABLES DE COLOR ===
+COLOR_MAGENTA_NEON = '#00FF99'   # celeste38C4FF
+COLOR_AZUL_CIBER = '#38C4FF'     # Azul Cielo Brillante
+COLOR_FONDO_OSCURO = '#070D22'   # Azul Oscuro Profundo
+COLOR_FUENTE = '#E0FFFF'         # Fuente clara con tono azulado
+COLOR_GLOW_SUAVE = 'rgba(168, 168, 255, 0.4)' # Sombra de neón suave (Magenta)
 
-# Título principal y logo grande
-# ==================================================================================
-# Colores provistos por `theme.py` importados arriba
+# Usaremos COLOR_MAGENTA_NEON como nuestro COLOR_PRINCIPAL en el CSS
+COLOR_PRINCIPAL = COLOR_MAGENTA_NEON
+_page_css = ["<style>"]
 
-st.markdown(
-    f"""
-    <style>
-   /* Estilo general del App y Fondo (CON DEGRADADO) */
-body, .stApp {{
-    /* Aplicar un degradado lineal sutil de arriba (más oscuro) a abajo (menos oscuro) */
-    background: linear-gradient(
-        to bottom, 
-        {COLOR_FONDO_OSCURO} 80%, 
-        {COLOR_FONDO_CONTENEDOR} 100%
-    ) !important;
+# 1. ESTILO GLOBAL Y FONDO PROFUNDO
+# Aplicamos el fondo y una fuente moderna (si no está Orbitron, usa sans-serif)
+_page_css.append(f"""
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap');
     
-    color: {COLOR_FUENTE} !important;
-    font-family: 'Montserrat', 'Segoe UI', 'Roboto', 'Arial', sans-serif;
-}}
-.stApp {{
-    max-width: none;
-    background-color: transparent; /* Asegura que el contenedor no oculte el degradado del body */
-}}
-    .stApp {{max-width: none;}} /* Para aprovechar el ancho completo */
-    
-    /* Títulos y Encabezados */
-    h1, h2, h3, h4, h5, h6 {{
-        color: {COLOR_PRINCIPAL} !important;
-        letter-spacing: 1px;
-        text-shadow: 0 0 5px rgba(0, 255, 153, 0.3); /* Sombra de texto suave */
+    body, .stApp {{ 
+        background-color: {COLOR_FONDO_OSCURO} !important; 
+        font-family: 'Rajdhani', sans-serif;
+        color: {COLOR_FUENTE};
     }}
     
-    /* Título Principal (h1) */
-    .stMarkdown h1 {{
-        font-size: 3.8rem; 
-        font-weight: 700; 
-        color: {COLOR_FUENTE} !important; 
-        text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+    /* === CORRECCIÓN: ANCHO AMPLIO Y CENTRADO === */
+    .main .block-container {{
+        max-width: 2000px; /* Ancho amplio (ajusta este valor si lo necesitas) */
+        padding-left: 1rem;
+        padding-right: 2rem;
+        margin-left: 0rem;
+        margin-right: 2rem;
     }}
+""")
 
-    /* Tarjetas de Métricas (stMetric) - Glassmorphism Elegante */
-    div[data-testid="stMetric"] {{
-        background: {COLOR_FONDO_CONTENEDOR}; /* Fondo semi-transparente */
-        border-radius: 15px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4), 0 0 10px {COLOR_SOMBRA}; /* Sombra oscura + borde sutil */
-        padding: 15px;
-        margin-bottom: 12px;
-        border-left: 5px solid {COLOR_PRINCIPAL}; /* Barra de acento lateral */
-        transition: transform 0.2s;
-        backdrop-filter: blur(5px); /* Efecto de vidrio (glassmorphism) */
+# 2. TITULARES (H1, H2, H3) - CORRECCIÓN PARA EMOJIS
+_page_css.append(f"""
+    h1, h2, h3 {{ 
+        font-family: 'Orbitron', monospace !important;
+        font-weight: 700;
+        /* Degradado Magenta-Azul */
+        background: linear-gradient(90deg, {COLOR_MAGENTA_NEON}, {COLOR_AZUL_CIBER});
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-shadow: none; /* <== CORRECCIÓN: QUITAR GLOW GLOBAL para que los emojis no brillen */
+        text-transform: uppercase; 
+        letter-spacing: 3px; 
+    }}
+""")
+
+# 3. TARJETAS / MÉTRICAS (GLASSMORPHISM CON GLOW INTENSO)
+# Esto aplica a div[data-testid="stMetric"] que suele ser donde van los números.
+_page_css.append(f"""
+    div[data-testid="stMetric"] {{ 
+        /* Fondo Frosted Glass */
+        background: rgba(12, 20, 50, 0.7) !important; 
+        backdrop-filter: blur(8px);
+        border-radius: 15px !important; 
+        padding: 20px !important; 
+        margin-bottom: 20px !important; 
+        
+        /* Borde y Sombra Neón */
+        border: 1px solid {COLOR_MAGENTA_NEON}33 !important; 
+        box-shadow: 0 0 25px {COLOR_GLOW_SUAVE} !important; 
+        transition: all 0.3s;
     }}
     div[data-testid="stMetric"]:hover {{
-    /* ⬆️ Efecto de elevación más notable */
-    transform: scale(1.03); 
-    
-    /* Borde Cian Eléctrico con brillo al hacer hover */
-    border: 1px solid {COLOR_PRINCIPAL};
-    
-    /* 💡 Sombra de brillo mejorada: eleva el panel y añade el resplandor cian */
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7), /* Sombra oscura para profundidad */
-                0 0 20px {COLOR_SOMBRA}; /* Brillo Cian fuerte */
-    
-    /* Transición más suave para el cambio */
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+        box-shadow: 0 0 35px {COLOR_MAGENTA_NEON}88 !important; 
+        transform: translateY(-3px);
     }}
-
-    /* Tablas y DataFrames - Fondo oscuro y limpio */
-    .stDataFrame, .stTable {{
-        background: rgba(40, 40, 60, 0.9) !important; 
-        color: #e0e0e0 !important; 
-        border-radius: 10px;
-        border: 1px solid rgba(0, 255, 153, 0.4);
+    /* Valor del métrico */
+    div[data-testid="stMetricValue"] {{
+        font-family: 'Orbitron', monospace;
+        color: {COLOR_AZUL_CIBER} !important;
+        text-shadow: 0 0 10px {COLOR_AZUL_CIBER}55;
     }}
-   /* Separador (hr) - Línea de Energía */
-hr {{
-    /* Usar tu color principal para el borde */
-    border-top: 1px solid {COLOR_PRINCIPAL}; 
-    /* El brillo es la clave: darle un resplandor cian */
-    box-shadow: 0 0 5px {COLOR_SOMBRA}; 
-    opacity: 0.8; /* Más visible que 0.5 */
-    margin: 2rem 0; /* Un poco más de espacio vertical */
-}}
-
-    /* Botones - Cápsulas de Comando (Gradiente Inverso y Brillo) */
-button, .stButton>button {{
-    /* 💡 Nuevo Gradiente: Base oscura con un borde sutilmente cian. */
-    background: linear-gradient(135deg, {COLOR_FONDO_CONTENEDOR} 30%, {COLOR_FONDO_OSCURO} 90%) !important;
-    
-    /* 💡 El color del texto es el color principal para alto contraste */
-    color: {COLOR_PRINCIPAL} !important; 
-    
-    border-radius: 4px; /* Un poco más angulares */
-    
-    /* Borde cian sutil */
-    border: 1px solid rgba(0, 255, 194, 0.5); 
-    
-    font-weight: 700; /* Más audaz */
-    letter-spacing: 0.5px;
-    padding: 10px 15px; /* Más padding para que se vean más grandes */
-    transition: all 0.2s ease-in-out;
-}}
-
-/* Efecto Hover */
-.stButton>button:hover {{
-    /* 💡 Invertimos el color de fondo al brillo cian */
-    background: linear-gradient(135deg, {COLOR_PRINCIPAL} 0%, rgba(0, 255, 194, 0.7) 100%) !important;
-    
-    /* El texto se vuelve oscuro (o blanco puro) al hacer hover */
-    color: {COLOR_FONDO_OSCURO} !important; 
-    
-    /* Brillo cian fuerte */
-    box-shadow: 0 0 15px {COLOR_PRINCIPAL}; 
-    
-    /* Quitamos el opacity, la transición es el cambio de color */
-    opacity: 1; 
-    
-    /* Pequeña elevación */
-    transform: translateY(-1px);
-}}
-
-    /* Controles de Entrada (File Uploader, Selectbox, Date Input, Text Input) */
-/* Aplicado a los contenedores y elementos de entrada reales */
-
-/* Estilo Base de los Inputs */
-.stFileUploader, 
-.stSelectbox>div>div, 
-.stDateInput>div>input, 
-.stTextInput>div>div>input {{
-    /* Fondo oscuro semi-transparente para profundidad */
-    background: {COLOR_FONDO_CONTENEDOR} !important; 
-    
-    /* Texto interior del input en Cian Eléctrico */
-    color: {COLOR_PRINCIPAL} !important; 
-    
-    border-radius: 4px; /* Un poco más sutil */
-    
-    /* Borde Cian suave (usando el color principal semitransparente) */
-    border: 1px solid rgba(0, 255, 194, 0.4); 
-    
-    transition: all 0.2s ease-in-out; /* Transición suave para el hover/focus */
-}}
-
-/* Etiquetas de los Inputs */
-.stFileUploader label, 
-.stSelectbox label, 
-.stDateInput label, 
-.stTextInput label {{
-    /* Etiquetas en color de fuente claro (casi blanco) */
-    color: {COLOR_FUENTE} !important; 
-    font-weight: 500;
-}}
-
-/* Efecto Focus (Cuando el usuario hace clic en el campo) */
-.stFileUploader:focus-within, 
-.stSelectbox>div>div:focus-within, 
-.stDateInput>div>input:focus-within, 
-.stTextInput>div>div>input:focus-within {{
-    /* Borde sólido y brillante al enfocar */
-    border-color: {COLOR_PRINCIPAL}; 
-    
-    /* El efecto clave: Brillo Cian (Holográfico) */
-    box-shadow: 0 0 10px {COLOR_SOMBRA}; 
-}}
-
-    /* Alertas/Mensajes (Info/Success/Warning) */
-    .stAlert {{
-        background: rgba(0, 255, 153, 0.08) !important; 
-        border-left: 4px solid {COLOR_PRINCIPAL} !important;
-        border-radius: 6px;
+    /* Etiqueta del métrico */
+    div[data-testid="stMetricLabel"] {{
+        color: {COLOR_FUENTE} !important;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
     }}
-    
-    /* Contenedores Compactos de Carga y Parámetros */
-    .compact-card {{
-        background: rgba(30, 30, 50, 0.85); /* Un poco más claro para contraste */
-        border-radius: 15px; 
-        padding: 15px; 
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4); 
-        border: 1px solid rgba(0, 255, 153, 0.3);
-        min-width: 140px; 
-        max-width: 250px;
-    }}
-    .compact-card span {{color: {COLOR_PRINCIPAL}; font-weight: 700; font-size: 0.9rem;}}
-    .compact-card div[data-testid="stDateInput"], .compact-card div[data-testid="stTextInput"], .compact-card div[data-testid="stFileUploader"] {{ margin-bottom: 0.5rem; }}
+""")
 
-    /* Sidebar Navigation */
-    .css-1d391kg {{ /* Selector de Streamlit para el sidebar */
-        background-color: rgba(10, 10, 20, 0.9) !important; /* Sidebar más oscuro */
-        border-right: 2px solid {COLOR_PRINCIPAL};
+# 4. TABLAS Y CONTENEDORES (Más oscuros y con borde neón)
+_page_css.append(f"""
+    .stDataFrame, .stTable, .stContainer, div[data-testid="stVerticalBlock"] {{ 
+        background: {COLOR_FONDO_OSCURO}99 !important; /* Fondo más oscuro */
+        border-radius: 5px !important; 
+        border: 1px solid {COLOR_AZUL_CIBER}22; /* Borde sutil */
+        box-shadow: 0 8px 30px rgba(0,0,0,0.4) !important; 
+        padding: 10px;
     }}
-    .css-1d391kg a {{color: {COLOR_FUENTE};}}
-    .css-1d391kg strong {{color: {COLOR_PRINCIPAL};}}
+""")
 
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+# 5. INPUTS Y SELECTBOXES (Fácil de ver)
+_page_css.append(f"""
+    .stSelectbox>div>div, .stTextInput>div>div>input, .stDateInput>div>input, .stFileUploader, div[data-testid="stFileUploadDropzone"] {{ 
+        background: {COLOR_FONDO_OSCURO} !important; 
+        border: 1px solid {COLOR_MAGENTA_NEON}55 !important;
+        color: {COLOR_FUENTE} !important;
+        border-radius: 8px !important; 
+        padding: 8px !important; 
+        transition: all 0.2s;
+    }}
+    .stTextInput>div>div>input:focus {{
+        border-color: {COLOR_AZUL_CIBER} !important;
+        box-shadow: 0 0 15px {COLOR_AZUL_CIBER}44 !important;
+    }}
+""")
+
+# 6. PLOTLY/GRÁFICOS (Fondo transparente)
+_page_css.append("""
+    .stPlotlyChart > div[role='figure'] { background: rgba(0,0,0,0) !important; border-radius: 10px; }
+    .plotly .bg, .plotly .plotbg, .plotly .bgrect, .plotly .cartesianlayer .bg { fill: rgba(0,0,0,0) !important; }
+    .plotly svg { background: transparent !important; }
+    .plotly .legend rect { fill: rgba(0,0,0,0) !important; stroke: rgba(0,0,0,0) !important; }
+    .plotly .legend text, .plotly .legendtitle { fill: currentColor !important; }
+""")
+
+_page_css.append("</style>")
+st.markdown('\n'.join(_page_css), unsafe_allow_html=True)
 
 # ==================================================================================
 # 💻 ESTRUCTURA HTML (con los nuevos estilos)
 # ==================================================================================
 
 # Título principal y logo grande
-col1, col2 = st.columns([3,2])
+col1, col2 = st.columns([3, 1.5]) 
+
 with col1:
-    st.markdown("""
-    <h1 style='font-size:4.0rem; font-weight:700; margin-bottom:0.2rem; color:#FFFFFF;'>
-        INDICADORES ALS 
-    </h1>
-    """, unsafe_allow_html=True)
+    # Título principal estilizado (Efecto Hero Section)
+    st.markdown(f"""
+<div style='
+    padding: 25px; 
+    border-radius: 18px; 
+    border: 2px solid {COLOR_MAGENTA_NEON}55; 
+    background: rgba(12, 20, 50, 0.85); 
+    box-shadow: 0 0 40px {COLOR_GLOW_SUAVE}, inset 0 0 10px {COLOR_MAGENTA_NEON}22;
+    margin-bottom: 25px;
+    text-align: left;
+    transform: perspective(1000px) rotateX(1deg); 
+    transition: all 0.5s;
+'>
+    <div style='
+        font-family: "Orbitron", monospace;
+        font-size: 2.8rem;
+        font-weight: 900;
+        letter-spacing: 7px;
+        background: linear-gradient(90deg, {COLOR_MAGENTA_NEON}, {COLOR_AZUL_CIBER});
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-shadow: 0 0 20px {COLOR_MAGENTA_NEON}aa;
+        line-height: 1.1;
+    '> INDICADORES ALS</div>
+  
+""", unsafe_allow_html=True) # <== CIERRE LIMPIO
+
 with col2:
-    # Aumentar un poco el tamaño del logo para un mejor impacto visual
-    st.image('https://www.fronteraenergy.ca/wp-content/uploads/2023/05/logo-frontera-white.png', width=350) 
+    # Ajustamos el tamaño del logo para que encaje mejor y esté centrado
+    st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
+    st.image('https://www.fronteraenergy.ca/wp-content/uploads/2023/05/logo-frontera-white.png', width=280)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # =================== HEADER & FILE UPLOAD (Mantenemos la lógica de la sesión) ===================
 
@@ -1020,90 +818,192 @@ if 'unique_activos' not in st.session_state:
 # ========== NUEVO LAYOUT DE CARGA Y FECHA ========== 
 st.markdown("---")
 
-# Obtener colores del tema actual para el menú
+# Obtener colores del tema actual
 theme_now = get_theme(st.session_state.get('theme_mode', 'dark'))
 accent = theme_now['COLOR_PRINCIPAL']
 fg = theme_now['COLOR_FUENTE']
 
-# Barra lateral con enlaces anclados a secciones internas (usa el menú lateral por defecto de Streamlit)
+# 🎨 ESTILO ULTRA NEÓN 2025 - SIDEBAR PREMIUM (Sin tocar lógica)
+# ==================================================================================
+NEON_PRIMARY   = "#38C4FF"     # Cian neón puro (mejor que #66FCF1)
+NEON_SECONDARY = "#00FF99"     # Magenta para detalles (opcional)
+GLOW_COLOR     = "#A8C7FF"
+TEXT_DEFAULT   = "#e0e0e0"
+BG_DARK        = "#0a1a2f"     # Azul muy oscuro para mayor contraste
+BG_CARD        = "rgba(10, 26, 47, 0.6)"
+
 st.sidebar.markdown(f"""
 <style>
-    /* Estilo para el contenedor general del texto en la barra lateral */
-    div[data-testid="stSidebarContent"] {{
-        background-color: #0d1117;
+    /* Fondo sutil de la sidebar para mayor profundidad */
+    section[data-testid="stSidebar"] > div {{
+        background: linear-gradient(180deg, {BG_DARK} 0%, #0c1421 100%);
+        backdrop-filter: blur(10px);
     }}
 
-    /* Estilo moderno para los enlaces de navegación */
-    .sidebar-link {{
-        color: {COLOR_FUENTE} !important;
-        text-decoration: none !important;
+    /* Enlaces de navegación - Efecto cristal + glow brutal */
+    .sidebar-anchor-link {{
         display: block;
-        padding: 10px 15px;
-        margin: 5px 0;
-        border-radius: 8px;
-        transition: all 0.3s ease;
-        background: transparent;
-        border-left: 3px solid transparent;
+        padding: 12px 16px;
+        margin: 8px 12px;
+        border-radius: 12px;
+        text-decoration: none !important;
+        color: {TEXT_DEFAULT} !important;
+        font-size: 1rem;
+        font-weight: 500;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid transparent;
+        background: {BG_CARD};
+        backdrop-filter: blur(8px);
+        
+        /* Sombra interna suave */
+        box-shadow: 
+            inset 0 2px 8px rgba(0, 245, 255, 0.08),
+            0 2px 10px rgba(0, 0, 0, 0.4);
     }}
 
-    /* Efecto hover moderno */
-    .sidebar-link:hover {{
-        background-color: rgba(255, 255, 255, 0.1);
-        border-left: 3px solid {COLOR_PRINCIPAL};
-        transform: translateX(5px);
-    }}
-        margin: 5px 0;
-        border-radius: 4px; /* Bordes sutilmente redondeados */
-    }}
-    
-    /* Efecto hover MEJORADO: el enlace brilla con el color principal */
-    .sidebar-link:hover {{
-        color: {COLOR_PRINCIPAL} !important;
-        /* GLOW más notable y definido */
-        text-shadow: 0 0 7px {COLOR_SOMBRA}, 0 0 10px {COLOR_PRINCIPAL}30;
-        background-color: rgba(0, 255, 153, 0.05); /* Sombra muy sutil al pasar el mouse */
-        font-weight: 600; /* Ligeramente más grueso */
-        text-decoration: none; /* Asegura que no haya subrayado en hover */
+    /* HOVER: EFECTO NEÓN EXPLOSIVO */
+    .sidebar-anchor-link:hover {{
+        color: #00FF99 !important;
+        background: linear-gradient(135deg, rgba(0, 245, 255, 0.18), rgba(0, 245, 255, 0.05));
+        border: 1px solid {GLOW_COLOR}40;
+        transform: translateY(-2px) scale(1.02);
+        box-shadow: 
+            0 0 20px {GLOW_COLOR}60,
+            0 0 40px {GLOW_COLOR}30,
+            inset 0 0 20px rgba(0, 245, 255, 0.15);
+        
+        /* Barra lateral iluminada + brillo de texto */
+        text-shadow: 
+            0 0 8px {GLOW_COLOR},
+            0 0 16px {GLOW_COLOR}80;
     }}
 
-    /* Estilo para los enlaces activos (opcional, si usas estados) */
-    .sidebar-link.active {{
-        color: {COLOR_PRINCIPAL} !important;
-        text-shadow: 0 0 10px {COLOR_SOMBRA};
-        font-weight: bold;
-        text-decoration: none; /* Asegura que no haya subrayado en estado activo */
+    .sidebar-anchor-link::before {{
+        content: '';
+        position: absolute;
+        top: 0; left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(0, 245, 255, 0.15), transparent);
+        transition: left 0.7s;
+    }}
+
+    .sidebar-anchor-link:hover::before {{
+        left: 100%;
+    }}
+
+    /* TÍTULO DE NAVEGACIÓN - MÁXIMO IMPACTO */
+    .sidebar-nav-title {{
+        color: {NEON_PRIMARY} !important;
+        font-size: 1.65rem;
+        font-weight: 900;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        margin: 20px 12px 30px 12px;
+        padding: 12px 0;
+        text-align: center;
+        position: relative;
+        background: linear-gradient(90deg, transparent, rgba(0, 245, 255, 0.15), transparent);
+        border-radius: 12px;
+        border: 1px solid {GLOW_COLOR}20;
+        
+        /* GLOW NUCLEAR */
+        text-shadow: 
+            0 0 10px {GLOW_COLOR},
+            0 0 20px {GLOW_COLOR},
+            0 0 40px {GLOW_COLOR},
+            0 0 80px {GLOW_COLOR}60;
+        
+        animation: pulse-glow 4s infinite alternate;
+    }}
+
+    @keyframes pulse-glow {{
+        0% {{ text-shadow: 0 0 10px {GLOW_COLOR}, 0 0 20px {GLOW_COLOR}, 0 0 40px {GLOW_COLOR}; }}
+        100% {{ text-shadow: 0 0 15px {GLOW_COLOR}, 0 0 30px {GLOW_COLOR}, 0 0 60px {GLOW_COLOR}, 0 0 100px {GLOW_COLOR}80; }}
+    }}
+
+    /* Metadatos - más elegantes y sutiles */
+    .sidebar-metadata {{
+        font-family: 'Courier New', monospace;
+        font-size: 0.82rem;
+        color: #00FF99;
+        opacity: 0.9;
+        margin: 20px 12px 10px;
+        padding: 12px;
+        background: rgba(10, 26, 47, 0.4);
+        border-left: 3px solid {GLOW_COLOR}40;
+        border-radius: 0 8px 8px 0;
+    }}
+
+    .sidebar-metadata p {{
+        margin: 4px 0;
+        line-height: 1.4;
     }}
 </style>
+""", unsafe_allow_html=True)
 
-<div style='
-    color:{COLOR_PRINCIPAL}; 
-    font-size:1.3rem; /* Título un poco más grande */
-    font-weight:900; 
-    margin-bottom:20px; 
-    padding-left: 5px; /* Alineación con los enlaces */
-    letter-spacing: 2px; /* Más espaciado para look futurista */
-    text-shadow: 0 0 10px {COLOR_SOMBRA}, 0 0 20px {COLOR_PRINCIPAL}50; /* Doble sombra de brillo */
-'>
-    NAVEGACIÓN DE SISTEMAS 🧭
-</div>
+# ==================================================================================
+# NAVEGACIÓN SIDEBAR - MISMA LÓGICA, AHORA VISUALMENTE BRUTAL
+# ==================================================================================
 
-<a href="#resultados-y-reportes" class='sidebar-link'>📊 Resultados y Reportes</a>
-<a href="#reporte-de-runes" class='sidebar-link'>🏃‍♂️ Reporte de RUNES</a>
-<a href="#historico-run-life-por-campo" class='sidebar-link'>📈 Run Life </a>
-<a href="#fallas-mensuales" class='sidebar-link'>🛑 Fallas Mensuales</a>
-<a href="#listado-de-pozos-fallados" class='sidebar-link'>🚨 Pozos Fallados</a>
-<a href="#indices-de-falla" class='sidebar-link'>📉 Índices de Falla</a>
-<a href="#mtbf" class='sidebar-link'>⏳ MTBF</a>
-<a href="#data-frame-final-de-trabajo" class='sidebar-link'>💾 DataFrame </a>
-<a href="#grafico-resumen" class='sidebar-link'>💹 Gráfico Resumen</a>
-
-<hr style='border-top: 3px solid {COLOR_PRINCIPAL}; opacity: 0.5; margin: 10px 0;'>
-
-<div style='font-size:0.85rem; color:{COLOR_PRINCIPAL}; opacity:0.6; padding-left: 5px;'>
-    // Módulo v1.0 <br>
-    // Desarrollado por AJM 🧑‍💻
+st.sidebar.markdown(f"""
+<div class='sidebar-nav-title'>
+    M E N U
 </div>
 """, unsafe_allow_html=True)
+
+st.sidebar.markdown("""
+<a href="#resultados-y-reportes" class='sidebar-anchor-link'>    \U0001F4CA Reportes</a>
+<a href="#reporte-de-runes" class='sidebar-anchor-link'>         \U0001F3C3 Run Life </a>
+<a href="#fallas-mensuales" class='sidebar-anchor-link'>        \U0001F6A8 Fallas </a>
+<a href="#listado-de-pozos-fallados" class='sidebar-anchor-link'>\U0001F525 Pozos Fallados</a>
+<a href="#indices-de-falla" class='sidebar-anchor-link'>        \U0001F4C9 Índices de Falla</a>
+<a href="#mtbf" class='sidebar-anchor-link'>                    \U000023F3 MTBF / MTTR</a>
+<a href="#data-frame-final-de-trabajo" class='sidebar-anchor-link'>\U0001F4BE Data Final </a>
+<a href="#grafico-resumen" class='sidebar-anchor-link'>         \U0001F53C Gráfico  </a>
+""", unsafe_allow_html=True)
+
+st.sidebar.divider()
+
+st.sidebar.markdown(f"""
+<div class='sidebar-metadata'>
+    <p>Módulo de Indicadores <strong>v1.1</strong></p>
+    <p>Desarrollado por <strong>AJM</strong></p>
+   
+</div>
+""", unsafe_allow_html=True)
+
+
+# ==================================================================================
+# ⚙️ LÓGICA DE BOTÓN Y RESUMEN PÚBLICO
+# ==================================================================================
+
+# Función Callback para cambiar el estado
+def set_resumen_publico_state():
+    st.session_state['show_resumen_publico'] = True
+
+# Inicializar flag para mostrar el resumen público si no existe
+if 'show_resumen_publico' not in st.session_state:
+    st.session_state['show_resumen_publico'] = False
+
+# Botón Ver Resumen Público 
+st.sidebar.button(
+    "Ver Resumen Público", 
+    key="ver_resumen_publico",
+    on_click=set_resumen_publico_state, 
+    use_container_width=True 
+)
+
+# ... El resto de tu lógica para cargar el resumen público
+if st.session_state.get('show_resumen_publico'):
+    try:
+        import resumen_publico
+        resumen_publico.show_resumen()
+        st.stop()
+    except Exception as e:
+        st.error(f"No se pudo cargar Resumen Público: {e}")
 
 
 # Apartado compacto para carga de archivos y parámetros
@@ -1118,21 +1018,60 @@ with col_f9:
     """, unsafe_allow_html=True)
     
     with st.container(border=True): 
+        st.markdown("<div class='upload-area'>", unsafe_allow_html=True)
         forma9_file = st.file_uploader("FORMA 9 (.csv/.xlsx)", type=["csv", "xlsx"], key="forma9_file")
-        url_forma9 = st.text_input("URL F9", key="url_forma9_excel", help="URL pública de FORMA 9 (OneDrive/SharePoint)")
+        st.markdown("</div>", unsafe_allow_html=True)
+        url_forma9 = st.text_input(
+            "URL F9",
+            key="url_forma9_excel",
+            value="https://1drv.ms/x/c/06cc4035ad46ff97/IQAlCua1BGOXRbcSzUY0OVyzAS8KOoDNxuvUqrsORhjMcKM?e=o8FZyJ",
+            help="URL pública de FORMA 9 (OneDrive/SharePoint). Puedes subir un archivo local también."
+        )
         
-        # Lógica de conexión
+        # Lógica de conexión (descargar a carpeta persistente para evitar problemas en Windows)
         forma9_online_file = None
         if url_forma9:
             try:
-                # La importación de requests y tempfile se recomienda al inicio del script.
-                r = requests.get(url_forma9)
-                r.raise_for_status()
-                tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx')
-                tmp.write(r.content)
-                tmp.flush()
-                forma9_online_file = tmp.name
-                st.success("F9 online OK.")
+                def _download_onedrive(url, dest_path):
+                    # Intentar descargar la URL; si devuelve HTML (visor OneDrive), extraer la URL real
+                    r = requests.get(url, timeout=30, allow_redirects=True)
+                    r.raise_for_status()
+                    content_type = r.headers.get('content-type','')
+                    content = r.content
+                    is_html = 'text/html' in content_type or (isinstance(content, (bytes,bytearray)) and b'<html' in content[:400].lower())
+                    if is_html:
+                        txt = content.decode('utf-8', errors='ignore')
+                        # Buscar FileGetUrl o FileUrlNoAuth en el JSON embebido
+                        m = re.search(r'FileGetUrl"\s*:\s*"([^"]+)"', txt) or re.search(r'FileUrlNoAuth"\s*:\s*"([^"]+)"', txt)
+                        if m:
+                            download_url = m.group(1)
+                            # Unescape secuencias \u0026 y slashes
+                            download_url = download_url.replace('\\u0026', '&').replace('\\/', '/')
+                            download_url = html.unescape(download_url)
+                            r2 = requests.get(download_url, timeout=30, allow_redirects=True)
+                            r2.raise_for_status()
+                            with open(dest_path, 'wb') as fh:
+                                fh.write(r2.content)
+                            return True
+                        else:
+                            # No encontramos URL de descarga en la página; guardar el HTML para inspección
+                            with open(dest_path, 'wb') as fh:
+                                fh.write(content)
+                            return True
+                    else:
+                        with open(dest_path, 'wb') as fh:
+                            fh.write(content)
+                        return True
+
+                upload_dir = os.path.join(os.getcwd(), 'saved_uploads')
+                os.makedirs(upload_dir, exist_ok=True)
+                fname = os.path.join(upload_dir, 'forma9_online.xlsx')
+                ok = _download_onedrive(url_forma9, fname)
+                if ok:
+                    forma9_online_file = fname
+                    show_success_box("F9 online descargada OK.")
+                else:
+                    st.error("F9 online: no se pudo descargar el archivo real desde OneDrive.")
             except Exception as e:
                 st.error(f"F9 online error: {e}")
 
@@ -1145,20 +1084,57 @@ with col_bd:
     """, unsafe_allow_html=True)
     
     with st.container(border=True): 
+        st.markdown("<div class='upload-area'>", unsafe_allow_html=True)
         bd_file = st.file_uploader("BD (.csv o .xlsx)", type=["csv", "xlsx"], key="bd_file")
-        url_bd = st.text_input("URL BD", key="url_bd_excel", help="URL pública de BD (OneDrive/SharePoint)")
+        st.markdown("</div>", unsafe_allow_html=True)
+        url_bd = st.text_input(
+            "URL BD",
+            key="url_bd_excel",
+            value="https://1drv.ms/x/c/06cc4035ad46ff97/IQBFUqV7GWUfTqIPciLZeNEIAdlrMygqQITAR9Ku5frPrZE?e=P0xf75",
+            help="URL pública de BD (OneDrive/SharePoint). Puedes subir un archivo local también."
+        )
         
-        # Lógica de conexión
+        # Lógica de conexión (descargar a carpeta persistente para evitar problemas en Windows)
         bd_online_file = None
         if url_bd:
             try:
-                r = requests.get(url_bd)
-                r.raise_for_status()
-                tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx')
-                tmp.write(r.content)
-                tmp.flush()
-                bd_online_file = tmp.name
-                st.success("BD online OK.")
+                upload_dir = os.path.join(os.getcwd(), 'saved_uploads')
+                os.makedirs(upload_dir, exist_ok=True)
+                fname = os.path.join(upload_dir, 'bd_online.xlsx')
+                def _download_onedrive_local(url, dest_path):
+                    # Reutilizar la misma lógica que para forma9
+                    r = requests.get(url, timeout=30, allow_redirects=True)
+                    r.raise_for_status()
+                    content_type = r.headers.get('content-type','')
+                    content = r.content
+                    is_html = 'text/html' in content_type or (isinstance(content, (bytes,bytearray)) and b'<html' in content[:400].lower())
+                    if is_html:
+                        txt = content.decode('utf-8', errors='ignore')
+                        m = re.search(r'FileGetUrl"\s*:\s*"([^"]+)"', txt) or re.search(r'FileUrlNoAuth"\s*:\s*"([^"]+)"', txt)
+                        if m:
+                            download_url = m.group(1)
+                            download_url = download_url.replace('\\u0026', '&').replace('\\/', '/')
+                            download_url = html.unescape(download_url)
+                            r2 = requests.get(download_url, timeout=30, allow_redirects=True)
+                            r2.raise_for_status()
+                            with open(dest_path, 'wb') as fh:
+                                fh.write(r2.content)
+                            return True
+                        else:
+                            with open(dest_path, 'wb') as fh:
+                                fh.write(content)
+                            return True
+                    else:
+                        with open(dest_path, 'wb') as fh:
+                            fh.write(content)
+                        return True
+
+                ok = _download_onedrive_local(url_bd, fname)
+                if ok:
+                    bd_online_file = fname
+                    show_success_box("BD online descargada OK.")
+                else:
+                    st.error("BD online: no se pudo descargar el archivo real desde OneDrive.")
             except Exception as e:
                 st.error(f"BD online error: {e}")
 
@@ -1170,9 +1146,57 @@ with col_params:
     </div>
     """, unsafe_allow_html=True)
     
+    # CSS específico para la alerta de fecha (tarjeta roja)
+    st.markdown("""
+    <style>
+        /* Estilo para el contenedor de la tarjeta */
+    .fecha-alerta {
+        padding: 0.5rem 1rem;
+        background-color: var(--secondary-background-color);
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        font-weight: 700;
+        color: var(--text-color);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Función auxiliar: último día del mes anterior
+    def get_last_day_of_previous_month():
+        today = datetime.now().date()
+        first_day_of_current_month = today.replace(day=1)
+        last_day_prev = first_day_of_current_month - timedelta(days=1)
+        return last_day_prev
+
     with st.container(border=True): 
-        fecha_evaluacion = st.date_input("🗓️ Fecha de Evaluación", datetime.now().date(), key="fecha_eval")
-        
+        # Fecha por defecto: último día del mes anterior
+        default_date = get_last_day_of_previous_month()
+
+        # Crear date_input con valor por defecto (editable) y tope en la fecha predeterminada
+        fecha_evaluacion = st.date_input(
+            "🗓️ Fecha de Evaluación",
+            value=default_date,
+            key="fecha_eval",
+            disabled=False,
+            max_value=default_date
+        )
+
+        # Mostrar alerta roja con la fecha en formato DD-MM-AAAA
+        try:
+            fecha_formateada_num = fecha_evaluacion.strftime("%d-%m-%Y")
+        except Exception:
+            fecha_formateada_num = str(fecha_evaluacion)
+
+        st.markdown("---")
+        # Mensaje de alerta que indica la fecha a evaluar y la regla
+        st.markdown(f"""
+        <div class="fecha-alerta">
+            <div><span>FECHA EVALUAR:</span> <b>{fecha_formateada_num}</b></div>
+            <div style="margin-top:0.25rem; font-size:0.95rem;">No superar esta fecha.</div>
+        </div>
+        """, unsafe_allow_html=True)
+
         # Botón de Cálculo (con ícono)
         calcular_btn = st.button("🚀 Calcular Datos Iniciales", key="calcular_btn", use_container_width=True)
 
@@ -1183,9 +1207,8 @@ with col_params:
     
     # =================== Lógica de Cálculo (Se mantiene intacta) ===================
     if forma9_final and bd_final:
-        st.success("¡Ambos archivos cargados! Haz clic en el botón para calcular.")
+        show_success_box("¡Ambos archivos cargados! .")
         if calcular_btn:
-            import os
             # Normalizar entradas: si son rutas (strings) convertir a BytesIO con .name
             def normalize_file(f):
                 if f is None:
@@ -1193,11 +1216,32 @@ with col_params:
                 # Si es un path string (por ejemplo archivo descargado a tmp.name)
                 if isinstance(f, str):
                     try:
-                        with open(f, 'rb') as fh:
-                            data = fh.read()
+                        # Intentar abrir la ruta tal cual
+                        opened_path = None
+                        try:
+                            with open(f, 'rb') as fh:
+                                data = fh.read()
+                            opened_path = f
+                        except FileNotFoundError:
+                            # Probar rutas alternativas: cwd y saved_uploads
+                            candidates = [
+                                os.path.join(os.getcwd(), f),
+                                os.path.join(os.getcwd(), 'saved_uploads', f)
+                            ]
+                            opened = False
+                            for c in candidates:
+                                if os.path.exists(c):
+                                    with open(c, 'rb') as fh:
+                                        data = fh.read()
+                                    opened = True
+                                    opened_path = c
+                                    break
+                            if not opened:
+                                raise FileNotFoundError(f"Archivo no encontrado en rutas esperadas: {f}; intentadas: {candidates}")
                         bio = io.BytesIO(data)
-                        # asignar atributo name para compatibilidad con la lógica existente
-                        bio.name = os.path.basename(f)
+                        # asignar atributo name a la ruta completa usada para evitar que pandas intente abrir
+                        # un nombre relativo que no exista en Windows
+                        bio.name = opened_path or f
                         return bio
                     except Exception as e:
                         st.error(f"No se pudo leer el archivo local '{f}': {e}")
@@ -1237,9 +1281,18 @@ with col_params:
                         st.session_state['unique_als'] = sorted(df_bd_calc['ALS'].dropna().unique().tolist()) if 'ALS' in df_bd_calc.columns else []
                         st.session_state['unique_activos'] = sorted(df_bd_calc['ACTIVO'].dropna().unique().tolist()) if 'ACTIVO' in df_bd_calc.columns else []
 
-                        st.success("Cálculos finalizados correctamente.")
+                        show_success_box("Cálculos finalizados correctamente.")
                 except Exception as e:
                     st.error(f"Error durante el procesamiento: {e}")
+
+    # Si el usuario pidió ver el resumen público, importarlo y mostrarlo inline.
+    if st.session_state.get('show_resumen_publico'):
+        try:
+            import resumen_publico
+            resumen_publico.show_resumen()
+            st.stop()
+        except Exception as e:
+            st.error(f"No se pudo cargar Resumen Público: {e}")
 
 
 if st.session_state['reporte_runes'] is not None:
@@ -1266,47 +1319,88 @@ if st.session_state['reporte_runes'] is not None:
     if 'PROVEEDOR' in st.session_state['df_bd_calculated'].columns:
         proveedor_options += sorted([str(x) for x in st.session_state['df_bd_calculated']['PROVEEDOR'].dropna().unique()])
 
+    # CSS adicional para filtros visuales y sidebar mejor distribuido
+        st.markdown(f"""
+        <style>
+            .filters-row {{ display:flex; gap:18px; align-items:stretch; margin: 8px 0 18px 0; }}
+            .filter-card {{ flex:1; padding:14px; border-radius:14px; background: linear-gradient(135deg, {COLOR_PRINCIPAL}11, rgba(255,255,255,0.04)); box-shadow: 0 16px 40px {COLOR_PRINCIPAL}22, 0 6px 18px rgba(0,0,0,0.12); border:1px solid rgba(255,255,255,0.03); display:flex; flex-direction:column; justify-content:center; }}
+            .filter-card .filter-value {{ color: {COLOR_PRINCIPAL}; }}
+            .filter-card:hover {{ transform: translateY(-4px); transition: all 180ms ease; box-shadow: 0 22px 60px {COLOR_PRINCIPAL}33; }}
+            .sidebar-section {{ padding:10px 8px; margin-bottom:12px; border-left:4px solid %s; border-radius:8px; background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02)); }}
+            .hero-title {{ padding: 16px 20px; border-radius:14px; background: linear-gradient(90deg, {COLOR_PRINCIPAL}, #a1039d); color: #fff; box-shadow: 0 18px 50px {COLOR_PRINCIPAL}44; font-weight:900; letter-spacing:2px; transform: translateZ(0); }}
+            .loading-layer {{ padding:12px; border-radius:10px; background: linear-gradient(90deg, rgba(255,255,255,0.03), {COLOR_PRINCIPAL}11); box-shadow: inset 0 -6px 20px rgba(0,0,0,0.12); }}
+            /* Estilos mejorados para selectboxes en la sidebar */
+            .stSidebar .stSelectbox>div>div, .stSidebar .stSelectbox>div>div>div {{ border-radius:8px; padding:8px 10px; box-shadow: 0 6px 18px rgba(0,0,0,0.15); background: linear-gradient(90deg, rgba(255,255,255,0.02), {COLOR_PRINCIPAL}07); border: 1px solid rgba(255,255,255,0.03); }}
+            .stSidebar .stSelectbox>div>div:hover {{ box-shadow: 0 10px 30px {COLOR_PRINCIPAL}22; transform: translateY(-3px); }}
+        </style>
+        """ % COLOR_PRINCIPAL, unsafe_allow_html=True)
+
+    # Renderizar filtros visuales superiores (tarjetas no interactivas): solo visibles, no afectan filtros reales
+    with st.container():
+        st.markdown('<div class="filters-row">', unsafe_allow_html=True)
+        colA, colB, colC, colD, colE = st.columns([1,1,1,1,1])
+        val_activo = st.session_state.get('general_activo_filter','TODOS')
+        val_bloque = st.session_state.get('general_bloque_filter','TODOS')
+        val_campo = st.session_state.get('general_campo_filter','TODOS')
+        val_als = st.session_state.get('general_als_filter','TODOS')
+        val_proveedor = st.session_state.get('general_proveedor_filter','TODOS')
+
+        def _render_card(col, title, value):
+            with col:
+                st.markdown('<div class="filter-card">', unsafe_allow_html=True)
+                st.markdown(f"<div style='font-size:12px; opacity:0.85'>{title}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='filter-value' style='font-size:16px; font-weight:700; margin-top:6px;'>{html.escape(str(value))}</div>", unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+
+        _render_card(colA, 'Activo', val_activo)
+        _render_card(colB, 'Bloque', val_bloque)
+        _render_card(colC, 'Campo', val_campo)
+        _render_card(colD, 'ALS', val_als)
+        _render_card(colE, 'Proveedor', val_proveedor)
+        st.markdown('</div>', unsafe_allow_html=True)
+
     # --- Barra de filtros fijada en la sidebar (usa los mismos keys para no cambiar la funcionalidad) ---
     with st.sidebar:
-        st.markdown(f"""
-        <div style="position:sticky; top:0; z-index:9999; padding:10px 0 20px 0; background: transparent;">
-            <h4 style='margin:0; color: {COLOR_PRINCIPAL};'>🔎 Filtros (fijados)</h4>
-        </div>
-        """, unsafe_allow_html=True)
+        # Encabezado de filtros simple (no sticky, para evitar superposición con controles)
+        st.subheader("🔎 Filtros")
 
-        # Los widgets en la sidebar comparten las mismas claves (keys) que los del área principal,
-        # por lo que cualquier cambio en la sidebar actualizará las variables usadas por el resto
-        # del script y no se altera la funcionalidad existente.
-        st.selectbox(
-            "🌐 Filtrar por Activo:",
-            options=activo_options,
-            key='general_activo_filter',
-            format_func=lambda x: x if x == 'TODOS' else f"{x} 🛢️"
-        )
-        st.selectbox(
-            "🎲 Filtrar por Bloque:",
-            options=bloque_options,
-            key='general_bloque_filter',
-            format_func=lambda x: x if x == 'TODOS' else f"{x} 🏢"
-        )
-        st.selectbox(
-            "🎴 Filtrar por Campo:",
-            options=campo_options,
-            key='general_campo_filter',
-            format_func=lambda x: x if x == 'TODOS' else f"{x} 🌱"
-        )
-        st.selectbox(
-            "🔧 Filtrar por ALS:",
-            options=als_options,
-            key='general_als_filter',
-            format_func=lambda x: x if x == 'TODOS' else f"{x} ⚙️"
-        )
-        st.selectbox(
-            "🏭 Filtrar por Proveedor:",
-            options=proveedor_options,
-            key='general_proveedor_filter',
-            format_func=lambda x: x if x == 'TODOS' else f"{x} 🏭"
-        )
+        # Construir opciones de filtro de forma secuencial para que sean coherentes entre sí.
+        df_calc = st.session_state.get('df_bd_calculated', pd.DataFrame())
+
+        # Leer selecciones previas (si existen) para filtrar las opciones disponibles
+        sel_activo = st.session_state.get('general_activo_filter', 'TODOS')
+        sel_bloque = st.session_state.get('general_bloque_filter', 'TODOS')
+        sel_campo = st.session_state.get('general_campo_filter', 'TODOS')
+        sel_als = st.session_state.get('general_als_filter', 'TODOS')
+        sel_proveedor = st.session_state.get('general_proveedor_filter', 'TODOS')
+
+        def _options(col):
+            if df_calc is None or df_calc.empty or col not in df_calc.columns:
+                return []
+            df_opt = df_calc.copy()
+            if 'ACTIVO' in df_opt.columns and sel_activo != 'TODOS':
+                df_opt = df_opt[df_opt['ACTIVO'] == sel_activo]
+            if 'BLOQUE' in df_opt.columns and sel_bloque != 'TODOS':
+                df_opt = df_opt[df_opt['BLOQUE'] == sel_bloque]
+            if 'CAMPO' in df_opt.columns and sel_campo != 'TODOS':
+                df_opt = df_opt[df_opt['CAMPO'] == sel_campo]
+            if 'ALS' in df_opt.columns and sel_als != 'TODOS':
+                df_opt = df_opt[df_opt['ALS'] == sel_als]
+            if 'PROVEEDOR' in df_opt.columns and sel_proveedor != 'TODOS':
+                df_opt = df_opt[df_opt['PROVEEDOR'] == sel_proveedor]
+            return sorted(df_opt[col].dropna().unique().tolist())
+
+        activo_options = ['TODOS'] + (_options('ACTIVO') if 'ACTIVO' in df_calc.columns else st.session_state.get('unique_activos', []))
+        bloque_options = ['TODOS'] + _options('BLOQUE')
+        campo_options = ['TODOS'] + _options('CAMPO')
+        als_options = ['TODOS'] + _options('ALS')
+        proveedor_options = ['TODOS'] + _options('PROVEEDOR')
+
+        st.selectbox("🌐 Filtrar por Activo:", options=activo_options, key='general_activo_filter')
+        st.selectbox("🎲 Filtrar por Bloque:", options=bloque_options, key='general_bloque_filter')
+        st.selectbox("🎴 Filtrar por Campo:", options=campo_options, key='general_campo_filter')
+        st.selectbox("🔧 Filtrar por ALS:", options=als_options, key='general_als_filter')
+        st.selectbox("🏭 Filtrar por Proveedor:", options=proveedor_options, key='general_proveedor_filter')
 
     col1, col2, col3, col4, col5 = st.columns(5)
     # Evitar duplicar widgets con la misma key: los selectboxes interactivos se muestran
@@ -1354,7 +1448,7 @@ if st.session_state['reporte_runes'] is not None:
     # --- Sección de Reporte de RUNES ---
     st.markdown(f"""
     <h3 id="reporte-de-runes" style='font-size:1.4rem; font-weight:700; margin-top:1em;'>
-        <span style='color:'COLOR_PRINCIPAL';'>📊 Reporte de RUNES</span>
+        <span style='color:{COLOR_PRINCIPAL};'>📊 Reporte de RUNES</span>
     </h3>
     """, unsafe_allow_html=True)
 
@@ -1396,536 +1490,546 @@ if st.session_state['reporte_runes'] is not None:
         fecha_evaluacion
     )
 
-    # Ahora sí, dividir en columnas para tablas y gráficas
-    col_table, col_chart = st.columns([0.4, 0.6])
+# Bloque visual extra: KPIs magenta/azul y toolbar compacto
+st.markdown(f"""
+<style>
+  .kpi-row {{ display:flex; gap:18px; margin-top:14px; }}
+  .magenta-box {{ flex:1; padding:18px; border-radius:14px; background: linear-gradient(135deg,#A1039D,#6A00A1); color:#fff; box-shadow: 0 20px 60px {COLOR_PRINCIPAL}33, inset 0 -6px 20px rgba(255,255,255,0.02); }}
+  .blue-box {{ flex:1; padding:18px; border-radius:14px; background: linear-gradient(135deg,#00A2FF,#0041D1); color:#001; box-shadow: 0 20px 60px #00A2FF44, inset 0 -6px 20px rgba(255,255,255,0.02); }}
+  .kpi-title {{ font-size:12px; opacity:0.9; }}
+  .kpi-value {{ font-size:20px; font-weight:800; margin-top:8px; }}
+  .toolbar {{ display:flex; gap:8px; align-items:center; margin-top:10px; }}
+  .toolbar .btn {{ padding:8px 12px; border-radius:10px; background: linear-gradient(90deg,#ffffff11,#00A2FF11); color: #fff; border:1px solid rgba(255,255,255,0.06); box-shadow: 0 8px 24px rgba(0,0,0,0.25); }}
+</style>
+""", unsafe_allow_html=True)
 
-    with col_table:
-        st.dataframe(reporte_runes_filtered, hide_index=True)
-    with col_chart:
+st.markdown('</div>', unsafe_allow_html=True)
+
+# Ahora sí, dividir en columnas para tablas y gráficas
+col_table, col_chart = st.columns([0.4, 0.6])
+
+with col_table:
+    st.dataframe(reporte_runes_filtered, hide_index=True)
+with col_chart:
+    color_sequence = get_color_sequence()
+    fig = px.bar(
+        reporte_runes_filtered,
+        x='Categoría',
+        y='Conteo',
+        color='Categoría',
+        title=styled_title(f'Conteo de RUNES por Categoría ({selected_activo})'),
+        color_discrete_sequence=color_sequence
+    )
+    layout = get_plotly_layout()
+    fig.update_layout(**layout)
+    st.plotly_chart(fig, use_container_width=True)
+# --- Nueva sección: BOPD vs Run Life por Bloque ---
+st.markdown("""
+<h4 style='margin-top:1em;'>📌 BOPD vs Run Life por Bloque en (años)</h4>
+""", unsafe_allow_html=True)
+
+# Determinar qué pozos y runs usar: tomar último RUN por pozo con FECHA_RUN <= fecha_evaluacion
+try:
+    fecha_eval = pd.to_datetime(fecha_evaluacion)
+    df_runs_validos = df_bd_filtered[df_bd_filtered['FECHA_RUN'] <= fecha_eval].copy()
+    if df_runs_validos.empty:
+        st.info('No hay RUNs previos a la fecha de evaluación para los pozos filtrados.')
+    df_last_run = df_runs_validos.sort_values('FECHA_RUN').groupby('POZO', as_index=False).last()
+    # Filtrar solo pozos operativos: sin FECHA_PULL ni FECHA_FALLA (o con esas fechas posteriores a la evaluación)
+    try:
+        # Asegurar tipo datetime
+        if 'FECHA_PULL' in df_last_run.columns:
+            df_last_run['FECHA_PULL'] = pd.to_datetime(df_last_run['FECHA_PULL'], errors='coerce')
+        else:
+            df_last_run['FECHA_PULL'] = pd.NaT
+        if 'FECHA_FALLA' in df_last_run.columns:
+            df_last_run['FECHA_FALLA'] = pd.to_datetime(df_last_run['FECHA_FALLA'], errors='coerce')
+        else:
+            df_last_run['FECHA_FALLA'] = pd.NaT
+        df_last_run['FECHA_RUN'] = pd.to_datetime(df_last_run['FECHA_RUN'], errors='coerce')
+
+        mask_operativos = (
+            (df_last_run['FECHA_RUN'] <= fecha_eval) &
+            ((df_last_run['FECHA_PULL'].isna()) | (df_last_run['FECHA_PULL'] > fecha_eval)) &
+            ((df_last_run['FECHA_FALLA'].isna()) | (df_last_run['FECHA_FALLA'] > fecha_eval))
+        )
+        df_last_run = df_last_run[mask_operativos].copy()
+    except Exception as e:
+        st.warning(f"No se pudo aplicar el filtro de pozos operativos al conjunto de RUNs: {e}")
+except Exception:
+    df_last_run = df_bd_filtered.copy()
+
+# Obtener BOPD desde FORMA9 filtrando por el MES de la fecha de evaluación
+df_f9 = df_forma9_filtered.copy()
+df_f9_sum = pd.DataFrame(columns=['POZO', 'BOPD'])
+try:
+    if 'FECHA_FORMA9' in df_f9.columns:
+        df_f9['FECHA_FORMA9'] = pd.to_datetime(df_f9['FECHA_FORMA9'], errors='coerce')
+        fecha_eval = pd.to_datetime(fecha_evaluacion)
+        # Filtrar por mismo mes y año de la fecha de evaluación
+        df_f9_month = df_f9[(df_f9['FECHA_FORMA9'].dt.year == fecha_eval.year) & (df_f9['FECHA_FORMA9'].dt.month == fecha_eval.month)].copy()
+
+        # Determinar columna de dias trabajados y BOPD (nombres normalizados en carga)
+        dias_col = next((c for c in df_f9_month.columns if 'DIAS' in str(c).upper()), None)
+        bopd_col = next((c for c in df_f9_month.columns if 'BOPD' in str(c).upper()), None)
+
+        if dias_col is not None:
+            df_f9_month[dias_col] = pd.to_numeric(df_f9_month[dias_col], errors='coerce').fillna(0)
+            # Conservar solo filas con dias trabajados > 0 (pozos que produjeron en el mes)
+            df_f9_month = df_f9_month[df_f9_month[dias_col] > 0].copy()
+
+        if not df_f9_month.empty and bopd_col is not None:
+            df_f9_month[bopd_col] = pd.to_numeric(df_f9_month[bopd_col], errors='coerce').fillna(0)
+            # Sumar BOPD por pozo en el mes
+            df_f9_sum = df_f9_month.groupby('POZO', as_index=False).agg({bopd_col: 'sum'})
+            df_f9_sum.rename(columns={bopd_col: 'BOPD'}, inplace=True)
+        else:
+            df_f9_sum = pd.DataFrame(columns=['POZO', 'BOPD'])
+    else:
+        df_f9_sum = pd.DataFrame(columns=['POZO', 'BOPD'])
+except Exception as e:
+    st.warning(f"Error al procesar FORMA9 para mes de evaluación: {e}")
+    df_f9_sum = pd.DataFrame(columns=['POZO', 'BOPD'])
+
+# Correlacionar BOPD (suma en el mes y solo pozos con DIAS TRABAJADOS>0) con el RUN correspondiente en BD
+# Para mapear el RUN usamos la última fecha de FORMA9 dentro del mes por pozo
+if not df_f9_sum.empty:
+    # Reconstruir df_f9_month raw para obtener la última fecha por pozo
+    try:
+        df_f9_month_raw = df_f9[(df_f9['FECHA_FORMA9'].dt.year == fecha_eval.year) & (df_f9['FECHA_FORMA9'].dt.month == fecha_eval.month)].copy()
+    except Exception:
+        df_f9_month_raw = pd.DataFrame()
+
+    if not df_f9_month_raw.empty:
+        # última fecha de forma9 dentro del mes por pozo
+        df_f9_lastdate = df_f9_month_raw.sort_values('FECHA_FORMA9').groupby('POZO', as_index=False).last()[['POZO', 'FECHA_FORMA9']]
+        # asegurar que df_f9_sum tenga la columna POZO
+        df_f9_sum = df_f9_sum.copy()
+        # unir suma de BOPD con la última fecha para mapear
+        df_f9_merge = pd.merge(df_f9_sum, df_f9_lastdate, on='POZO', how='left')
+    else:
+        df_f9_merge = df_f9_sum.copy()
+        df_f9_merge['FECHA_FORMA9'] = pd.NaT
+
+    # Preparar BD para matching: columnas importantes
+    bd_match = df_bd_filtered.copy()
+    for dtcol in ['FECHA_RUN', 'FECHA_PULL', 'FECHA_FALLA']:
+        if dtcol in bd_match.columns:
+            bd_match[dtcol] = pd.to_datetime(bd_match[dtcol], errors='coerce')
+        else:
+            bd_match[dtcol] = pd.NaT
+
+    # Hacer merge por POZO y aplicar la lógica de inclusión por fecha
+    if not df_f9_merge.empty:
+        df_f9_merge['_idx'] = range(len(df_f9_merge))
+        merged_df = pd.merge(df_f9_merge, bd_match[['POZO', 'RUN', 'FECHA_RUN', 'FECHA_PULL', 'RUN LIFE']], on='POZO', how='left')
+        merged_df['FECHA_FORMA9'] = pd.to_datetime(merged_df['FECHA_FORMA9'], errors='coerce')
+        # considerar fecha de corte: si FECHA_PULL es NaT usar fecha_evaluacion
+        merged_df['FECHA_PULL_FILL'] = merged_df['FECHA_PULL'].fillna(fecha_eval)
+        merged_df['is_match'] = (merged_df['FECHA_FORMA9'] >= merged_df['FECHA_RUN']) & (merged_df['FECHA_FORMA9'] < merged_df['FECHA_PULL_FILL'])
+        # elegir el RUN con FECHA_RUN más reciente (max) por cada registro original
+        # 1) Match directo: FECHA_FORMA9 en el rango [FECHA_RUN, FECHA_PULL)
+        runlife_map = {}
+        try:
+            matched = merged_df[merged_df['is_match']].copy()
+            if not matched.empty:
+                best_idx = matched.groupby('_idx')['FECHA_RUN'].idxmax()
+                best_matches = merged_df.loc[best_idx]
+                runlife_map = best_matches.set_index('_idx')['RUN LIFE'].to_dict()
+        except Exception:
+            runlife_map = {}
+
+        # 2) Fallback: si algún pozo no tiene match directo, buscar el RUN con FECHA_RUN <= FECHA_FORMA9
+        missing_idxs = [i for i in range(len(df_f9_merge)) if i not in runlife_map]
+        if missing_idxs:
+            for i in missing_idxs:
+                try:
+                    candidate = merged_df[(merged_df['_idx'] == i) & (merged_df['FECHA_RUN'] <= merged_df.loc[merged_df['_idx'] == i, 'FECHA_FORMA9'].iloc[0])]
+                    if not candidate.empty:
+                        # tomar el RUN con FECHA_RUN más reciente
+                        idx_choice = candidate['FECHA_RUN'].idxmax()
+                        runlife_map[i] = merged_df.loc[idx_choice, 'RUN LIFE']
+                except Exception:
+                    # dejar sin match si algo falla
+                    continue
+
+        df_f9_merge['RUN LIFE'] = df_f9_merge.index.map(lambda i: runlife_map.get(i, np.nan))
+
+        # Mostrar resumen rápido de mapeo para ayudar a debugging y ver distribución
+        try:
+            total_pozos = len(df_f9_merge)
+            mapeados = df_f9_merge['RUN LIFE'].notna().sum()
+            no_mapeados = total_pozos - int(mapeados)
+            st.markdown(f"**Pozos en FORMA9 (mes):** {total_pozos} — **Con RUN asociado:** {mapeados} — **Sin RUN:** {no_mapeados}")
+        except Exception:
+            pass
+        merged = df_f9_merge[['POZO', 'BOPD', 'FECHA_FORMA9', 'RUN LIFE']].copy()
+    else:
+        merged = pd.DataFrame(columns=['POZO', 'BOPD', 'FECHA_FORMA9', 'RUN LIFE'])
+else:
+    merged = pd.DataFrame(columns=['POZO', 'BOPD', 'FECHA_FORMA9', 'RUN LIFE'])
+
+# Normalizar columnas
+merged['BOPD'] = pd.to_numeric(merged['BOPD'], errors='coerce').fillna(0)
+merged['RUN LIFE'] = pd.to_numeric(merged['RUN LIFE'], errors='coerce').fillna(0)
+
+# Bucketizar Run Life (días -> años)
+def bucket_runlife(days):
+    years = days / 365.0
+    if pd.isna(days):
+        return 'Sin Datos'
+    if years < 2:
+        return '<2 años'
+    if 2 <= years < 4:
+        return '2-4 años'
+    if 4 <= years < 6:
+        return '4-6 años'
+    return '>6 años'
+
+if not merged.empty:
+    merged['RunLifeBucket'] = merged['RUN LIFE'].apply(bucket_runlife)
+
+    # Agregados por bucket (suma de BOPD entre todos los bloques) y conteo de pozos únicos
+    agg = merged.groupby(['RunLifeBucket']).agg(
+        BOPD_sum=pd.NamedAgg(column='BOPD', aggfunc='sum'),
+        Pozos=pd.NamedAgg(column='POZO', aggfunc=lambda x: x.nunique())
+    ).reset_index()
+
+    # Asegurar orden de buckets
+    bucket_order = ['<2 años', '2-4 años', '4-6 años', '>6 años']
+    agg = agg.set_index('RunLifeBucket').reindex(bucket_order).fillna({'BOPD_sum': 0, 'Pozos': 0}).reset_index()
+
+    if agg.empty:
+        st.info('No hay datos suficientes para generar la gráfica por buckets de Run Life.')
+    else:
+        # Mostrar tabla agregada (sujeta a filtros generales aplicados previamente)
+        st.markdown('**Tabla agregada: BOPD (suma) y número de pozos  de Run Life**')
+        st.dataframe(agg.rename(columns={'RunLifeBucket': 'Bucket Run Life', 'BOPD_sum': 'BOPD (suma)', 'Pozos': 'Número de Pozos'}), hide_index=True)
+
+        # Gráfica: 4 columnas (x = buckets) con la suma total de BOPD (y). Añadir número de pozos en un cuadrito sobre cada columna.
+        fig2 = px.bar(
+            agg,
+            x='RunLifeBucket',
+            y='BOPD_sum',
+            color='RunLifeBucket',
+            color_discrete_sequence=get_color_sequence(),
+            labels={'RunLifeBucket': 'Run Life (años)', 'BOPD_sum': 'BOPD (suma)'},
+            title=styled_title('BOPD total por Run Life')
+        )
+        # Añadir anotaciones (cuadrito) con número de pozos
+        max_y = agg['BOPD_sum'].max() if not agg['BOPD_sum'].empty else 0
+        for i, row in agg.iterrows():
+            y_val = float(row['BOPD_sum'])
+            # posicionar el cuadrito dentro de la barra si es posible, sino encima
+            if y_val > 0:
+                y_ann = y_val * 0.5
+            else:
+                y_ann = max_y * 0.02
+            font_dict = {'size': 12}
+            if COLOR_FONDO_OSCURO:
+                font_dict['color'] = COLOR_FUENTE
+
+            fig2.add_annotation(
+                x=row['RunLifeBucket'],
+                y=y_ann,
+                text=f"{int(row['Pozos'])}",
+                showarrow=False,
+                font=font_dict,
+                align='center',
+                bgcolor='rgba(0,0,0,0.6)',
+                bordercolor=COLOR_PRINCIPAL,
+                borderwidth=1,
+                opacity=0.9
+            )
+        layout = get_plotly_layout()
+        fig2.update_layout(**layout)
+        st.plotly_chart(fig2, use_container_width=True)
+else:
+    st.info('No hay datos de RUN o de FORMA9 disponibles para el filtro actual.')
+
+with st.expander("Verificaciones de Consistencia", expanded=False):
+    for relacion, es_valida in verificaciones_filtered.items():
+        status = "✅ Válida" if es_valida else "❌ No válida"
+        text_color = COLOR_FUENTE if COLOR_FONDO_OSCURO else 'inherit'
+        st.markdown(f"<span style='font-size:11px; color:{text_color};'>{relacion}: {status}</span>", unsafe_allow_html=True)
+    
+st.markdown(f"""
+<h3 id="historico-de-run-life-por-campo" style='font-size:1.4rem; font-weight:700; margin-top:1em;'>
+    <span style='color:{COLOR_PRINCIPAL};'>⏳ Histórico RUN LIFE por Campo</span>
+</h3>
+""", unsafe_allow_html=True)
+# Ajuste de columnas a 50/50 para simetría
+col_table_runlife, col_chart_runlife = st.columns([0.5, 0.5])
+ # Selector de campo (ACTIVO)
+activo_runlife = selected_activo if 'selected_activo' in locals() or 'selected_activo' in globals() else 'TODOS'
+
+# Calcular Run Life total (fallados + pulling) para la fecha evaluada y filtro
+df_runlife_total = df_bd_filtered.copy()
+if activo_runlife != 'TODOS' and 'ACTIVO' in df_runlife_total.columns:
+    df_runlife_total = df_runlife_total[df_runlife_total['ACTIVO'] == activo_runlife]
+# Considerar solo los que tienen FECHA_PULL o FECHA_FALLA en el año evaluado
+runlife_total = df_runlife_total[
+    ((df_runlife_total['FECHA_PULL'].notna()) | (df_runlife_total['FECHA_FALLA'].notna())) &
+    (df_runlife_total['FECHA_RUN'].dt.date <= fecha_evaluacion)
+]['RUN LIFE'].mean()
+st.metric(label=f"Run Life Total ({'Todos' if activo_runlife == 'TODOS' else activo_runlife}) para la fecha evaluada", value=f"{runlife_total:.2f}" if not pd.isna(runlife_total) else "No disponible")
+
+# Generar histórico por campo
+
+# Usar siempre la función corregida para el histórico de run life promedio mensual
+historico_run_life = generar_historico_run_life(df_bd_filtered, fecha_evaluacion)
+
+with col_table_runlife:
+    if historico_run_life is not None:
+        st.dataframe(historico_run_life, hide_index=True)
+
+with col_chart_runlife:
+    if historico_run_life is not None and 'ACTIVO' in historico_run_life.columns:
+        # Definir paleta de colores personalizada para los campos (ACTIVO)
+        # Usar la secuencia de colores proporcionada por el usuario
         color_sequence = get_color_sequence()
         fig = px.bar(
-            reporte_runes_filtered,
-            x='Categoría',
-            y='Conteo',
-            color='Categoría',
-            title=styled_title(f'Conteo de RUNES por Categoría ({selected_activo})'),
+            historico_run_life,
+            x='Mes',
+            y='Run Life Promedio',
+            color='ACTIVO',
+            barmode='group',
+            title=styled_title('⭕ Run Life Promedio Mensual por Activo'),
+            labels={'Mes': 'Mes', 'Run Life Promedio': 'Run Life Promedio', 'ACTIVO': 'Campo'},
             color_discrete_sequence=color_sequence
         )
         layout = get_plotly_layout()
         fig.update_layout(**layout)
         st.plotly_chart(fig, use_container_width=True)
-    # --- Nueva sección: BOPD vs Run Life por Bloque ---
-    st.markdown("""
-    <h4 style='margin-top:1em;'>📌 BOPD vs Run Life por Bloque (Buckets de años)</h4>
-    """, unsafe_allow_html=True)
-
-    # Determinar qué pozos y runs usar: tomar último RUN por pozo con FECHA_RUN <= fecha_evaluacion
-    try:
-        fecha_eval = pd.to_datetime(fecha_evaluacion)
-        df_runs_validos = df_bd_filtered[df_bd_filtered['FECHA_RUN'] <= fecha_eval].copy()
-        if df_runs_validos.empty:
-            st.info('No hay RUNs previos a la fecha de evaluación para los pozos filtrados.')
-        df_last_run = df_runs_validos.sort_values('FECHA_RUN').groupby('POZO', as_index=False).last()
-        # Filtrar solo pozos operativos: sin FECHA_PULL ni FECHA_FALLA (o con esas fechas posteriores a la evaluación)
-        try:
-            # Asegurar tipo datetime
-            if 'FECHA_PULL' in df_last_run.columns:
-                df_last_run['FECHA_PULL'] = pd.to_datetime(df_last_run['FECHA_PULL'], errors='coerce')
-            else:
-                df_last_run['FECHA_PULL'] = pd.NaT
-            if 'FECHA_FALLA' in df_last_run.columns:
-                df_last_run['FECHA_FALLA'] = pd.to_datetime(df_last_run['FECHA_FALLA'], errors='coerce')
-            else:
-                df_last_run['FECHA_FALLA'] = pd.NaT
-            df_last_run['FECHA_RUN'] = pd.to_datetime(df_last_run['FECHA_RUN'], errors='coerce')
-
-            mask_operativos = (
-                (df_last_run['FECHA_RUN'] <= fecha_eval) &
-                ((df_last_run['FECHA_PULL'].isna()) | (df_last_run['FECHA_PULL'] > fecha_eval)) &
-                ((df_last_run['FECHA_FALLA'].isna()) | (df_last_run['FECHA_FALLA'] > fecha_eval))
-            )
-            df_last_run = df_last_run[mask_operativos].copy()
-        except Exception as e:
-            st.warning(f"No se pudo aplicar el filtro de pozos operativos al conjunto de RUNs: {e}")
-    except Exception:
-        df_last_run = df_bd_filtered.copy()
-
-    # Obtener BOPD desde FORMA9 filtrando por el MES de la fecha de evaluación
-    df_f9 = df_forma9_filtered.copy()
-    df_f9_sum = pd.DataFrame(columns=['POZO', 'BOPD'])
-    try:
-        if 'FECHA_FORMA9' in df_f9.columns:
-            df_f9['FECHA_FORMA9'] = pd.to_datetime(df_f9['FECHA_FORMA9'], errors='coerce')
-            fecha_eval = pd.to_datetime(fecha_evaluacion)
-            # Filtrar por mismo mes y año de la fecha de evaluación
-            df_f9_month = df_f9[(df_f9['FECHA_FORMA9'].dt.year == fecha_eval.year) & (df_f9['FECHA_FORMA9'].dt.month == fecha_eval.month)].copy()
-
-            # Determinar columna de dias trabajados y BOPD (nombres normalizados en carga)
-            dias_col = next((c for c in df_f9_month.columns if 'DIAS' in str(c).upper()), None)
-            bopd_col = next((c for c in df_f9_month.columns if 'BOPD' in str(c).upper()), None)
-
-            if dias_col is not None:
-                df_f9_month[dias_col] = pd.to_numeric(df_f9_month[dias_col], errors='coerce').fillna(0)
-                # Conservar solo filas con dias trabajados > 0 (pozos que produjeron en el mes)
-                df_f9_month = df_f9_month[df_f9_month[dias_col] > 0].copy()
-
-            if not df_f9_month.empty and bopd_col is not None:
-                df_f9_month[bopd_col] = pd.to_numeric(df_f9_month[bopd_col], errors='coerce').fillna(0)
-                # Sumar BOPD por pozo en el mes
-                df_f9_sum = df_f9_month.groupby('POZO', as_index=False).agg({bopd_col: 'sum'})
-                df_f9_sum.rename(columns={bopd_col: 'BOPD'}, inplace=True)
-            else:
-                df_f9_sum = pd.DataFrame(columns=['POZO', 'BOPD'])
-        else:
-            df_f9_sum = pd.DataFrame(columns=['POZO', 'BOPD'])
-    except Exception as e:
-        st.warning(f"Error al procesar FORMA9 para mes de evaluación: {e}")
-        df_f9_sum = pd.DataFrame(columns=['POZO', 'BOPD'])
-
-    # Correlacionar BOPD (suma en el mes y solo pozos con DIAS TRABAJADOS>0) con el RUN correspondiente en BD
-    # Para mapear el RUN usamos la última fecha de FORMA9 dentro del mes por pozo
-    if not df_f9_sum.empty:
-        # Reconstruir df_f9_month raw para obtener la última fecha por pozo
-        try:
-            df_f9_month_raw = df_f9[(df_f9['FECHA_FORMA9'].dt.year == fecha_eval.year) & (df_f9['FECHA_FORMA9'].dt.month == fecha_eval.month)].copy()
-        except Exception:
-            df_f9_month_raw = pd.DataFrame()
-
-        if not df_f9_month_raw.empty:
-            # última fecha de forma9 dentro del mes por pozo
-            df_f9_lastdate = df_f9_month_raw.sort_values('FECHA_FORMA9').groupby('POZO', as_index=False).last()[['POZO', 'FECHA_FORMA9']]
-            # asegurar que df_f9_sum tenga la columna POZO
-            df_f9_sum = df_f9_sum.copy()
-            # unir suma de BOPD con la última fecha para mapear
-            df_f9_merge = pd.merge(df_f9_sum, df_f9_lastdate, on='POZO', how='left')
-        else:
-            df_f9_merge = df_f9_sum.copy()
-            df_f9_merge['FECHA_FORMA9'] = pd.NaT
-
-        # Preparar BD para matching: columnas importantes
-        bd_match = df_bd_filtered.copy()
-        for dtcol in ['FECHA_RUN', 'FECHA_PULL', 'FECHA_FALLA']:
-            if dtcol in bd_match.columns:
-                bd_match[dtcol] = pd.to_datetime(bd_match[dtcol], errors='coerce')
-            else:
-                bd_match[dtcol] = pd.NaT
-
-        # Hacer merge por POZO y aplicar la lógica de inclusión por fecha
-        if not df_f9_merge.empty:
-            df_f9_merge['_idx'] = range(len(df_f9_merge))
-            merged_df = pd.merge(df_f9_merge, bd_match[['POZO', 'RUN', 'FECHA_RUN', 'FECHA_PULL', 'RUN LIFE']], on='POZO', how='left')
-            merged_df['FECHA_FORMA9'] = pd.to_datetime(merged_df['FECHA_FORMA9'], errors='coerce')
-            # considerar fecha de corte: si FECHA_PULL es NaT usar fecha_evaluacion
-            merged_df['FECHA_PULL_FILL'] = merged_df['FECHA_PULL'].fillna(fecha_eval)
-            merged_df['is_match'] = (merged_df['FECHA_FORMA9'] >= merged_df['FECHA_RUN']) & (merged_df['FECHA_FORMA9'] < merged_df['FECHA_PULL_FILL'])
-            # elegir el RUN con FECHA_RUN más reciente (max) por cada registro original
-            # 1) Match directo: FECHA_FORMA9 en el rango [FECHA_RUN, FECHA_PULL)
-            runlife_map = {}
-            try:
-                matched = merged_df[merged_df['is_match']].copy()
-                if not matched.empty:
-                    best_idx = matched.groupby('_idx')['FECHA_RUN'].idxmax()
-                    best_matches = merged_df.loc[best_idx]
-                    runlife_map = best_matches.set_index('_idx')['RUN LIFE'].to_dict()
-            except Exception:
-                runlife_map = {}
-
-            # 2) Fallback: si algún pozo no tiene match directo, buscar el RUN con FECHA_RUN <= FECHA_FORMA9
-            missing_idxs = [i for i in range(len(df_f9_merge)) if i not in runlife_map]
-            if missing_idxs:
-                for i in missing_idxs:
-                    try:
-                        candidate = merged_df[(merged_df['_idx'] == i) & (merged_df['FECHA_RUN'] <= merged_df.loc[merged_df['_idx'] == i, 'FECHA_FORMA9'].iloc[0])]
-                        if not candidate.empty:
-                            # tomar el RUN con FECHA_RUN más reciente
-                            idx_choice = candidate['FECHA_RUN'].idxmax()
-                            runlife_map[i] = merged_df.loc[idx_choice, 'RUN LIFE']
-                    except Exception:
-                        # dejar sin match si algo falla
-                        continue
-
-            df_f9_merge['RUN LIFE'] = df_f9_merge.index.map(lambda i: runlife_map.get(i, np.nan))
-
-            # Mostrar resumen rápido de mapeo para ayudar a debugging y ver distribución
-            try:
-                total_pozos = len(df_f9_merge)
-                mapeados = df_f9_merge['RUN LIFE'].notna().sum()
-                no_mapeados = total_pozos - int(mapeados)
-                st.markdown(f"**Pozos en FORMA9 (mes):** {total_pozos} — **Con RUN asociado:** {mapeados} — **Sin RUN:** {no_mapeados}")
-            except Exception:
-                pass
-            merged = df_f9_merge[['POZO', 'BOPD', 'FECHA_FORMA9', 'RUN LIFE']].copy()
-        else:
-            merged = pd.DataFrame(columns=['POZO', 'BOPD', 'FECHA_FORMA9', 'RUN LIFE'])
-    else:
-        merged = pd.DataFrame(columns=['POZO', 'BOPD', 'FECHA_FORMA9', 'RUN LIFE'])
-
-    # Normalizar columnas
-    merged['BOPD'] = pd.to_numeric(merged['BOPD'], errors='coerce').fillna(0)
-    merged['RUN LIFE'] = pd.to_numeric(merged['RUN LIFE'], errors='coerce').fillna(0)
-
-    # Bucketizar Run Life (días -> años)
-    def bucket_runlife(days):
-        years = days / 365.0
-        if pd.isna(days):
-            return 'Sin Datos'
-        if years < 2:
-            return '<2 años'
-        if 2 <= years < 4:
-            return '2-4 años'
-        if 4 <= years < 6:
-            return '4-6 años'
-        return '>6 años'
-
-    if not merged.empty:
-        merged['RunLifeBucket'] = merged['RUN LIFE'].apply(bucket_runlife)
-
-        # Agregados por bucket (suma de BOPD entre todos los bloques) y conteo de pozos únicos
-        agg = merged.groupby(['RunLifeBucket']).agg(
-            BOPD_sum=pd.NamedAgg(column='BOPD', aggfunc='sum'),
-            Pozos=pd.NamedAgg(column='POZO', aggfunc=lambda x: x.nunique())
-        ).reset_index()
-
-        # Asegurar orden de buckets
-        bucket_order = ['<2 años', '2-4 años', '4-6 años', '>6 años']
-        agg = agg.set_index('RunLifeBucket').reindex(bucket_order).fillna({'BOPD_sum': 0, 'Pozos': 0}).reset_index()
-
-        if agg.empty:
-            st.info('No hay datos suficientes para generar la gráfica por buckets de Run Life.')
-        else:
-            # Mostrar tabla agregada (sujeta a filtros generales aplicados previamente)
-            st.markdown('**Tabla agregada: BOPD (suma) y número de pozos por Bucket de Run Life**')
-            st.dataframe(agg.rename(columns={'RunLifeBucket': 'Bucket Run Life', 'BOPD_sum': 'BOPD (suma)', 'Pozos': 'Número de Pozos'}), hide_index=True)
-
-            # Gráfica: 4 columnas (x = buckets) con la suma total de BOPD (y). Añadir número de pozos en un cuadrito sobre cada columna.
-            fig2 = px.bar(
-                agg,
-                x='RunLifeBucket',
-                y='BOPD_sum',
-                labels={'RunLifeBucket': 'Run Life (Buckets)', 'BOPD_sum': 'BOPD (suma)'},
-                title=styled_title('BOPD total por Bucket de Run Life')
-            )
-            # Añadir anotaciones (cuadrito) con número de pozos
-            max_y = agg['BOPD_sum'].max() if not agg['BOPD_sum'].empty else 0
-            for i, row in agg.iterrows():
-                y_val = float(row['BOPD_sum'])
-                # posicionar el cuadrito dentro de la barra si es posible, sino encima
-                if y_val > 0:
-                    y_ann = y_val * 0.5
-                else:
-                    y_ann = max_y * 0.02
-                fig2.add_annotation(
-                    x=row['RunLifeBucket'],
-                    y=y_ann,
-                    text=f"{int(row['Pozos'])}",
-                    showarrow=False,
-                    font={'color': COLOR_FUENTE, 'size':12},
-                    align='center',
-                    bgcolor='rgba(0,0,0,0.6)',
-                    bordercolor=COLOR_PRINCIPAL,
-                    borderwidth=1,
-                    opacity=0.9
-                )
-
-            layout = get_plotly_layout()
-            fig2.update_layout(**layout)
-            st.plotly_chart(fig2, use_container_width=True)
-    else:
-        st.info('No hay datos de RUN o de FORMA9 disponibles para el filtro actual.')
-
-    with st.expander("Verificaciones de Consistencia", expanded=False):
-        for relacion, es_valida in verificaciones_filtered.items():
-            status = "✅ Válida" if es_valida else "❌ No válida"
-            st.markdown(f"<span style='font-size:11px; color:{COLOR_FUENTE};'>{relacion}: {status}</span>", unsafe_allow_html=True)
-    
-    st.markdown("""
-    <h3 id="historico-de-run-life-por-campo" style='font-size:1.4rem; font-weight:700; margin-top:1em;'>
-        <span style='color:'COLOR_PRINCIPAL';'>⏳ Histórico RUN LIFE por Campo</span>
-    </h3>
-    """, unsafe_allow_html=True)
-    col_table_runlife, col_chart_runlife = st.columns([0.35, 0.65])
-    # Selector de campo (ACTIVO)
-    activo_runlife = selected_activo if 'selected_activo' in locals() or 'selected_activo' in globals() else 'TODOS'
-
-    # Calcular Run Life total (fallados + pulling) para la fecha evaluada y filtro
-    df_runlife_total = df_bd_filtered.copy()
-    if activo_runlife != 'TODOS' and 'ACTIVO' in df_runlife_total.columns:
-        df_runlife_total = df_runlife_total[df_runlife_total['ACTIVO'] == activo_runlife]
-    # Considerar solo los que tienen FECHA_PULL o FECHA_FALLA en el año evaluado
-    runlife_total = df_runlife_total[
-        ((df_runlife_total['FECHA_PULL'].notna()) | (df_runlife_total['FECHA_FALLA'].notna())) &
-        (df_runlife_total['FECHA_RUN'].dt.date <= fecha_evaluacion)
-    ]['RUN LIFE'].mean()
-    st.metric(label=f"Run Life Total ({'Todos' if activo_runlife == 'TODOS' else activo_runlife}) para la fecha evaluada", value=f"{runlife_total:.2f}" if not pd.isna(runlife_total) else "No disponible")
-
-    # Generar histórico por campo
-
-    # Usar siempre la función corregida para el histórico de run life promedio mensual
-    historico_run_life = generar_historico_run_life(df_bd_filtered, fecha_evaluacion)
-
-    with col_table_runlife:
-        if historico_run_life is not None:
-            st.dataframe(historico_run_life, hide_index=True)
-
-    with col_chart_runlife:
-        if historico_run_life is not None and 'ACTIVO' in historico_run_life.columns:
-            # Definir paleta de colores personalizada para los campos (ACTIVO)
-            # Usar la secuencia de colores proporcionada por el usuario
-            color_sequence = get_color_sequence()
-            fig = px.bar(
-                historico_run_life,
-                x='Mes',
-                y='Run Life Promedio',
-                color='ACTIVO',
-                barmode='group',
-                title=styled_title('⭕ Run Life Promedio Mensual por Activo'),
-                labels={'Mes': 'Mes', 'Run Life Promedio': 'Run Life Promedio', 'ACTIVO': 'Campo'},
-                color_discrete_sequence=color_sequence
-            )
-            layout = get_plotly_layout()
-            fig.update_layout(**layout)
-            st.plotly_chart(fig, use_container_width=True)
-        elif historico_run_life is not None:
-            fig = px.bar(
-                historico_run_life,
-                x='Mes',
-                y='Run Life',
-                title=styled_title('Run Life Promedio Mensual'),
-                labels={'Mes': 'Mes', 'Run Life': 'Run Life Promedio'}
-            )
-            fig.update_layout(
-                plot_bgcolor=COLOR_FONDO_OSCURO,
-                paper_bgcolor=COLOR_FONDO_OSCURO,
-                font_color=COLOR_FUENTE,
-                title_font_color=COLOR_PRINCIPAL,
-                xaxis=dict(color=COLOR_FUENTE),
-                yaxis=dict(color=COLOR_PRINCIPAL)
-            )
-            st.plotly_chart(fig, use_container_width=True)
-
-    st.markdown("""
-    <h3 id=\"fallas-mensuales\" style='font-size:1.4rem; font-weight:700; margin-top:1em;'>
-        <span style='color:{COLOR_PRINCIPAL};'>📉 Fallas Mensuales</span>
-    </h3>
-    """, unsafe_allow_html=True)
-    if not st.session_state['reporte_fallas'].empty:
-        min_date_falla = st.session_state['reporte_fallas']['MES'].min().date()
-        max_date_falla = st.session_state['reporte_fallas']['MES'].max().date()
-        start_date_falla, end_date_falla = st.date_input(
-            "Filtra por rango de fecha para las fallas:",
-            [min_date_falla, max_date_falla],
-            key='date_filter_falla'
+    elif historico_run_life is not None:
+        fig = px.bar(
+            historico_run_life,
+            x='Mes',
+            y='Run Life',
+            title=styled_title('Run Life Promedio Mensual'),
+            labels={'Mes': 'Mes', 'Run Life': 'Run Life Promedio'}
         )
-        filtered_fallas = st.session_state['reporte_fallas'][
-            (st.session_state['reporte_fallas']['MES'].dt.date >= start_date_falla) & 
-            (st.session_state['reporte_fallas']['MES'].dt.date <= end_date_falla)
-        ]
-
-        # Enriquecer la tabla con run life a falla y razón de pull
-        detalles_fallas = []
-        for _, row in filtered_fallas.iterrows():
-            mes = row['MES']
-            mask = (df_bd_filtered['FECHA_FALLA'].dt.to_period('M') == mes.to_period('M'))
-            runs_mes = df_bd_filtered[mask]
-            for _, run in runs_mes.iterrows():
-                razon = run.get('RAZON ESPECIFICA PULL', '')
-                clasificacion = clasificar_razon_ia(razon) if razon else ''
-                detalles_fallas.append({
-                    'Mes': mes,
-                    'Pozo': run.get('POZO', ''),
-                    'Fecha Falla': run.get('FECHA_FALLA', ''),
-                    'Run Life a Falla': run.get('RUN LIFE', ''),
-                    'Razón de Pull': razon,
-                    'Clasificación IA': clasificacion
-                })
-        df_detalles_fallas = pd.DataFrame(detalles_fallas)
-
-        # --- Layout 2x2 simétrico ---
-        col1, col2 = st.columns(2)
-        with col1:
-            if not df_detalles_fallas.empty:
-                st.dataframe(df_detalles_fallas, use_container_width=True)
-            else:
-                st.dataframe(filtered_fallas, use_container_width=True)
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.subheader("Sumatoria Total de Fallas en el Rango")
-            st.info(f"Fallas Totales: {len(df_detalles_fallas)}")
-
-        with col2:
-            if not df_detalles_fallas.empty:
-                df_graf = df_detalles_fallas.copy()
-                def clasificar_runlife(rl):
-                    try:
-                        rl = float(rl)
-                    except:
-                        return 'Sin Dato'
-                    if rl <= 30:
-                        return 'Infantil'
-                    elif 30 < rl <= 60:
-                        return 'Prematura'
-                    elif rl <= 1100:
-                        return 'En Garantía'
-                    elif rl > 1100:
-                        return 'Sin Garantía'
-                    return 'Sin Dato'
-                df_graf['Clasificación Run Life'] = df_graf['Run Life a Falla'].apply(clasificar_runlife)
-                conteo = df_graf.groupby(['Clasificación Run Life', 'Clasificación IA']).size().reset_index(name='Cantidad')
-                orden_runlife = ['Infantil', 'Prematura', 'En Garantía', 'Sin Garantía']
-                colores_runlife = {
-                    'Infantil': '#00FF8C',
-                    'Prematura': '#A66EFF',
-                    'En Garantía': '#00BFFF',
-                    'Sin Garantía': '#0b683a'
-                }
-                import plotly.graph_objects as go
-                fig_runlife = go.Figure()
-                for runlife in orden_runlife:
-                    df_cat = conteo[conteo['Clasificación Run Life'] == runlife]
-                    fig_runlife.add_trace(go.Bar(
-                        x=df_cat['Clasificación IA'],
-                        y=df_cat['Cantidad'],
-                        name=runlife,
-                        marker_color=colores_runlife.get(runlife, COLOR_PRINCIPAL)
-                    ))
-                layout = get_plotly_layout()
-                fig_runlife.update_layout(barmode='group', title=styled_title('📉Distribución de Fallas por Run Life y Tipo de Falla IA'), xaxis_title='Tipo de Falla IA', yaxis_title='Cantidad de Fallas', legend_title='Clasificación Run Life')
-                fig_runlife.update_layout(**layout)
-                st.plotly_chart(fig_runlife, use_container_width=True)
-
-        col3, col4 = st.columns(2)
-        with col3:
-            if not df_detalles_fallas.empty:
-                df_graf = df_detalles_fallas.copy()
-                tipo_falla_counts = df_graf['Clasificación IA'].value_counts().reset_index()
-                tipo_falla_counts.columns = ['Tipo de Falla IA', 'Cantidad']
-                import plotly.express as px
-
-                fig_torta = px.pie(
-                    tipo_falla_counts,
-                    names='Tipo de Falla IA',
-                    values='Cantidad',
-                    # Título mejorado con COLOR_PRINCIPAL y efecto brillo
-                    title=styled_title('📉 Distribución de Fallas por Tipo de falla')
-                )
-
-                # 1. Aplicar la paleta de colores y el efecto de separación
-                fig_torta.update_traces(
-                    textinfo='percent+label',
-                    pull=[0.05] * len(tipo_falla_counts),
-                    marker=dict(colors=get_color_sequence())
-                )
-
-                # 2. El layout aplica los colores de fondo y fuente oscuros/brillantes
-                layout = get_plotly_layout()
-                fig_torta.update_layout(**layout)
-
-                st.plotly_chart(fig_torta, use_container_width=True)
-            else:
-                st.info("No hay datos de fallas para mostrar.")
-
-        with col4:
-            if 'ACTIVO' in df_bd_filtered.columns and 'FECHA_FALLA' in df_bd_filtered.columns:
-                df_fallas_periodo = df_bd_filtered[(df_bd_filtered['FECHA_FALLA'].dt.date >= start_date_falla) & (df_bd_filtered['FECHA_FALLA'].dt.date <= end_date_falla)]
-                
-                if not df_fallas_periodo.empty:
-                    fallas_campo = df_fallas_periodo.groupby([df_fallas_periodo['FECHA_FALLA'].dt.to_period('M'), 'ACTIVO']).size().reset_index(name='Fallas')
-                    fallas_campo['MES'] = fallas_campo['FECHA_FALLA'].dt.to_timestamp()
-                    # Título con estilo holográfico
-                    title_html = styled_title('💢Fallas Mensuales por Activo')
-                    
-                    fig_campo = px.bar(
-                        fallas_campo,
-                        x='MES',
-                        y='Fallas',
-                        color='ACTIVO',
-                        barmode='group',
-                        title=title_html,
-                        labels={'MES': 'Mes', 'Fallas': 'Cantidad de Fallas', 'ACTIVO': 'Activo'},
-                        color_discrete_sequence=get_color_sequence() # APLICACIÓN DE LA NUEVA PALETA
-                    )
-                    
-                    # --- APLICACIÓN DEL LAYOUT FUTURISTA/OSCURO ---
-                    # Reemplazamos la actualización manual por la función ya existente para consistencia
-                    layout = get_plotly_layout()
-                    fig_campo.update_layout(**layout)
-                    
-                    # Ajustes específicos para el gráfico de barras (si son necesarios, se mantienen)
-                    fig_campo.update_xaxes(showgrid=True, gridcolor='rgba(0, 255, 153, 0.2)')
-                    fig_campo.update_yaxes(showgrid=True, gridcolor='rgba(0, 255, 153, 0.2)')
-                    
-                    st.plotly_chart(fig_campo, use_container_width=True)
-            
-    else:
-        st.info("No hay datos de fallas para mostrar.")
-
-    st.markdown("---")
-    st.markdown(f"""
-    <h3 id="listado-de-pozos-fallados" style='font-size:1.4rem; font-weight:700; margin-top:1em;'>
-        <span style='color:{COLOR_PRINCIPAL};'>📜 Listado de Pozos Fallados</span>
-    </h3>
-    """, unsafe_allow_html=True)
-
-    pozos_fallados_df = df_bd_filtered[
-        (df_bd_filtered['FECHA_FALLA'].dt.date >= fecha_evaluacion - timedelta(days=365)) &
-        (df_bd_filtered['FECHA_FALLA'].dt.date <= fecha_evaluacion)
+        # Usar layout del theme para respetar la detección de Streamlit
+        layout = get_plotly_layout()
+        # forzar color de título con acento
+        layout.update({'title_font_color': COLOR_PRINCIPAL})
+        fig.update_layout(**layout)
+        st.plotly_chart(fig, use_container_width=True)
+st.markdown("""
+<h3 id="fallas-mensuales" style='font-size:1.4rem; font-weight:700; margin-top:1em;'>
+    <span style='color:{COLOR_PRINCIPAL};'>📉 Fallas Mensuales</span>
+</h3>
+""", unsafe_allow_html=True)
+if not st.session_state['reporte_fallas'].empty:
+    min_date_falla = st.session_state['reporte_fallas']['MES'].min().date()
+    max_date_falla = st.session_state['reporte_fallas']['MES'].max().date()
+    start_date_falla, end_date_falla = st.date_input(
+        "Filtra por rango de fecha para las fallas:",
+        [min_date_falla, max_date_falla],
+        key='date_filter_falla'
+    )
+    filtered_fallas = st.session_state['reporte_fallas'][
+        (st.session_state['reporte_fallas']['MES'].dt.date >= start_date_falla) & 
+        (st.session_state['reporte_fallas']['MES'].dt.date <= end_date_falla)
     ]
+    # Enriquecer la tabla con run life a falla y razón de pull
+    detalles_fallas = []
+    for _, row in filtered_fallas.iterrows():
+        mes = row['MES']
+        mask = (df_bd_filtered['FECHA_FALLA'].dt.to_period('M') == mes.to_period('M'))
+        runs_mes = df_bd_filtered[mask]
+        for _, run in runs_mes.iterrows():
+            razon = run.get('RAZON ESPECIFICA PULL', '')
+            clasificacion = clasificar_razon_ia(razon) if razon else ''
+            detalles_fallas.append({
+                'Mes': mes,
+                'Pozo': run.get('POZO', ''),
+                'Fecha Falla': run.get('FECHA_FALLA', ''),
+                'Run Life a Falla': run.get('RUN LIFE', ''),
+                'Razón de Pull': razon,
+                'Clasificación IA': clasificacion
+            })
+    df_detalles_fallas = pd.DataFrame(detalles_fallas)
+    # --- Layout 2x2 simétrico ---
+    col1, col2 = st.columns(2)
+    with col1:
+        if not df_detalles_fallas.empty:
+            st.dataframe(df_detalles_fallas, use_container_width=True)
+        else:
+            st.dataframe(filtered_fallas, use_container_width=True)
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.subheader("Sumatoria Total de Fallas en el Rango")
+        st.info(f"Fallas Totales: {len(df_detalles_fallas)}")
 
-    if not pozos_fallados_df.empty:
-        fallas_por_pozo = pozos_fallados_df.groupby('POZO')['RUN'].count().reset_index()
-        fallas_por_pozo.rename(columns={'RUN': 'Cantidad de Fallas'}, inplace=True)
-        fallas_por_pozo.sort_values(by='Cantidad de Fallas', ascending=False, inplace=True)
-        
-        col_listado, col_severidad = st.columns([0.5, 0.5])
-        
-        with col_listado:
-            st.dataframe(
-                fallas_por_pozo.style.apply(highlight_problema, axis=1),
-                hide_index=True
+    with col2:
+        if not df_detalles_fallas.empty:
+            df_graf = df_detalles_fallas.copy()
+            def clasificar_runlife(rl):
+                try:
+                    rl = float(rl)
+                except:
+                    return 'Sin Dato'
+                if rl <= 30:
+                    return 'Infantil'
+                elif 30 < rl <= 60:
+                    return 'Prematura'
+                elif rl <= 1100:
+                    return 'En Garantía'
+                elif rl > 1100:
+                    return 'Sin Garantía'
+                return 'Sin Dato'
+            df_graf['Clasificación Run Life'] = df_graf['Run Life a Falla'].apply(clasificar_runlife)
+            conteo = df_graf.groupby(['Clasificación Run Life', 'Clasificación IA']).size().reset_index(name='Cantidad')
+            orden_runlife = ['Infantil', 'Prematura', 'En Garantía', 'Sin Garantía']
+            colores_runlife = {
+                'Infantil': '#0051FF',
+                'Prematura': '#5EFF00',
+                'En Garantía': '#0011D1',
+                'Sin Garantía': '#4B0073'
+            }
+            import plotly.graph_objects as go
+            fig_runlife = go.Figure()
+            for runlife in orden_runlife:
+                df_cat = conteo[conteo['Clasificación Run Life'] == runlife]
+                fig_runlife.add_trace(go.Bar(
+                    x=df_cat['Clasificación IA'],
+                    y=df_cat['Cantidad'],
+                    name=runlife,
+                    marker_color=colores_runlife.get(runlife, COLOR_PRINCIPAL)
+                ))
+            layout = get_plotly_layout()
+            fig_runlife.update_layout(barmode='group', title=styled_title('📉Distribución de Fallas por Run Life y Tipo de Falla IA'), xaxis_title='Tipo de Falla IA', yaxis_title='Cantidad de Fallas', legend_title='Clasificación Run Life')
+            fig_runlife.update_layout(**layout)
+            st.plotly_chart(fig_runlife, use_container_width=True)
+
+    col3, col4 = st.columns(2)
+    with col3:
+        if not df_detalles_fallas.empty:
+            df_graf = df_detalles_fallas.copy()
+            tipo_falla_counts = df_graf['Clasificación IA'].value_counts().reset_index()
+            tipo_falla_counts.columns = ['Tipo de Falla IA', 'Cantidad']
+            import plotly.express as px
+
+            fig_torta = px.pie(
+                tipo_falla_counts,
+                names='Tipo de Falla IA',
+                values='Cantidad',
+                # Título mejorado con COLOR_PRINCIPAL y efecto brillo
+                title=styled_title('📉 Distribución de Fallas por Tipo de falla')
             )
-        
-        with col_severidad:
-            total_fallas_severidad = fallas_por_pozo['Cantidad de Fallas'].sum()
-            num_pozos_fallados = fallas_por_pozo.shape[0]
-            indice_severidad = (total_fallas_severidad / num_pozos_fallados) if num_pozos_fallados > 0 else 0;
+            # 1. Aplicar la paleta de colores y el efecto de separación
+            fig_torta.update_traces(
+                textinfo='percent+label',
+                pull=[0.05] * len(tipo_falla_counts),
+                marker=dict(colors=get_color_sequence())
+            )
+            # 2. El layout aplica los colores de fondo y fuente oscuros/brillantes
+            layout = get_plotly_layout()
+            fig_torta.update_layout(**layout)
+
+            st.plotly_chart(fig_torta, use_container_width=True)
+        else:
+            st.info("No hay datos de fallas para mostrar.")
+
+    with col4:
+        if 'ACTIVO' in df_bd_filtered.columns and 'FECHA_FALLA' in df_bd_filtered.columns:
+            df_fallas_periodo = df_bd_filtered[(df_bd_filtered['FECHA_FALLA'].dt.date >= start_date_falla) & (df_bd_filtered['FECHA_FALLA'].dt.date <= end_date_falla)]
             
-            st.metric(label="Índice de Severidad", value=f"{indice_severidad:.2f}")
+            if not df_fallas_periodo.empty:
+                fallas_campo = df_fallas_periodo.groupby([df_fallas_periodo['FECHA_FALLA'].dt.to_period('M'), 'ACTIVO']).size().reset_index(name='Fallas')
+                fallas_campo['MES'] = fallas_campo['FECHA_FALLA'].dt.to_timestamp()
+                # Título con estilo holográfico
+                title_html = styled_title('💢Fallas Mensuales por Activo')
+                
+                fig_campo = px.bar(
+                    fallas_campo,
+                    x='MES',
+                    y='Fallas',
+                    color='ACTIVO',
+                    barmode='group',
+                    title=title_html,
+                    labels={'MES': 'Mes', 'Fallas': 'Cantidad de Fallas', 'ACTIVO': 'Activo'},
+                    color_discrete_sequence=get_color_sequence() # APLICACIÓN DE LA NUEVA PALETA
+                )
+                # --- APLICACIÓN DEL LAYOUT FUTURISTA/OSCURO ---
+                # Reemplazamos la actualización manual por la función ya existente para consistencia
+                layout = get_plotly_layout()
+                fig_campo.update_layout(**layout)
+                
+                # Ajustes específicos para el gráfico de barras (si son necesarios, se mantienen)
+                fig_campo.update_xaxes(showgrid=True, gridcolor='rgba(0, 255, 153, 0.2)')
+                fig_campo.update_yaxes(showgrid=True, gridcolor='rgba(0, 255, 153, 0.2)')
+                
+                st.plotly_chart(fig_campo, use_container_width=True)
+else:
+    st.info("No hay datos de fallas para mostrar.")
 
-            # Sección de pozos problema
-            st.markdown("---")
-            st.markdown("<span style='font-size:1.1rem; color:{COLOR_PRINCIPAL}; font-weight:700;'>Pozos Problema</span>", unsafe_allow_html=True)
-            pozos_problema = fallas_por_pozo[fallas_por_pozo['Cantidad de Fallas'] > 1]
+st.markdown("---")
+st.markdown(f"""
+<h3 id="listado-de-pozos-fallados" style='font-size:1.4rem; font-weight:700; margin-top:1em;'>
+    <span style='color:{COLOR_PRINCIPAL};'>📜 Listado de Pozos Fallados</span>
+</h3>
+""", unsafe_allow_html=True)
 
-            if not pozos_problema.empty:
-                st.markdown("Los siguientes pozos tienen más de una falla en el último año:")
-                # Traer razón específica de pull y clasificarla
-                for index, row in pozos_problema.iterrows():
-                    # Buscar razones en df_bd_filtered para ese pozo
-                    # Filtrar solo razones del último año respecto a la fecha de evaluación
-                    if 'RAZON ESPECIFICA PULL' in df_bd_filtered.columns and 'FECHA_FALLA' in df_bd_filtered.columns:
-                        mask = (
-                            (df_bd_filtered['POZO'] == row['POZO']) &
-                            (df_bd_filtered['FECHA_FALLA'].dt.date >= fecha_evaluacion - timedelta(days=365)) &
-                            (df_bd_filtered['FECHA_FALLA'].dt.date <= fecha_evaluacion)
-                        )
-                        razones = df_bd_filtered.loc[mask, 'RAZON ESPECIFICA PULL'].dropna().tolist()
+pozos_fallados_df = df_bd_filtered[
+    (df_bd_filtered['FECHA_FALLA'].dt.date >= fecha_evaluacion - timedelta(days=365)) &
+    (df_bd_filtered['FECHA_FALLA'].dt.date <= fecha_evaluacion)
+]
+
+if not pozos_fallados_df.empty:
+    fallas_por_pozo = pozos_fallados_df.groupby('POZO')['RUN'].count().reset_index()
+    fallas_por_pozo.rename(columns={'RUN': 'Cantidad de Fallas'}, inplace=True)
+    fallas_por_pozo.sort_values(by='Cantidad de Fallas', ascending=False, inplace=True)
+    
+    col_listado, col_severidad = st.columns([0.5, 0.5])
+    
+    with col_listado:
+        st.dataframe(
+            fallas_por_pozo.style.apply(highlight_problema, axis=1),
+            hide_index=True
+        )
+    
+    with col_severidad:
+        total_fallas_severidad = fallas_por_pozo['Cantidad de Fallas'].sum()
+        num_pozos_fallados = fallas_por_pozo.shape[0]
+        indice_severidad = (total_fallas_severidad / num_pozos_fallados) if num_pozos_fallados > 0 else 0;
+        
+        st.metric(label="Índice de Severidad", value=f"{indice_severidad:.2f}")
+        # Sección de pozos problema
+        st.markdown("---")
+        st.markdown("<span style='font-size:1.1rem; color:{COLOR_PRINCIPAL}; font-weight:700;'>Pozos Problema</span>", unsafe_allow_html=True)
+        pozos_problema = fallas_por_pozo[fallas_por_pozo['Cantidad de Fallas'] > 1]
+
+        if not pozos_problema.empty:
+            st.markdown("Los siguientes pozos tienen más de una falla en el último año:")
+            # Traer razón específica de pull y clasificarla
+            for index, row in pozos_problema.iterrows():
+                # Buscar razones en df_bd_filtered para ese pozo
+                # Filtrar solo razones del último año respecto a la fecha de evaluación
+                if 'RAZON ESPECIFICA PULL' in df_bd_filtered.columns and 'FECHA_FALLA' in df_bd_filtered.columns:
+                    mask = (
+                        (df_bd_filtered['POZO'] == row['POZO']) &
+                        (df_bd_filtered['FECHA_FALLA'].dt.date >= fecha_evaluacion - timedelta(days=365)) &
+                        (df_bd_filtered['FECHA_FALLA'].dt.date <= fecha_evaluacion)
+                    )
+                    razones = df_bd_filtered.loc[mask, 'RAZON ESPECIFICA PULL'].dropna().tolist()
+                else:
+                    razones = []
+                with st.expander(f"{row['POZO']} ({row['Cantidad de Fallas']} fallas)", expanded=False):
+                    text_color = COLOR_FUENTE if COLOR_FONDO_OSCURO else 'inherit'
+                    if len(razones) == 0:
+                        st.markdown(f"<span style='color: {text_color};'>No hay razones disponibles</span>", unsafe_allow_html=True)
                     else:
-                        razones = []
-                    with st.expander(f"{row['POZO']} ({row['Cantidad de Fallas']} fallas)", expanded=False):
-                        if len(razones) == 0:
-                            st.markdown("<span style='color: #FFFFFF;'>No hay razones disponibles</span>", unsafe_allow_html=True)
-                        else:
-                            for i, razon in enumerate(razones, 1):
-                                clasificacion = clasificar_razon_ia(razon)
-                                st.markdown(f"<span style='color: #FFFFFF;'>* Falla {i} Razón: {razon} | Clasificación IA: <b style='color:{COLOR_PRINCIPAL}'>{clasificacion}</b></span>", unsafe_allow_html=True)
-            else:
-                st.info("¡No hay pozos con más de una falla en el último año!")
+                        for i, razon in enumerate(razones, 1):
+                            clasificacion = clasificar_razon_ia(razon)
+                            st.markdown(f"<span style='color: {text_color};'>* Falla {i} Razón: {razon} | Clasificación IA: <b style='color:{COLOR_PRINCIPAL}'>{clasificacion}</b></span>", unsafe_allow_html=True)
+        else:
+            st.info("¡No hay pozos con más de una falla en el último año!")
 
+else:
+    st.info(f"No hay pozos fallados en el último año para el activo '{selected_activo}' en la fecha de evaluación seleccionada.")
 
-    else:
-        st.info(f"No hay pozos fallados en el último año para el activo '{selected_activo}' en la fecha de evaluación seleccionada.")
-
-
-    st.markdown("---")
+st.markdown("---")
 # Mostrar la sección de "Índices de Falla" sólo si ya se cargaron y calcularon los datos
 if st.session_state.get('df_bd_calculated') is not None and st.session_state.get('df_forma9_calculated') is not None:
     # Recrear los dataframes filtrados a partir del cálculo almacenado en session_state
@@ -1976,14 +2080,11 @@ if st.session_state.get('df_bd_calculated') is not None and st.session_state.get
                 df_forma9_filtered,
                 fecha_evaluacion
             )
-
             # Tabla de resumen ocupa todo el ancho arriba
             st.markdown(f"<span style='font-size:1.2rem; color:{COLOR_PRINCIPAL}; font-weight:700;'>Resumen de Índices para {selected_activo} (Rolling 12 Meses)</span>", unsafe_allow_html=True)
             st.dataframe(indice_resumen_df, hide_index=True)
-
             # Preparar datos para ambas gráficas
             df_plot_indices = df_mensual_hist.copy()
-
             # --- CAMBIO CLAVE: Usar las columnas ROLLING ---
             df_plot_indices_melted = df_plot_indices.melt(
                 id_vars=['Mes'],
@@ -1991,9 +2092,8 @@ if st.session_state.get('df_bd_calculated') is not None and st.session_state.get
                 var_name='Indicador',
                 value_name='Índice'
             )
-
             # Debajo, dos columnas: izquierda (línea pequeña), derecha (barras mensual)
-            col_hist_line, col_bar_mes = st.columns([0.4, 0.6])
+            col_hist_line, col_bar_mes = st.columns([0.5, 0.5])
             with col_hist_line:
                 fig_line = px.line(
                     df_plot_indices_melted,
@@ -2005,16 +2105,15 @@ if st.session_state.get('df_bd_calculated') is not None and st.session_state.get
                     labels={'Mes': 'Mes', 'Índice': 'Valor del Índice'},
                     color_discrete_sequence=color_sequence
                 )
-                fig_line.update_layout(
-                    xaxis={'categoryorder':'category ascending'},
-                    height=220,
-                    legend=dict(font=dict(size=10)),
-                    margin=dict(l=10, r=10, t=40, b=10),
-                    plot_bgcolor=COLOR_FONDO_OSCURO,
-                    paper_bgcolor=COLOR_FONDO_OSCURO,
-                    font_color=COLOR_FUENTE,
-                    title_font_color=COLOR_PRINCIPAL
-                )
+                layout = get_plotly_layout()
+                # No sobrescribir 'legend' por completo (evita eliminar bgcolor transparente)
+                layout.update({'xaxis': {'categoryorder':'category ascending'}, 'height':220, 'margin':dict(l=10, r=10, t=40, b=10)})
+                # Ajustar el tamaño de fuente de la leyenda sin perder bgcolor/border
+                layout.setdefault('legend', {})
+                layout['legend'].setdefault('font', {})
+                layout['legend']['font']['size'] = 10
+                layout.update({'title_font_color': COLOR_PRINCIPAL})
+                fig_line.update_layout(**layout)
                 fig_line.update_yaxes(tickformat='.2%')
                 st.plotly_chart(fig_line, use_container_width=True)
 
@@ -2029,16 +2128,13 @@ if st.session_state.get('df_bd_calculated') is not None and st.session_state.get
                     labels={'Mes': 'Mes', 'Índice': 'Valor del Índice'},
                     color_discrete_sequence=color_sequence
                 )
-                fig_bar.update_layout(
-                    xaxis={'categoryorder':'category ascending'},
-                    height=220,
-                    legend=dict(font=dict(size=10)),
-                    margin=dict(l=10, r=10, t=40, b=10),
-                    plot_bgcolor=COLOR_FONDO_OSCURO,
-                    paper_bgcolor=COLOR_FONDO_OSCURO,
-                    font_color=COLOR_FUENTE,
-                    title_font_color=COLOR_PRINCIPAL
-                )
+                layout = get_plotly_layout()
+                layout.update({'xaxis': {'categoryorder':'category ascending'}, 'height':220, 'margin':dict(l=10, r=10, t=40, b=10)})
+                layout.setdefault('legend', {})
+                layout['legend'].setdefault('font', {})
+                layout['legend']['font']['size'] = 10
+                layout.update({'title_font_color': COLOR_PRINCIPAL})
+                fig_bar.update_layout(**layout)
                 fig_bar.update_yaxes(tickformat='.2%')
                 st.plotly_chart(fig_bar, use_container_width=True)
 
@@ -2069,18 +2165,14 @@ if st.session_state.get('df_bd_calculated') is not None and st.session_state.get
                     labels={'Mes': 'Mes', 'Conteo': 'Conteo de Pozos'},
                     color_discrete_sequence=color_sequence
                 )
-                fig.update_layout(xaxis={'categoryorder':'category ascending'})
-                fig.update_layout(
-                    plot_bgcolor=COLOR_FONDO_OSCURO,
-                    paper_bgcolor=COLOR_FONDO_OSCURO,
-                    font_color=COLOR_FUENTE,
-                    title_font_color=COLOR_PRINCIPAL
-                )
+                layout = get_plotly_layout()
+                layout.update({'xaxis': {'categoryorder':'category ascending'}})
+                layout.update({'title_font_color': COLOR_PRINCIPAL})
+                fig.update_layout(**layout)
                 st.plotly_chart(fig, use_container_width=True)
 
         except Exception as e:
             st.error(f"Ocurrió un error al calcular los índices de falla. Asegúrate de que los datos filtrados contengan la información necesaria: {e}")
-
     # Mostrar MTBF después del índice de falla
     st.markdown("""
     <h3 id="mtbf" style='font-size:1.4rem; font-weight:700; margin-top:1em;'>
@@ -2099,8 +2191,6 @@ if st.session_state.get('df_bd_calculated') is not None and st.session_state.get
     </h3>
     """, unsafe_allow_html=True)
     st.dataframe(df_bd_filtered)
-
-
     # --- Exportar Excel con tablas y gráficas usando descargar.py ---
     from descargar import exportar_excel_con_graficas
     tablas = {
@@ -2113,7 +2203,6 @@ if st.session_state.get('df_bd_calculated') is not None and st.session_state.get
         tablas['INDICE_FALLA_ANUAL'] = indice_resumen_df
     if 'df_mensual_hist' in locals():
         tablas['HISTORICO_INDICES'] = df_mensual_hist
-
     # Gráficas: ejemplo con plotly, convertir a matplotlib
     import matplotlib.pyplot as plt
     graficas = {}
@@ -2133,8 +2222,6 @@ if st.session_state.get('df_bd_calculated') is not None and st.session_state.get
             file_name="Reporte_Indicadores_ALS.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-
-
 # ----------------- Gráfico Resumen Anual (añadido por grafico.py) -----------------
     try:
         # Import local para no romper el flujo si el archivo no existe
@@ -2158,7 +2245,6 @@ if st.session_state.get('df_bd_calculated') is not None and st.session_state.get
 
     except Exception as e:
         st.warning(f"No se pudo generar el gráfico resumen: {e}")
-
 
 
 
