@@ -1,15 +1,16 @@
 import pandas as pd
 import numpy as np
-import theme as _theme_mod
+from theme import get_colors, get_plotly_layout
 
-COLOR_PRINCIPAL = getattr(_theme_mod, 'COLOR_PRINCIPAL', '#00ff99')
-COLOR_FONDO_OSCURO = getattr(_theme_mod, 'COLOR_FONDO_OSCURO', '#1a1a2e')
-get_color_sequence = getattr(_theme_mod, 'get_color_sequence', lambda mode=None: [COLOR_PRINCIPAL, '#00cfff', '#FFDE31', '#5AFFDA'])
-get_plotly_layout = getattr(_theme_mod, 'get_plotly_layout', lambda xa=None, ya=None, mode=None: {
-    'plot_bgcolor': COLOR_FONDO_OSCURO,
-    'paper_bgcolor': COLOR_FONDO_OSCURO,
-    'font_color': getattr(_theme_mod, 'COLOR_FUENTE', '#FFFFFF')
-})
+_colors = get_colors()
+COLOR_PRINCIPAL = _colors.get('primary', '#00ff99')
+_bg_raw = _colors.get('background', None)
+if isinstance(_bg_raw, str) and _bg_raw.strip().lower() in ('#ffffff', 'white'):
+    COLOR_FONDO_OSCURO = None
+else:
+    COLOR_FONDO_OSCURO = _bg_raw or '#1a1a2e'
+get_color_sequence = _colors.get('color_sequence', lambda mode=None: [COLOR_PRINCIPAL, '#00cfff', '#FFDE31', '#5AFFDA'])
+get_plotly_layout = get_plotly_layout
 from datetime import timedelta
 
 def calcular_indice_falla_anual(df_bd, df_forma9, fecha_evaluacion):
