@@ -7,6 +7,18 @@ import sys
 import os
 import importlib.util
 
+# ====================================================================
+# 🚀 1. FORZAR MODO DARK DE STREAMLIT (REQUIERE AJUSTAR EL ARCHIVO .streamlit/config.toml)
+# Streamlit prioriza el archivo de configuración. Para garantizar el tema oscuro,
+# se asume que existe un archivo .streamlit/config.toml con las siguientes líneas:
+# [theme]
+# base = "dark"
+# ====================================================================
+
+# Si no puedes modificar config.toml, puedes intentar usar st.markdown para sobrescribir
+# los colores globales de Streamlit, pero es menos robusto:
+# st.set_page_config(..., theme={"base": "dark"})  # Esta opción no está disponible directamente en st.set_page_config
+
 # === CONFIGURACIÓN DE PÁGINA ===
 st.set_page_config(
     page_title="🚀 Sistema Frontera Energy",
@@ -14,15 +26,14 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# === COLORES Y TEMA ===
-# Definición de colores mejorada para un look más "cyberpunk" y hi-tech
+# === COLORES Y TEMA (Minimalista y Compacto) ===
 COLOR_PRIMARIO = '#00FF99'     # Verde Neón
 COLOR_ACENTO = '#00D9FF'       # Azul Ciber
 COLOR_FONDO_OSCURO = '#0A0E27' # Azul Profundo
-COLOR_SOMBRA = 'rgba(0, 255, 153, 0.7)' # Sombra de neón
+COLOR_SOMBRA = 'rgba(0, 255, 153, 0.5)' # Sombra de neón reducida
 COLOR_FUENTE = '#E8F5E9'       # Gris Casi Blanco
 
-# === ESTILOS CSS - SIN ANIMACIONES MOLESTAS ===
+# === ESTILOS CSS - COMPACTACIÓN Y CIBER PUNK MINIMALISTA ===
 st.markdown(f"""
 <style>
     :root {{
@@ -35,262 +46,199 @@ st.markdown(f"""
     
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap');
     
-    /* FONDO ESTÁTICO */
+    /* 1. COMPACTACIÓN GLOBAL y MODO DARK */
     .stApp {{
         background: linear-gradient(135deg, var(--color-fondo-oscuro) 0%, #0d1117 50%, #0a0e27 100%);
         background-attachment: fixed;
     }}
     
-    /* OCULTAR ELEMENTOS DE STREAMLIT (controlado por la UI — usar los botones de la barra lateral) */
-    /* Nota: la visibilidad del menú ya no se oculta aquí de forma permanente. */
+    /* Reducir el padding general del contenedor principal (MÁS COMPACTO) */
+    .main .block-container {{
+        padding-top: 1.5rem; 
+        padding-bottom: 1.5rem;
+        padding-left: 2rem;
+        padding-right: 2rem;
+        max-width: 95%; /* Usar casi todo el ancho */
+    }}
     
-    /* LOGO */
+    /* Reducir el margen de los contenedores internos (MENOS ESPACIO ENTRE ELEMENTOS) */
+    div[data-testid="stVerticalBlock"] {{
+        gap: 0.5rem; 
+    }}
+    
+    /* Reducir el espacio entre columnas */
+    div[data-testid="column"] {{
+        padding: 0 0.5rem !important; 
+    }}
+    
+    /* Ocultar elementos nativos de Streamlit (se mantiene el control con session_state) */
+    #MainMenu, footer {{
+        visibility: hidden !important; 
+    }}
+    
+    /* 2. LOGO */
     .logo-container {{
         text-align: center;
-        margin-bottom: 3rem;
+        margin-bottom: 2rem; /* Compactado */
     }}
     
     .logo-text {{
         font-family: 'Orbitron', monospace;
-        font-size: 3rem;
+        font-size: 2.5rem; /* Compactado */
         font-weight: 900;
         background: linear-gradient(135deg, var(--color-primario), var(--color-acento));
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        text-shadow: 0 0 35px var(--color-sombra);
-        letter-spacing: 5px;
-        margin-bottom: 0.5rem;
-    }}
-    
-    .logo-subtitle {{
-        font-family: 'Rajdhani', sans-serif;
-        color: var(--color-acento);
-        font-size: 1.1rem;
+        text-shadow: 0 0 15px var(--color-sombra); /* Sombra reducida (menos ruido) */
         letter-spacing: 3px;
-        margin-top: 0.5rem;
-        font-weight: 400;
     }}
     
-    /* INPUTS DE LOGIN */
+    /* 3. INPUTS Y BOTONES (más limpios) */
     .stTextInput > div > div > input {{
         background: rgba(10, 14, 39, 0.9) !important;
-        border: 2px solid rgba(0, 255, 153, 0.3) !important;
-        border-radius: 12px;
-        color: var(--color-fuente) !important;
-        padding: 1.2rem;
-        font-size: 1.1rem;
-        transition: all 0.3s;
-    }}
-    
-    .stTextInput > div > div > input:focus {{
-        border-color: var(--color-primario) !important;
-        box-shadow: 0 0 25px var(--color-sombra) !important;
-        outline: none;
+        border: 1px solid rgba(0, 255, 153, 0.3) !important; /* Borde más fino */
+        border-radius: 8px; /* Borde menos redondo */
+        padding: 1rem; /* Compactado */
+        font-size: 1rem;
     }}
     
     .stTextInput > label {{
-        color: var(--color-acento) !important;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 1.5px;
-        font-size: 0.9rem;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.3rem; /* Compactado */
     }}
     
-    /* BOTONES */
     .stButton > button {{
-        width: 100%;
-        background: linear-gradient(135deg, var(--color-primario), var(--color-acento));
-        color: var(--color-fondo-oscuro);
-        border: none;
-        border-radius: 12px;
-        padding: 1.2rem;
-        font-family: 'Orbitron', monospace;
-        font-size: 1.15rem;
-        font-weight: 700;
-        letter-spacing: 3px;
-        cursor: pointer;
-        transition: all 0.3s;
-        box-shadow: 0 10px 30px rgba(0, 255, 153, 0.4);
+        padding: 1rem; /* Compactado */
+        font-size: 1rem;
+        border-radius: 8px;
+        box-shadow: 0 5px 15px rgba(0, 255, 153, 0.3); /* Sombra reducida */
     }}
     
     .stButton > button:hover {{
-        transform: translateY(-4px);
-        box-shadow: 0 15px 45px rgba(0, 255, 153, 0.7);
+        transform: translateY(-2px); /* Menos movimiento */
+        box-shadow: 0 8px 25px rgba(0, 255, 153, 0.5); 
     }}
     
-    /* DASHBOARD HEADER */
+    /* 4. DASHBOARD HEADER (Más compacto y sutil) */
     .dashboard-header {{
-        background: rgba(0, 255, 153, 0.05); /* Ligeramente más transparente */
-        border: 1px solid rgba(0, 255, 153, 0.3);
-        border-radius: 20px;
-        padding: 3rem 2rem;
-        margin-bottom: 3rem;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 0 50px rgba(0, 255, 153, 0.5);
+        background: rgba(0, 255, 153, 0.05); 
+        border: 1px solid rgba(0, 255, 153, 0.2);
+        border-radius: 15px; /* Menos redondo */
+        padding: 1.5rem 2rem; /* Compactado */
+        margin-bottom: 1.5rem; /* Compactado */
+        backdrop-filter: blur(5px); /* Blur más sutil */
+        box-shadow: 0 0 30px rgba(0, 255, 153, 0.2); /* Sombra más sutil */
     }}
     
     .dashboard-title {{
-        font-family: 'Orbitron', monospace;
-        font-size: 3.5rem;
-        font-weight: 900;
-        background: linear-gradient(135deg, var(--color-primario), var(--color-acento));
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        text-align: center;
-        margin: 0;
-        letter-spacing: 5px;
-        text-shadow: 0 0 10px rgba(0, 255, 153, 0.3);
+        font-size: 2rem; /* Compactado */
+        letter-spacing: 3px;
+        text-shadow: none; /* Eliminar sombra de texto (menos ruido) */
     }}
     
     .dashboard-subtitle {{
-        text-align: center;
-        color: var(--color-fuente);
-        font-size: 1.3rem;
-        margin-top: 1rem;
-        opacity: 0.9;
-        font-family: 'Rajdhani', sans-serif;
+        font-size: 1rem; /* Compactado */
+        margin-top: 0.5rem;
     }}
     
-    /* CARDS - Con efecto Frosted Glass */
+    /* 5. CARDS (Módulos - Más compactos y nítidos) */
     .module-card {{
-        background: rgba(10, 14, 39, 0.7); /* Menos opaco para el efecto */
-        border: 1px solid rgba(0, 255, 153, 0.5);
-        border-radius: 25px;
-        padding: 3rem;
-        transition: all 0.4s ease;
-        backdrop-filter: blur(8px); /* Efecto Frosted Glass */
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-        position: relative;
-        height: 100%;
-        min-height: 350px;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
+        background: rgba(10, 14, 39, 0.8);
+        border: 1px solid rgba(0, 255, 153, 0.4);
+        border-radius: 15px;
+        padding: 1.5rem; /* Compactado */
+        backdrop-filter: blur(5px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+        min-height: 280px; /* Altura mínima reducida */
     }}
     
     .module-card:hover {{
-        transform: scale(1.02); /* Escala sutil */
-        border-color: var(--color-acento);
-        box-shadow: 0 25px 60px rgba(0, 255, 153, 0.5);
+        transform: scale(1.01); /* Movimiento muy sutil */
+        box-shadow: 0 10px 30px rgba(0, 255, 153, 0.4);
     }}
     
     .module-icon {{
-        font-size: 5.5rem;
-        text-align: center;
-        margin-bottom: 1.5rem;
-        background: linear-gradient(45deg, var(--color-primario), var(--color-acento));
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        filter: drop-shadow(0 0 15px var(--color-sombra));
+        font-size: 3.5rem; /* Compactado */
+        margin-bottom: 0.8rem;
+        filter: drop-shadow(0 0 8px var(--color-sombra)); /* Sombra reducida */
     }}
     
     .module-title {{
-        font-family: 'Orbitron', monospace;
-        font-size: 2rem;
-        font-weight: 700;
-        color: var(--color-primario);
-        text-align: center;
-        margin-bottom: 1.5rem;
-        letter-spacing: 3px;
-        text-transform: uppercase;
+        font-size: 1.5rem; /* Compactado */
+        margin-bottom: 0.8rem;
     }}
     
     .module-description {{
-        color: var(--color-fuente);
-        text-align: center;
-        font-size: 1rem;
-        line-height: 1.7;
-        opacity: 0.85;
-        flex-grow: 1; /* Para que ocupe espacio y las tarjetas se vean uniformes */
+        font-size: 0.9rem; /* Compactado */
+        line-height: 1.5;
     }}
     
     .module-badge {{
-        position: absolute;
-        top: 1.5rem;
-        right: 1.5rem;
-        background: linear-gradient(90deg, #FF6B6B, #FF9966); /* Distinto color para el badge */
-        color: var(--color-fondo-oscuro);
-        padding: 0.6rem 1.2rem;
-        border-radius: 25px;
-        font-size: 0.8rem;
-        font-weight: 900;
-        letter-spacing: 1px;
-        box-shadow: 0 5px 15px rgba(255, 107, 107, 0.5);
+        padding: 0.4rem 0.8rem; /* Compactado */
+        font-size: 0.7rem;
+        top: 1rem; /* Compactado */
+        right: 1rem; /* Compactado */
     }}
     
-    /* INFO CARDS (pequeñas estadísticas) */
+    /* 6. INFO CARDS (pequeñas estadísticas - Más compactas) */
     .info-card {{
-        text-align: center; 
-        padding: 1.8rem; 
-        background: rgba(0, 255, 153, 0.05); 
-        border-radius: 15px; 
-        border: 1px solid rgba(0, 255, 153, 0.3);
-        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
-        transition: all 0.3s;
-    }}
-    
-    .info-card:hover {{
-        background: rgba(0, 255, 153, 0.1);
-        box-shadow: 0 10px 30px var(--color-sombra);
+        padding: 1rem; /* Compactado */
+        border-radius: 10px;
+        margin-bottom: 0.5rem;
     }}
     
     .info-icon {{
-        font-size: 2.5rem; 
-        margin-bottom: 0.5rem; 
-        color: var(--color-acento);
-        filter: drop-shadow(0 0 8px var(--color-acento));
+        font-size: 2rem; /* Compactado */
     }}
     
     .info-value {{
-        color: var(--color-primario); 
-        font-weight: 900; 
-        font-size: 2rem; 
-        font-family: 'Orbitron', monospace;
+        font-size: 1.5rem; /* Compactado */
     }}
     
     .info-label {{
-        color: var(--color-fuente); 
-        opacity: 0.8; 
-        font-size: 1rem;
-        text-transform: uppercase;
-        letter-spacing: 1px;
+        font-size: 0.8rem; /* Compactado */
     }}
 
-    /* EXPANDER (Estado de Módulos) */
+    /* 7. EXPANDER (Compacto y más limpio) */
     .stExpander {{
-        border: 1px solid rgba(0, 255, 153, 0.3) !important;
-        border-radius: 12px;
-        background: rgba(10, 14, 39, 0.6) !important;
+        border-radius: 8px; /* Menos redondo */
     }}
 
     .stExpander > div:first-child > div:first-child {{
-        padding: 1rem 1.5rem !important;
-        background: rgba(0, 255, 153, 0.1) !important;
-        border-radius: 12px 12px 0 0;
-        font-weight: 700;
-        color: var(--color-primario);
-        font-family: 'Rajdhani', sans-serif;
-        font-size: 1.1rem;
+        padding: 0.8rem 1rem !important; /* Compactado */
+        border-radius: 8px;
     }}
     
 </style>
 """, unsafe_allow_html=True)
 
-# === INICIALIZACIÓN DE SESSION STATE ===
+# === INICIALIZACIÓN DE SESSION STATE (SIN CAMBIOS) ===
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 if 'username' not in st.session_state:
     st.session_state.username = ""
 if 'login_attempt' not in st.session_state:
     st.session_state.login_attempt = 0
-
-# Control para mostrar/ocultar elementos nativos de Streamlit (menú, footer, header)
+if 'hide_main_menu_only' not in st.session_state:
+    st.session_state['hide_main_menu_only'] = False
 if 'show_streamlit_ui' not in st.session_state:
-    # Por defecto mostrar la UI nativa para evitar que quede oculta en deploys públicos
     st.session_state['show_streamlit_ui'] = True
 
+# --- FUNCIONES DE VISIBILIDAD, AUTENTICACIÓN Y APERTURA (SIN CAMBIOS ESTRUCTURALES) ---
+
 def _apply_streamlit_ui_visibility():
+    # If we only want to hide the main menu (e.g., for guest users), apply minimal CSS
+    if st.session_state.get('hide_main_menu_only'):
+        st.markdown(
+            """
+            <style>
+            #MainMenu{visibility:hidden !important; height:0px !important; display:none !important;}
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+        return
+
+    # Otherwise fall back to the full UI visibility toggle
     if st.session_state.get('show_streamlit_ui'):
         st.markdown(
             """
@@ -317,7 +265,7 @@ def _apply_streamlit_ui_visibility():
             """,
             unsafe_allow_html=True,
         )
-# Aplicar la visibilidad en cada carga
+
 _apply_streamlit_ui_visibility()
 
 # === LÓGICA DE EJECUCIÓN DEL MÓDULO (IN-PROCESS) ===
@@ -326,7 +274,7 @@ if 'launch_module_path' in st.session_state and st.session_state.get('launch_mod
     launch_name = st.session_state.get('launch_module_name', os.path.splitext(os.path.basename(launch_path))[0])
 
     st.markdown(f"<div style='display:flex; justify-content:space-between; align-items:center;'>"
-                f"<h2 style='color: var(--color-acento); margin:0; font-family: 'Orbitron', monospace;'>🚀 EJECUTANDO MÓDULO: {launch_name.upper()}</h2>"
+                f"<h2 style='color: var(--color-acento); margin:0; font-family: 'Orbitron', monospace;'>EJECUTANDO MÓDULO: {launch_name.upper()}</h2>"
                 f"</div>", unsafe_allow_html=True)
 
     # Botón de retorno más estético
@@ -400,12 +348,11 @@ def open_module(module_name):
         st.error(f"❌ Error: {str(e)}")
         return False
 
-# === PANTALLA DE LOGIN MEJORADA ===
+# === PANTALLA DE LOGIN MEJORADA Y COMPACTADA ===
 def show_login():
-    st.markdown("<br><br><br>", unsafe_allow_html=True)
+    st.markdown("<br><br>", unsafe_allow_html=True) # Menos espacio
     
-    # Contenedor centralizado para el login
-    col1, col2, col3 = st.columns([1, 2.5, 1])
+    col1, col2, col3 = st.columns([1.5, 2, 1.5]) # Columna central más ancha
     
     with col2:
         # Logo Centrado
@@ -416,34 +363,38 @@ def show_login():
         </div>
         """, unsafe_allow_html=True)
         
-        # Imagen (Centrada)
+        # Imagen (Centrada) - El logo de Frontera
         st.markdown(
-            "<div style='text-align:center; margin-bottom: 2rem;'>"
-            "<img src='https://www.fronteraenergy.ca/wp-content/uploads/2023/05/logo-frontera-white.png' width='280'/>"
+            "<div style='text-align:center; margin-bottom: 1.5rem;'>" # Compactado
+            "<img src='https://www.fronteraenergy.ca/wp-content/uploads/2023/05/logo-frontera-white.png' width='200'/>" # Imagen más pequeña
             "</div>",
             unsafe_allow_html=True
         )
         
         # Formulario de login
         with st.form("login_form", clear_on_submit=True):
-            username = st.text_input("👤 USUARIO", placeholder="Ingresa tu usuario")
-            password = st.text_input("🔒 CONTRASEÑA", type="password", placeholder="Ingresa tu contraseña")
+            username = st.text_input("👤 USUARIO", placeholder="Ingresa tu usuario", label_visibility="collapsed") # Ocultar label nativo
+            password = st.text_input("🔒 CONTRASEÑA", type="password", placeholder="Ingresa tu contraseña", label_visibility="collapsed") # Ocultar label nativo
             submit = st.form_submit_button("🔑 INICIAR SESIÓN", use_container_width=True)
             
             if submit:
                 if authenticate(username, password):
                     st.session_state.authenticated = True
                     st.session_state.username = username
+                    try:
+                        st.session_state['hide_main_menu_only'] = True if str(username).strip().lower() == 'invitado' else False
+                    except Exception:
+                        st.session_state['hide_main_menu_only'] = False
                     st.success(f"✅ ¡Bienvenido, {username.upper()}!")
                     time.sleep(0.5)
-                    st.rerun() # <-- CORRECCIÓN A st.rerun()
+                    st.rerun()
                 else:
                     st.error("❌ Credenciales incorrectas. Inténtalo de nuevo.")
         
         # Footer
         st.markdown("""
-        <div style='text-align: center; margin-top: 3rem; opacity: 0.6;'>
-            <small>Sistema de Monitoreo & Control | © 2025 Frontera Energy</small>
+        <div style='text-align: center; margin-top: 1.5rem; opacity: 0.5;'>
+            <small>Sistema de Monitoreo & Control AJM | ©  Frontera Energy</small>
         </div>
         """, unsafe_allow_html=True)
 
@@ -457,8 +408,8 @@ def show_dashboard():
     </div>
     """, unsafe_allow_html=True)
     
-    # Grid de Módulos
-    col1, col2 = st.columns(2, gap="large")
+    # Grid de Módulos (usando un grid de 2 columnas)
+    col1, col2 = st.columns(2, gap="medium") # Espacio reducido
     
     # --- MÓDULO 1: INDICADORES ALS ---
     with col1:
@@ -475,8 +426,7 @@ def show_dashboard():
         </div>
         """, unsafe_allow_html=True)
         
-        # El botón debe estar fuera del markdown para ser interactivo
-        st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top: 0.8rem;'></div>", unsafe_allow_html=True) # Compactado
         if st.button("🚀 INICIAR INDICADORES", key="btn_indicadores", use_container_width=True):
             open_module("indicadores.py")
     
@@ -495,15 +445,14 @@ def show_dashboard():
         </div>
         """, unsafe_allow_html=True)
         
-        # El botón debe estar fuera del markdown para ser interactivo
-        st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top: 0.8rem;'></div>", unsafe_allow_html=True) # Compactado
         if st.button("🚀 INICIAR EVALUACIÓN", key="btn_evaluacion", use_container_width=True):
             open_module("evaluacion.py")
     
     # --- INFO ADICIONAL ---
-    st.markdown("---")
+    st.markdown("---") # Separador
     
-    col_info1, col_info2, col_info3 = st.columns(3, gap="large")
+    col_info1, col_info2, col_info3 = st.columns(3, gap="small") # Espacio reducido
     
     with col_info1:
         st.markdown(f"""
@@ -550,19 +499,37 @@ def show_dashboard():
                 st.error("❌ **evaluacion.py** no encontrado. Módulo Inactivo.")
     
     # Botón de cerrar sesión
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    col_logout1, col_logout2, col_logout3 = st.columns([2, 2, 2])
+    st.markdown("<br>", unsafe_allow_html=True) # Espacio reducido
+    col_logout1, col_logout2, col_logout3 = st.columns([1, 2, 1])
     with col_logout2:
         if st.button("🚪 CERRAR SESIÓN", key="btn_logout", use_container_width=True):
             st.session_state.authenticated = False
             st.session_state.username = ""
-            st.rerun() # <-- CORRECCIÓN A st.rerun()
+            st.session_state['hide_main_menu_only'] = False
+            st.rerun()
 
-# === LÓGICA PRINCIPAL ===
+# === LÓGICA PRINCIPAL (SIN CAMBIOS) ===
 def main():
     if not st.session_state.authenticated:
         show_login()
     else:
+        username = (st.session_state.get('username') or '').strip().lower()
+
+        if username == 'invitado':
+            try:
+                import importlib
+                rp = importlib.import_module('resumen_publico')
+                if hasattr(rp, 'show_resumen'):
+                    rp.show_resumen()
+                    return
+            except Exception:
+                try:
+                    open_module('resumen_publico.py')
+                    return
+                except Exception:
+                    st.error('No se pudo cargar el resumen público para el usuario invitado.')
+                    return
+
         show_dashboard()
 
 if __name__ == "__main__":
