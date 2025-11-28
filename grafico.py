@@ -3,20 +3,12 @@ import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
 from datetime import datetime
-import theme as _theme_mod
+from theme import get_colors, get_plotly_layout
 
-# --- Configuración de Tema (Mantener como está, es robusto) ---
-
-# Tomar paletas y layout desde theme si están disponibles
-get_color_sequence = getattr(_theme_mod, 'get_color_sequence', lambda: ['#00ff99', '#00cfff', '#FFDE31', '#5AFFDA'])
-get_plotly_layout = getattr(_theme_mod, 'get_plotly_layout', lambda xaxis_color=None, yaxis_color=None: {
-    'plot_bgcolor': getattr(_theme_mod, 'COLOR_FONDO_OSCURO', '#1a1a2e'),
-    'paper_bgcolor': getattr(_theme_mod, 'COLOR_FONDO_OSCURO', '#1a1a2e'),
-    'font_color': getattr(_theme_mod, 'COLOR_FUENTE', '#FFFFFF'),
-    'title_font_color': getattr(_theme_mod, 'COLOR_PRINCIPAL', '#00ff99'),
-    'xaxis': {'color': xaxis_color or getattr(_theme_mod, 'COLOR_PRINCIPAL', '#00ff99')},
-    'yaxis': {'color': yaxis_color or getattr(_theme_mod, 'COLOR_PRINCIPAL', '#00ff99')}
-})
+# --- Configuración de Tema (usar API del módulo theme) ---
+_colors = get_colors()
+get_color_sequence = _colors.get('color_sequence', lambda: ['#00ff99', '#00cfff', '#FFDE31', '#5AFFDA'])
+get_plotly_layout = get_plotly_layout
 
 from indice_falla import calcular_indice_falla_anual # Asegúrate de que esta función realmente existe y es necesaria
 
@@ -141,7 +133,7 @@ def generar_resumen_mensual(df_bd, df_forma9, fecha_evaluacion):
     return df_final[final_cols].sort_values('Mes').reset_index(drop=True)
 
 
-def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico Resumen Mensual (Pozos, Run Life e Índices)"):
+def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico Resumen"):
     """
     Genera figura mensual con efecto neón/brillo en las LÍNEAS.
     """
@@ -165,17 +157,17 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
 
 
     # Colores base para las líneas
-    COLOR_RUNLIFE = '#3e00ff'
-    COLOR_IF_ON = '#30ddd5' 
-    COLOR_IF_ALS = '#ffffff' 
+    COLOR_RUNLIFE = '#00520F'
+    COLOR_IF_ON = '#F52727' 
+    COLOR_IF_ALS = '#B427F5' 
 
     fig = go.Figure()
 
     # --- Trazas ---
 
     # 1. Barras (Pozos ON/OFF) - Eje Y1
-    fig.add_trace(go.Bar(x=df_monthly['Mes'], y=df_monthly['Pozos_ON'], name='Pozos ON', marker_color='#8b63dc', offsetgroup=1))
-    fig.add_trace(go.Bar(x=df_monthly['Mes'], y=df_monthly['Pozos_OFF'], name='Pozos OFF', marker_color='#02629b', offsetgroup=1, base=df_monthly['Pozos_ON'])) # STACKED BAR (OFF sobre ON)
+    fig.add_trace(go.Bar(x=df_monthly['Mes'], y=df_monthly['Pozos_ON'], name='Pozos ON', marker_color='#76B879', offsetgroup=1))
+    fig.add_trace(go.Bar(x=df_monthly['Mes'], y=df_monthly['Pozos_OFF'], name='Pozos OFF', marker_color='#E39A62', offsetgroup=1, base=df_monthly['Pozos_ON'])) # STACKED BAR (OFF sobre ON)
 
     # 2. Línea (Run Life Promedio) - Eje Y1 
     fig.add_trace(go.Scatter(
@@ -185,8 +177,8 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
         mode='lines+markers',
         marker_symbol='diamond', 
         marker_color=COLOR_RUNLIFE, 
-        line=dict(width=2, dash='solid', color=COLOR_RUNLIFE),
-        marker=dict(size=2), 
+        line=dict(width=4, dash='solid', color=COLOR_RUNLIFE),
+        marker=dict(size=4), 
         yaxis='y1'
     ))
 
@@ -198,8 +190,8 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
         mode='lines+markers', 
         marker_symbol='diamond', 
         marker_color=COLOR_IF_ON, 
-        line=dict(width=3, dash='solid', color=COLOR_IF_ON),
-        marker=dict(size=3),
+        line=dict(width=4, dash='solid', color=COLOR_IF_ON),
+        marker=dict(size=4),
         yaxis='y2',
         hovertemplate='%{x}<br>Índice ON: %{y:.2%}<extra></extra>'
     ))
@@ -210,8 +202,8 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
         mode='lines+markers', 
         marker_symbol='diamond', 
         marker_color=COLOR_IF_ALS, 
-        line=dict(width=3, dash='solid', color=COLOR_IF_ALS),
-        marker=dict(size=3),
+        line=dict(width=4, dash='solid', color=COLOR_IF_ALS),
+        marker=dict(size=4),
         yaxis='y2',
         hovertemplate='%{x}<br>Índice ON ALS: %{y:.2%}<extra></extra>'
     ))
@@ -270,11 +262,9 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
     )
     
     # Aplicar el resto del tema (colores de fondo, fuente, etc.)
-    fig.update_layout(
-        plot_bgcolor=layout_base['plot_bgcolor'],
-        paper_bgcolor=layout_base['paper_bgcolor'],
-        font_color=layout_base['font_color'],
-        title_font_color=layout_base['title_font_color']
-    )
+    # Solo pasar las claves presentes y no-None para respetar cuando
+    # `theme.get_plotly_layout()` deja el fondo a Streamlit (background=None).
+    layout_updates = {k: v for k, v in layout_base.items() if v is not None}
+    fig.update_layout(**layout_updates)
     
     return fig, df_monthly
