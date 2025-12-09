@@ -6,6 +6,7 @@ import subprocess
 import sys
 import os
 import importlib.util
+import tema
 
 # ====================================================================
 # 🚀 1. FORZAR MODO DARK DE STREAMLIT (REQUIERE AJUSTAR EL ARCHIVO .streamlit/config.toml)
@@ -26,12 +27,14 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# === COLORES Y TEMA (Minimalista y Compacto) ===
-COLOR_PRIMARIO = '#00FF99'     # Verde Neón
-COLOR_ACENTO = '#00D9FF'       # Azul Ciber
-COLOR_FONDO_OSCURO = '#0A0E27' # Azul Profundo
-COLOR_SOMBRA = 'rgba(0, 255, 153, 0.5)' # Sombra de neón reducida
-COLOR_FUENTE = '#E8F5E9'       # Gris Casi Blanco
+# === COLORES Y TEMA (Usando `tema.py`) ===
+# Usar las constantes centralizadas del módulo `tema` para mantener consistencia
+COLOR_PRIMARIO = getattr(tema, 'COLOR_PRINCIPAL', '#00FF99')
+# Elegimos un color de acento derivado del tema; usar COLOR_DASH_CYAN si existe
+COLOR_ACENTO = getattr(tema, 'COLOR_DASH_CYAN', getattr(tema, 'COLOR_AZUL_CIBER', '#00D9FF'))
+COLOR_FONDO_OSCURO = getattr(tema, 'COLOR_FONDO_OSCURO', '#0A0E27')
+COLOR_SOMBRA = getattr(tema, 'COLOR_GLOW_SUAVE', 'rgba(0, 255, 153, 0.5)')
+COLOR_FUENTE = getattr(tema, 'COLOR_FUENTE', '#E8F5E9')
 
 # === ESTILOS CSS - COMPACTACIÓN Y CIBER PUNK MINIMALISTA ===
 st.markdown(f"""
@@ -287,9 +290,49 @@ if 'launch_module_path' in st.session_state and st.session_state.get('launch_mod
 
     # Importar y ejecutar el módulo
     try:
+        # Limpiar flags que podrían forzar la recarga de otras páginas (evitar bucles)
+        for _k in ['show_resumen_publico', 'go_to_indicadores']:
+            if _k in st.session_state:
+                try:
+                    del st.session_state[_k]
+                except Exception:
+                    pass
+
+        # Mostrar info de depuración/resuelto (si existe)
+        debug_info = st.session_state.get('launch_module_debug')
+        resolved_fname = st.session_state.get('launch_module_resolved_filename')
+        if resolved_fname or debug_info:
+            try:
+                st.markdown(
+                    f"<div style='margin-bottom:6px; font-size:12px; opacity:0.85;'>Archivo resuelto: <b>{resolved_fname}</b> — Ruta: <code>{launch_path}</code></div>",
+                    unsafe_allow_html=True
+                )
+            except Exception:
+                pass
+
         spec = importlib.util.spec_from_file_location("launched_module", launch_path)
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
+
+        # Si el módulo define una función de entrada, llamarla explícitamente.
+        # Esto cubre módulos como `resumen_publico.py` que llaman a `show_resumen()`
+        # sólo cuando se ejecutan como script. Al importar por ruta, __name__ != '__main__',
+        # por eso llamamos a la función si existe.
+        try:
+            if hasattr(mod, 'show_resumen'):
+                try:
+                    mod.show_resumen()
+                    st.stop()
+                except Exception as e:
+                    st.error(f"Error ejecutando show_resumen() del módulo {launch_path}: {e}")
+            elif hasattr(mod, 'main'):
+                try:
+                    mod.main()
+                    st.stop()
+                except Exception as e:
+                    st.error(f"Error ejecutando main() del módulo {launch_path}: {e}")
+        except Exception:
+            pass
     except Exception as e:
         st.error(f"❌ Error al cargar el módulo {launch_path}: {e}")
         st.write("Si quieres volver al dashboard pulsa 'VOLVER AL DASHBOARD'.")
@@ -302,8 +345,9 @@ def authenticate(username, password):
     users = {
         "lenin": "1",
         "practicante": "2",
-        "invitado": "3",
+        "invitado": "",
         "jaime": "1",
+        "ajm": "1",
     }
     return users.get(username) == password
 
@@ -337,9 +381,23 @@ def open_module(module_name):
             return False
 
         full_path = os.path.abspath(target)
+        # Guardar la ruta y el nombre resuelto para depuración
         st.session_state['launch_module_path'] = full_path
         st.session_state['launch_module_name'] = os.path.splitext(os.path.basename(full_path))[0]
-        
+        st.session_state['launch_module_resolved_filename'] = os.path.basename(target)
+
+        # Guardar debug info para inspección tras rerun
+        try:
+            st.session_state['launch_module_debug'] = {
+                'requested': module_name,
+                'resolved_target': target,
+                'full_path': full_path,
+                'cwd': os.getcwd(),
+                'cwd_files_count': len(os.listdir('.'))
+            }
+        except Exception:
+            st.session_state['launch_module_debug'] = None
+
         # Forzar recarga
         st.rerun() # <-- CORRECCIÓN A st.rerun()
         return True
@@ -363,13 +421,18 @@ def show_login():
         </div>
         """, unsafe_allow_html=True)
         
-        # Imagen (Centrada) - El logo de Frontera
-        st.markdown(
-            "<div style='text-align:center; margin-bottom: 1.5rem;'>" # Compactado
-            "<img src='https://www.fronteraenergy.ca/wp-content/uploads/2023/05/logo-frontera-white.png' width='200'/>" # Imagen más pequeña
-            "</div>",
-            unsafe_allow_html=True
-        )
+        # Imagen (Centrada) - Logo (local o fallback remoto)
+        try:
+            from ui_helpers import get_logo_img_tag
+            logo_html = get_logo_img_tag(width=200, style='filter: drop-shadow(0 0 8px rgba(0,0,0,0.6));')
+            st.markdown(f"<div style='text-align:center; margin-bottom: 1.5rem;'>{logo_html}</div>", unsafe_allow_html=True)
+        except Exception:
+            st.markdown(
+                "<div style='text-align:center; margin-bottom: 1.5rem;'>"
+                "<img src='https://www.fronteraenergy.ca/wp-content/uploads/2023/05/logo-frontera-white.png' width='200'/>"
+                "</div>",
+                unsafe_allow_html=True
+            )
         
         # Formulario de login
         with st.form("login_form", clear_on_submit=True):
@@ -427,8 +490,14 @@ def show_dashboard():
         """, unsafe_allow_html=True)
         
         st.markdown("<div style='margin-top: 0.8rem;'></div>", unsafe_allow_html=True) # Compactado
-        if st.button("🚀 INICIAR INDICADORES", key="btn_indicadores", use_container_width=True):
-            open_module("indicadores.py")
+        # Dos botones: uno para abrir el módulo Indicadores y otro para ir al Resumen Público
+        col_btn1, col_btn2 = st.columns([1, 1], gap='small')
+        with col_btn1:
+            if st.button("🚀 INICIAR INDICADORES", key="btn_indicadores_dashboard", use_container_width=True):
+                open_module("indicadores.py")
+        with col_btn2:
+            if st.button("📊 VER RESUMEN PÚBLICO", key="btn_resumen_publico", use_container_width=True):
+                open_module("resumen_publico.py")
     
     # --- MÓDULO 2: EVALUACIÓN ESP ---
     with col2:
