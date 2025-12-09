@@ -11,6 +11,32 @@ import base64
 import re
 import os
 import theme as _theme_mod
+try:
+    import evaluacion_economica as econ
+except Exception:
+    econ = None
+
+# Colores por sección (usar los mismos en tablas y gráficos) - tonos vivos
+SECTION_COLORS = {
+   'SISTEMA DE FONDO': '#AEC7E8',  # Azul Cielo Suave (Calma, componente principal)
+    'CABLE': '#FFBB78',             # Naranja Pálido (Cálido, fácil de contrastar)
+    'Y-TOOL': '#98DF8A',            # Verde Menta (Fresco, componente auxiliar)
+    'SERVICIOS': '#FF9896',         # Rosa Salmón (Suave, para elementos de costo/servicio)
+    'OTROS': '#D6D6D6'              # Gris Claro (Fondo/Neutro)
+}
+
+def style_rows_by_section(df, section_col='Sección'):
+    """Devuelve un pandas.Styler con filas coloreadas según el valor en `section_col`."""
+    def _row_style(row):
+        sec = row.get(section_col, '') if section_col in row.index else ''
+        bg = SECTION_COLORS.get(sec, SECTION_COLORS.get('OTROS'))
+        # usar texto negro para visibilidad en modo dark
+        return [f'background-color: {bg}; color: black;' for _ in row.index]
+    try:
+        sty = df.style.apply(_row_style, axis=1)
+        return sty
+    except Exception:
+        return df
 
 # Import seguro desde el módulo `theme` con valores por defecto si falta algo
 COLOR_PRINCIPAL = getattr(_theme_mod, 'COLOR_PRINCIPAL', '#00ff99')
@@ -125,26 +151,20 @@ custom_css = f"""
         opacity: 0.8;
     }}
 
-    /* TABLAS: CAJA GLOW + MÁXIMA SIMETRÍA */
+    /* TABLAS: estilo minimalista - quitar cajas decorativas */
     .stDataFrame, [data-testid="stHorizontalBlock"] {{
-        background-color: {COLOR_FONDO_CONTENEDOR_NEUTRO}; 
-        padding: 0.5rem !important;
-        border-radius: 8px;
-        border: 1px solid {GLOW_COLOR_LIGHT};
-        box-shadow: 
-            0 0 40px {GLOW_COLOR_TRANSLUCENT},
-            0 0 60px {GLOW_COLOR_LIGHT},
-            inset 0 0 20px {GLOW_COLOR_LIGHT};
-        transition: all 0.3s ease;
-        overflow: hidden !important;
+        background: transparent !important;
+        padding: 0 !important;
+        border-radius: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        transition: none !important;
+        overflow: visible !important;
     }}
-    
+
     .stDataFrame:hover, [data-testid="stHorizontalBlock"]:hover {{
-        transform: translateY(-2px);
-        box-shadow: 
-            0 0 50px {GLOW_COLOR_TRANSLUCENT},
-            0 0 80px {GLOW_COLOR_INDIGO},
-            inset 0 0 25px {GLOW_COLOR_LIGHT};
+        transform: none !important;
+        box-shadow: none !important;
     }}
 
     /* GRÁFICAS: QUITAR CAJA EN TODOS LOS CASOS */
@@ -174,8 +194,8 @@ custom_css = f"""
     }}
 
     .dataframe thead th {{
-        background: linear-gradient(90deg, {COLOR_PRINCIPAL} 0%, {GLOW_COLOR_TRANSLUCENT} 100%) !important;
-        color: {COLOR_TEXTO_CLARO} !important;
+        background: transparent !important;
+        color: black !important;
         font-weight: 600;
         padding: 10px 8px !important;
         border: none !important;
@@ -184,20 +204,28 @@ custom_css = f"""
     }}
 
     .dataframe tbody td {{
-        padding: 8px !important;
+        padding: 6px !important;
         border: none !important;
-        text-align: center;
+        text-align: left;
         font-size: 0.85rem;
         background-color: transparent !important;
+        color: black !important;
     }}
 
     .dataframe tbody tr:nth-child(even) {{
-        background-color: {GLOW_COLOR_LIGHT} !important;
+        background-color: transparent !important;
     }}
 
     .dataframe tbody tr:hover {{
-        background-color: {GLOW_COLOR_TRANSLUCENT} !important;
-        transition: background-color 0.3s ease !important;
+        background-color: transparent !important;
+        transition: none !important;
+    }}
+
+    /* Regla agresiva: quitar cualquier borde/box-shadow de los contenedores de tablas */
+    .stDataFrame, .stDataFrame * , .stTable, table, table th, table td {{
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
     }}
 
     /* SCROLL INTERNO */
@@ -365,12 +393,17 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 # Logo del sistema
-st.markdown(
-    "<div style='text-align:center; margin-top:8px;'>"
-    "<img src='https://www.fronteraenergy.ca/wp-content/uploads/2023/05/logo-frontera-white.png' width='250'/>"
-    "</div>",
-    unsafe_allow_html=True
-)
+try:
+    from ui_helpers import get_logo_img_tag
+    logo_html = get_logo_img_tag(width=250, style='filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));')
+    st.markdown(f"<div style='text-align:center; margin-top:8px;'>{logo_html}</div>", unsafe_allow_html=True)
+except Exception:
+    st.markdown(
+        "<div style='text-align:center; margin-top:8px;'>"
+        "<img src='https://www.fronteraenergy.ca/wp-content/uploads/2023/05/logo-frontera-white.png' width='250'/>"
+        "</div>",
+        unsafe_allow_html=True
+    )
 
 # ==================== PARÁMETROS ====================
 SHEET_NAME = 'TLCC'
@@ -436,6 +469,31 @@ def clean_param_name(value):
     s = str(value).strip().lower().replace(" ", "").replace(":", "")
     s = s.replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u")
     return s
+
+def find_total_row(data):
+    """Busca la fila de totales en una tabla extraída de la hoja.
+    Prioriza una fila cuyo primer valor sea 'TOTAL' (flexible),
+    y hace fallback a 'EQUIPO+SERVICIOS+TLCC'. Devuelve la fila o None.
+    """
+    if not data:
+        return None
+    # buscar 'total' exacto o que empiece por 'total'
+    for row in data:
+        try:
+            if len(row) >= 1 and row[0] is not None:
+                v = str(row[0]).strip().lower()
+                if v == 'total' or v.startswith('total') or ' total ' in f" {v} ":
+                    return row
+        except Exception:
+            continue
+    # fallback antiguo
+    for row in data:
+        try:
+            if len(row) >= 1 and 'equipo+servicios+tlcc' in str(row[0]).lower():
+                return row
+        except Exception:
+            continue
+    return None
 
 def show_no_data_message(title="Sin Propuesta", message="No hay datos disponibles para esta sección"):
     """Muestra un mensaje elegante cuando no hay datos"""
@@ -724,11 +782,8 @@ if motor_choice == 'RESUMEN EJECUTIVO':
             pipe = t['pipeSize']
             title = f"{provider} - {pump}"
 
-            total_row = None
-            for row in data:
-                if len(row) >= 1 and "equipo+servicios+tlcc" in str(row[0]).lower():
-                    total_row = row
-                    break
+            # Buscar fila de totales (preferir 'TOTAL', fallback antiguo)
+            total_row = find_total_row(data)
             if not total_row or len(total_row) < 4: continue
 
             def clean_val(val):
@@ -829,6 +884,8 @@ if motor_choice == 'RESUMEN EJECUTIVO':
             '3½" Fijo': p['am_3_5_fixed']
         })
 
+    # (Gráficas apiladas Oferta + TLCC trasladadas más abajo, después del RANKING COMPLETO DE PROVEEDORES)
+
     # ===== SISTEMA DE SCORING Y RANKING (refactorizado para AM/PMM) =====
 
     allowed_tables = {
@@ -865,11 +922,7 @@ if motor_choice == 'RESUMEN EJECUTIVO':
                 pump = t.get('pumpName')
                 pipe = t.get('pipeSize')
 
-                total_row = None
-                for row in data:
-                    if len(row) >= 1 and 'equipo+servicios+tlcc' in str(row[0]).lower():
-                        total_row = row
-                        break
+                total_row = find_total_row(data)
                 if not total_row or len(total_row) < 4:
                     continue
 
@@ -891,65 +944,39 @@ if motor_choice == 'RESUMEN EJECUTIVO':
                             'filename': p['name']
                         })
 
-        # calcular PEF (Puntuación Económica Final) basado en las 3 categorías
+        # Calcular puntuación económica basada en los TOPS por categoría
         if all_economic_offers:
             df_econ = pd.DataFrame(all_economic_offers)
             categories_list = ['FULL PRICE', 'R-R-I-G-O', 'ALT AHORRO']
-            # categorías válidas (las que tienen al menos una oferta)
-            valid_categories = [c for c in categories_list if c in df_econ['category'].unique()]
-            num_valid = len(valid_categories)
-
-            # puntos por posición dentro de cada categoría
+            # puntos por posición dentro de cada categoría (primer puesto=40, segundo=35, tercero=30...)
             points_map = [40, 35, 30, 25, 20, 15, 10, 5]
 
-            # preparar estructura para puntos por categoría
-            per_cat_points = {c: {} for c in valid_categories}
+            # proveedores a considerar
             providers = [p['name'] for p in processed if p.get('name')]
 
-            # asignar puntos por posición en cada categoría (mejor valor -> 1er puesto)
-            for cat in valid_categories:
+            # asignar puntos por categoría
+            per_provider_cat_pts = {prov: {'FULL PRICE': 10, 'R-R-I-G-O': 10, 'ALT AHORRO': 10} for prov in providers}
+
+            for cat in categories_list:
                 df_cat = df_econ[df_econ['category'] == cat]
                 if df_cat.empty:
+                    # mantener 10 pts por defecto para todos
                     continue
                 # por proveedor tomar la mejor (mínima) oferta en la categoría
                 df_best = df_cat.groupby('filename', as_index=False)['value'].min()
                 df_sorted = df_best.sort_values('value').reset_index(drop=True)
                 for idx, row in df_sorted.iterrows():
-                    pos = idx
-                    pts = points_map[pos] if pos < len(points_map) else 0
-                    per_cat_points[cat][row['filename']] = pts
+                    prov = row['filename']
+                    pts = points_map[idx] if idx < len(points_map) else 5
+                    if prov in per_provider_cat_pts:
+                        per_provider_cat_pts[prov][cat] = pts
 
-            # construir PBO (Puntaje Bruto Obtenido) por proveedor sumando por categorías válidas
-            pbo_map = {prov: 0.0 for prov in providers}
-            # si un proveedor no tiene oferta en una categoría válida, recibe 10 pts para esa categoría
-            for cat in valid_categories:
-                for prov in providers:
-                    pts = per_cat_points.get(cat, {}).get(prov)
-                    if pts is None:
-                        # si el proveedor no participó en la categoría, 10 puntos mínimos
-                        pts = 10
-                    pbo_map[prov] = pbo_map.get(prov, 0.0) + float(pts)
-
-            # PBP = 40 * número de categorías válidas
-            pbp = 40 * num_valid if num_valid > 0 else 0
-
-            # calcular PD (porcentaje de desempeño) por proveedor
-            pd_map = {}
-            for prov, pbo in pbo_map.items():
-                pd_pct = (pbo / pbp * 100.0) if pbp > 0 else 0.0
-                pd_map[prov] = pd_pct
-
-            # Asignar puntos económicos discretos por posición basada en PBO
-            # Ordenar proveedores por PBO (desc)
-            sorted_by_pbo = sorted(pbo_map.items(), key=lambda x: (x[1], x[0]), reverse=True)
-            rank_points = [40, 35, 30, 25, 20, 15, 10, 5]
-            assigned_points = {}
-            for idx, (prov, pbo_val) in enumerate(sorted_by_pbo):
-                pts = rank_points[idx] if idx < len(rank_points) else 0
-                assigned_points[prov] = pts
-
-            # Guardar en provider_scores
-            for prov in pbo_map.keys():
+            # calcular puntuación económica final como el promedio de los tres tops (escala 0-40)
+            for prov in providers:
+                pts_full = per_provider_cat_pts[prov].get('FULL PRICE', 10)
+                pts_rrigo = per_provider_cat_pts[prov].get('R-R-I-G-O', 10)
+                pts_alt = per_provider_cat_pts[prov].get('ALT AHORRO', 10)
+                avg_pts = (pts_full + pts_rrigo + pts_alt) / 3.0
                 provider_scores.setdefault(prov, {
                     'economico': 0,
                     'tecnico': 0,
@@ -957,27 +984,10 @@ if motor_choice == 'RESUMEN EJECUTIVO':
                     'total': 0,
                     'details': {}
                 })
-                provider_scores[prov]['economico'] = float(assigned_points.get(prov, 0))
-                provider_scores[prov]['details']['PBO'] = float(pbo_map.get(prov, 0.0))
-                provider_scores[prov]['details']['PD'] = float(pd_map.get(prov, 0.0))
-                provider_scores[prov]['details']['Rank_Econ'] = int([i for i, (pp, _) in enumerate(sorted_by_pbo) if pp == prov][0]) + 1
-                provider_scores[prov]['details']['Pts_Assigned'] = float(assigned_points.get(prov, 0))
-
-            # Mostrar tabla de diagnóstico económica para depuración (opcional)
-            try:
-                diag_rows = []
-                for prov in providers:
-                    row = {'Proveedor': prov, 'PBO': pbo_map.get(prov, 0.0), 'PD': pd_map.get(prov, 0.0), 'PEF': pef_map.get(prov, 0.0)}
-                    # añadir puntos por categoría
-                    for cat in valid_categories:
-                        row[f'Pts_{cat}'] = per_cat_points.get(cat, {}).get(prov, 10)
-                    diag_rows.append(row)
-                df_diag = pd.DataFrame(diag_rows)
-                st.expander('📋 Diagnóstico Económico (PBO / PD / PEF) - desplegar para ver detalles', expanded=False)
-                with st.expander('📋 Diagnóstico Económico (PBO / PD / PEF) - desplegar para ver detalles'):
-                    st.dataframe(df_diag.sort_values('PEF', ascending=False).reset_index(drop=True))
-            except Exception:
-                pass
+                provider_scores[prov]['economico'] = float(avg_pts)
+                provider_scores[prov]['details']['econ_full_pts'] = float(pts_full)
+                provider_scores[prov]['details']['econ_rrigo_pts'] = float(pts_rrigo)
+                provider_scores[prov]['details']['econ_alt_pts'] = float(pts_alt)
 
         # 2) SCORING TÉCNICO (35 pts) - igual para AM y PMM
         for p in processed:
@@ -1086,9 +1096,8 @@ if motor_choice == 'RESUMEN EJECUTIVO':
         
         st.markdown(f"""
         <div style='background: linear-gradient(155deg, #08004D 0%, #00378A 100%);
-                    padding: 2rem; border-radius: 25px; margin: 2rem 0;
-                    box-shadow: 0 10px 50px rgba(0, 55, 138, 0.4);
-                    border: 3px solid #00378A;'>
+                padding: 2rem; border-radius: 25px; margin: 2rem 0;
+                box-shadow: none !important; border: none !important; background: transparent !important;'>
             <div style='text-align: center;'>
                 <h2 style='color: white; font-size: 2rem; margin-bottom: 1rem;'>
                     🏆 PROVEEDOR RECOMENDADO
@@ -1122,111 +1131,150 @@ if motor_choice == 'RESUMEN EJECUTIVO':
     st.markdown("---")
     
     # ===== RANKING COMPLETO CON CARDS =====
-    st.markdown("### 📊 RANKING COMPLETO DE PROVEEDORES")
-    
-    for idx, (prov_name, prov_data) in enumerate(ranked_providers, 1):
-        # Definir color según posición
-        if idx == 1:
-            color_start, color_end = "#057831", "#02C222"
-            medal = "🥇"
-        elif idx == 2:
-            color_start, color_end = "#00378A", "#8e54e9"
-            medal = "🥈"
-        elif idx == 3:
-            color_start, color_end = "#f857a6", "#FC4300"
-            medal = "🥉"
-        else:
-            color_start, color_end = "#52520D", "#E0E000"
-            medal = f"#{idx}"
-        
-        tech_status = prov_data['details'].get('tech_status', 'N/A')
-        tech_icon = "✅" if tech_status == "CUMPLE" else "❌"
-        
-        # Card compacta y elegante
-        col1, col2 = st.columns([3, 1])
-        
-        with col1:
-            st.markdown(f"""
-            <div style='background: linear-gradient(135deg, {color_start} 0%, {color_end} 100%);
-                        padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem;
-                        box-shadow: 0 5px 20px rgba(0,0,0,0.2);'>
-                <div style='display: flex; justify-content: space-between; align-items: center;'>
-                    <div>
-                        <h3 style='color: white; margin: 0; font-size: 1.8rem;'>
-                            {medal} {prov_name}
-                        </h3>
-                        <p style='color: rgba(255,255,255,0.9); margin: 0.5rem 0 0 0;'>
-                            Cumplimiento Técnico: {tech_icon} {tech_status}
-                        </p>
-                    </div>
-                    <div style='text-align: right;'>
-                        <p style='color: rgba(255,255,255,0.8); margin: 0; font-size: 0.9rem;'>PUNTAJE TOTAL</p>
-                        <h1 style='color: white; margin: 0.3rem 0 0 0; font-size: 3rem; font-weight: 800;'>
-                            {prov_data['total']:.1f}
-                        </h1>
-                    </div>
-                </div>
-                <div style='display: flex; gap: 1rem; margin-top: 1rem;'>
-                    <div style='flex: 1; background: rgba(255,255,255,0.15); padding: 0.8rem; border-radius: 8px;'>
-                        <p style='color: rgba(255,255,255,0.9); margin: 0; font-size: 0.85rem;'>💰 Económico</p>
-                        <h3 style='color: white; margin: 0.3rem 0 0 0;'>{prov_data['economico']:.1f}/40</h3>
-                    </div>
-                    <div style='flex: 1; background: rgba(255,255,255,0.15); padding: 0.8rem; border-radius: 8px;'>
-                        <p style='color: rgba(255,255,255,0.9); margin: 0; font-size: 0.85rem;'>🔧 Técnico</p>
-                        <h3 style='color: white; margin: 0.3rem 0 0 0;'>{prov_data['tecnico']:.1f}/35</h3>
-                    </div>
-                    <div style='flex: 1; background: rgba(255,255,255,0.15); padding: 0.8rem; border-radius: 8px;'>
-                        <p style='color: rgba(255,255,255,0.9); margin: 0; font-size: 0.85rem;'>⚡ Energético</p>
-                        <h3 style='color: white; margin: 0.3rem 0 0 0;'>{prov_data['energetico']:.1f}/25</h3>
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            # Gráfico de radar minimalista con el puntaje
-            fig = go.Figure()
-            
-            categories = ['Económico<br>(40pts)', 'Técnico<br>(35pts)', 'Energético<br>(25pts)']
-            values = [
-                prov_data['economico']/40*100,
-                prov_data['tecnico']/35*100,
-                prov_data['energetico']/25*100
-            ]
-            
-            fig.add_trace(go.Scatterpolar(
-                r=values + [values[0]],
-                theta=categories + [categories[0]],
-                fill='toself',
-                fillcolor=f'rgba({int(color_start[1:3], 16)}, {int(color_start[3:5], 16)}, {int(color_start[5:7], 16)}, 0.4)',
-                line=dict(color=color_start, width=3),
-                name=prov_name
-            ))
-            
-            fig.update_layout(
-                polar=dict(
-                    radialaxis=dict(
-                        visible=True,
-                        range=[0, 100],
-                        showticklabels=False,
-                        gridcolor='rgba(255,255,255,0.2)'
-                    ),
-                    angularaxis=dict(
-                        gridcolor='rgba(255,255,255,0.2)'
-                    ),
-                    bgcolor='rgba(0,0,0,0)'
-                ),
-                showlegend=False,
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                margin=dict(l=40, r=40, t=40, b=40),
-                height=220,
-                font=dict(color='white', size=9)
-            )
-            
-            st.plotly_chart(fig, use_container_width=True)
+    st.markdown("### 📊 RANKING POR CATEGORÍA — TOP PROVEEDORES")
+
+    # Construir rankings por categoría usando los puntos económicos por categoría
+    providers = list(provider_scores.keys())
+    def _make_cat_ranking(cat_key):
+        rows = []
+        for prov in providers:
+            details = provider_scores.get(prov, {}).get('details', {})
+            econ_pts = details.get(cat_key, details.get(f'econ_{cat_key.lower()}_pts', 0)) if isinstance(cat_key, str) else 0
+            # fallback names mapping
+            if cat_key == 'FULL PRICE':
+                econ_val = provider_scores.get(prov, {}).get('details', {}).get('econ_full_pts', 0)
+            elif cat_key == 'R-R-I-G-O':
+                econ_val = provider_scores.get(prov, {}).get('details', {}).get('econ_rrigo_pts', 0)
+            else:
+                econ_val = provider_scores.get(prov, {}).get('details', {}).get('econ_alt_pts', 0)
+
+            tech = provider_scores.get(prov, {}).get('tecnico', 0)
+            energy = provider_scores.get(prov, {}).get('energetico', 0)
+            total = provider_scores.get(prov, {}).get('total', 0)
+            rows.append({'prov': prov, 'econ': float(econ_val), 'tech': float(tech), 'energy': float(energy), 'total': float(total)})
+        rows_sorted = sorted(rows, key=lambda x: (x['econ'], x['total']), reverse=True)
+        return rows_sorted
+
+    cols_rank = st.columns(3)
+    cat_defs = [
+        ('💎 FULL PRICE', 'FULL PRICE', '#FC4300', '#FF9CF2'),
+        ('🔄 R-R-I-G-O', 'R-R-I-G-O', '#057831', '#02C222'),
+        ('💰 ALTERNATIVA AHORRO', 'ALT AHORRO', '#00378A', '#5C8EFF')
+    ]
+
+    for i, (label, cat_key, cstart, cend) in enumerate(cat_defs):
+        with cols_rank[i]:
+            st.markdown(f"**{label}**")
+            ranking_list = _make_cat_ranking(cat_key)
+            if not ranking_list:
+                show_no_data_message('Sin Datos', 'No hay propuestas')
+                continue
+            # Mostrar top 8 con tarjetas compactas
+            for j, item in enumerate(ranking_list[:8], 1):
+                prov = item.get('prov')
+                econ_pts = item.get('econ', 0)
+                tech_pts = item.get('tech', 0)
+                energy_pts = item.get('energy', 0)
+                nota = ''
+                # Mostrar puntos económicos, técnicos y energéticos de forma compacta
+                st.markdown(
+                    f"<div style='background: linear-gradient(135deg, {cstart} 0%, {cend} 100%); padding:10px; border-radius:10px; margin-bottom:8px;'>"
+                    f"<div style='display:flex; justify-content:space-between; align-items:center;'>"
+                    f"<div>"
+                    f"<strong style='font-size:1.05rem;'>{j}. {prov}</strong>"
+                    f"<div style='font-size:0.82rem; opacity:0.95; margin-top:6px;'>"
+                    f"<span style='display:inline-block; margin-right:8px;'>💰 Econ: <strong>{econ_pts:.0f}</strong>/40</span>"
+                    f"<span style='display:inline-block; margin-right:8px;'>🔧 Tec: <strong>{tech_pts:.0f}</strong>/35</span>"
+                    f"<span style='display:inline-block;'>⚡ Energ: <strong>{energy_pts:.0f}</strong>/25</span>"
+                    f"</div>"
+                    f"</div>"
+                    f"<div style='text-align:right;'><div style='font-weight:800; font-size:1.2rem;'>Total: {item.get('total',0):.1f}</div></div>"
+                    f"</div></div>", unsafe_allow_html=True)
     
     st.markdown("---")
+
+    # --- Gráficas apiladas Oferta + TLCC (Resumen Ejecutivo) ---
+    try:
+        if econ is not None:
+            df_comp_resumen = econ.aggregate_offers(uploaded_files)
+        else:
+            df_comp_resumen = None
+    except Exception:
+        df_comp_resumen = None
+
+    if df_comp_resumen is not None and not df_comp_resumen.empty:
+        st.markdown('<div class="section-header">📈 Oferta vs TLCC — Resumen</div>', unsafe_allow_html=True)
+
+        # crear lookup TLCC por proveedor (preferir PMM si existe, sino AM)
+        tlcc_lookup = {}
+        for p in processed:
+            prov = p.get('name')
+            pm4 = p.get('TLCC PMM_4_5', {}).get('totalCost', 0) or 0
+            pm3 = p.get('TLCC PMM_3_5', {}).get('totalCost', 0) or 0
+            am4 = p.get('am_4_5', {}).get('totalCost', 0) or 0
+            am3 = p.get('am_3_5', {}).get('totalCost', 0) or 0
+            total_pmm = (pm4 or 0) + (pm3 or 0)
+            total_am = (am4 or 0) + (am3 or 0)
+            tlcc_lookup[prov] = total_pmm if total_pmm > 0 else total_am
+
+        cols_charts = st.columns(3)
+        categories_ch = ['FULL PRICE', 'R-R-I-G-O', 'ALTERNATIVA AHORRO']
+        offer_color = '#2b83ba'
+        tlcc_color = '#fdae61'
+
+        for idx_cat, cat in enumerate(categories_ch):
+            with cols_charts[idx_cat]:
+                st.markdown(f'**{cat}**')
+                if cat == 'FULL PRICE':
+                    df_cat_all = df_comp_resumen[df_comp_resumen['full_total'] > 0].copy()
+                    df_cat_all['total'] = df_cat_all['full_total']
+                elif cat == 'R-R-I-G-O':
+                    df_cat_all = df_comp_resumen[df_comp_resumen['rrigo_total'] > 0].copy()
+                    df_cat_all['total'] = df_cat_all['rrigo_total']
+                else:
+                    df_cat_all = df_comp_resumen[df_comp_resumen['alt_total'] > 0].copy()
+                    df_cat_all['total'] = df_cat_all['alt_total']
+
+                if df_cat_all.empty:
+                    st.markdown('_No hay datos para graficar_')
+                    continue
+
+                prov_totals = df_cat_all.groupby('provider')['total'].sum()
+                providers_order = list(prov_totals.index)
+                offer_vals = [float(prov_totals.get(pv, 0.0)) for pv in providers_order]
+                tlcc_vals = [float(tlcc_lookup.get(pv, 0.0)) for pv in providers_order]
+
+                fig = go.Figure()
+                fig.add_trace(go.Bar(
+                    name='Oferta (USD)',
+                    x=providers_order,
+                    y=offer_vals,
+                    marker_color=offer_color,
+                    text=[f"${v:,.0f}" if v and v>0 else '' for v in offer_vals],
+                    textposition='inside'
+                ))
+                fig.add_trace(go.Bar(
+                    name='TLCC Total (USD)',
+                    x=providers_order,
+                    y=tlcc_vals,
+                    marker_color=tlcc_color,
+                    text=[f"${v:,.0f}" if v and v>0 else '' for v in tlcc_vals],
+                    textposition='inside'
+                ))
+
+                fig.update_layout(
+                    barmode='stack',
+                    title=f'{cat} — Oferta + TLCC Total',
+                    xaxis_title='Proveedor',
+                    yaxis_title='Valor (USD)',
+                    showlegend=True,
+                    legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    height=320
+                )
+
+                st.plotly_chart(fig, use_container_width=True)
     
     # ===== CLASIFICACIÓN POR ALTERNATIVAS ECONÓMICAS (3 RANKINGS) =====
     st.markdown('<div class="section-header">🏷️ Clasificación por Alternativa Económica</div>', unsafe_allow_html=True)
@@ -1248,11 +1296,7 @@ if motor_choice == 'RESUMEN EJECUTIVO':
                 provider = t.get('providerName')
                 pump = t.get('pumpName')
                 pipe = t.get('pipeSize')
-                total_row = None
-                for row in data:
-                    if len(row) >= 1 and "equipo+servicios+tlcc" in str(row[0]).lower():
-                        total_row = row
-                        break
+                total_row = find_total_row(data)
                 if not total_row or len(total_row) < 4:
                     continue
 
@@ -1380,11 +1424,8 @@ if motor_choice == 'RESUMEN EJECUTIVO':
                 pipe = t.get('pipeSize')
                 title = f"{provider} - {pump}"
 
-                total_row = None
-                for row in data:
-                    if len(row) >= 1 and "equipo+servicios+tlcc" in str(row[0]).lower():
-                        total_row = row
-                        break
+                # Buscar la fila de totales de forma robusta (preferir 'TOTAL')
+                total_row = find_total_row(data)
                 if not total_row or len(total_row) < 4:
                     continue
 
@@ -1750,12 +1791,20 @@ elif motor_choice == 'COSTOS':
             pump = t['pumpName']
             pipe = t['pipeSize']
 
-            # Buscar dinámicamente la fila que contiene 'EQUIPO+SERVICIOS+TLCC'
+            # Buscar dinámicamente la fila de totales: preferir fila 'TOTAL', fallback a 'EQUIPO+SERVICIOS+TLCC'
             total_idx = None
             for i, row in enumerate(data):
-                if len(row) >= 1 and 'equipo+servicios+tlcc' in str(row[0]).lower():
-                    total_idx = i
-                    break
+                if len(row) >= 1:
+                    cell0 = str(row[0]).lower()
+                    if 'total' == cell0.strip() or cell0.strip().startswith('total') or ' total ' in f" {cell0} ":
+                        total_idx = i
+                        break
+            # fallback antiguo
+            if total_idx is None:
+                for i, row in enumerate(data):
+                    if len(row) >= 1 and 'equipo+servicios+tlcc' in str(row[0]).lower():
+                        total_idx = i
+                        break
             if total_idx is None:
                 # no se encontró la fila de totales; saltar
                 continue
@@ -1788,6 +1837,142 @@ elif motor_choice == 'COSTOS':
         'R-R-I-G-O': '🔄',
         'ALTERNATIVA AHORRO': '💰'
     }
+
+    # ===== Botón: Comparativa Detallada de Oferta Económica (por categoría y sección) =====
+    with st.expander('🔍 Comparativa Detallada de OFERTA ECONOMICA', expanded=False):
+        if econ is None:
+            st.warning('Módulo `evaluacion_economica` no disponible. Asegúrate que el archivo exista.')
+        else:
+            if st.button('Generar comparativa detallada', key='gen_comp_detailed'):
+                try:
+                    df_comp = econ.aggregate_offers(uploaded_files)
+                except Exception as e:
+                    st.error(f'Error extrayendo ofertas: {e}')
+                    df_comp = None
+
+                if df_comp is None or df_comp.empty:
+                    st.info('No se encontraron datos en hojas "OFERTA ECONOMICA" de los archivos subidos.')
+                else:
+                    # Normalizar secciones esperadas
+                    expected_sections = ['SISTEMA DE FONDO', 'CABLE', 'Y-TOOL', 'SERVICIOS']
+                    df_comp['section'] = df_comp['section'].fillna('OTROS')
+
+                    # Mostrar tablas horizontales por categoría: columnas por proveedor para comparar ítem-a-ítem
+                    providers = sorted(df_comp['provider'].unique())
+                    if not providers:
+                        show_no_data_message('Sin Proveedores', 'No se encontraron proveedores en las ofertas')
+                    else:
+                        # para cada categoría creamos filas de columnas (batches de 4 para legibilidad)
+                        batch_size = 4
+                        for cat in ['FULL PRICE', 'R-R-I-G-O', 'ALTERNATIVA AHORRO']:
+                            st.markdown(f"### {cat} ")
+                            # dividir providers en batches
+                            for start in range(0, len(providers), batch_size):
+                                batch = providers[start:start+batch_size]
+                                cols_row = st.columns(len(batch))
+                                for i, prov in enumerate(batch):
+                                    with cols_row[i]:
+                                        st.markdown(f"**{prov}**")
+                                        prov_df = df_comp[df_comp['provider'] == prov]
+                                        if cat == 'FULL PRICE':
+                                            df_cat = prov_df[prov_df['full_total'] > 0].copy()
+                                            df_cat['total'] = df_cat['full_total']
+                                            df_cat['unit'] = df_cat['full_unit']
+                                            display_cols = ['section','equipo','codigo','cantidad','unit','total']
+                                            col_rename = {'section':'Sección','equipo':'Equipo','codigo':'Código','cantidad':'Cantidad','unit':'Valor Unitario','total':'Valor Total'}
+                                        elif cat == 'R-R-I-G-O':
+                                            df_cat = prov_df[prov_df['rrigo_total'] > 0].copy()
+                                            df_cat['total'] = df_cat['rrigo_total']
+                                            df_cat['unit'] = df_cat['rrigo_unit']
+                                            display_cols = ['section','equipo','codigo','cantidad','rrigo_pct','rrigo_estado','unit','total']
+                                            col_rename = {'section':'Sección','equipo':'Equipo','codigo':'Código','cantidad':'Cantidad','rrigo_pct':'Pct Desc','rrigo_estado':'Estado','unit':'Valor Unitario','total':'Valor Total'}
+                                        else:
+                                            df_cat = prov_df[prov_df['alt_total'] > 0].copy()
+                                            df_cat['total'] = df_cat['alt_total']
+                                            df_cat['unit'] = df_cat['alt_unit']
+                                            display_cols = ['section','equipo','codigo','cantidad','alt_pct','alt_estado','unit','total']
+                                            col_rename = {'section':'Sección','equipo':'Equipo','codigo':'Código','cantidad':'Cantidad','alt_pct':'Pct Desc','alt_estado':'Estado','unit':'Valor Unitario','total':'Valor Total'}
+
+                                        if df_cat.empty:
+                                            st.markdown('_Sin ítems para esta categoría_')
+                                            continue
+
+                                        # calcular sumas por sección (numéricas) antes de formatear
+                                        sec_sums = df_cat.groupby('section')['total'].sum().reindex(expected_sections, fill_value=0)
+
+                                        df_display = df_cat[display_cols].copy()
+                                        if 'unit' in df_display.columns:
+                                            df_display['unit'] = df_display['unit'].apply(lambda x: f"${x:,.2f}" if x and float(x) != 0 else "—")
+                                        # formatear total para visualización pero mantener sec_sums numérico
+                                        df_display['total'] = df_display['total'].apply(lambda x: f"${x:,.2f}" if x and float(x) != 0 else "—")
+                                        df_display = df_display.rename(columns=col_rename)
+                                        # aplicar estilo por sección y ocultar índice (texto en negro para dark mode)
+                                        try:
+                                            styled = style_rows_by_section(df_display, section_col='Sección')
+                                            st.dataframe(styled, use_container_width=True, hide_index=True)
+                                        except Exception:
+                                            st.dataframe(df_display.reset_index(drop=True), use_container_width=True, hide_index=True)
+
+                                        # Mostrar pequeña tabla de sumas por sección y botones coloreados
+                                        try:
+                                            # DataFrame resumen
+                                            sec_df = sec_sums.reset_index()
+                                            sec_df.columns = ['Sección','Valor']
+                                            sec_df['Valor (USD)'] = sec_df['Valor'].apply(lambda x: f"${x:,.2f}")
+                                            st.markdown('**Suma por Sistema (Proveedor)**')
+                                            st.dataframe(sec_df[['Sección','Valor (USD)']].reset_index(drop=True), use_container_width=True, hide_index=True)
+
+                                            # Botones/etiquetas coloreadas
+                                            html = "<div style='display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;'>"
+                                            for s in expected_sections:
+                                                v = sec_sums.get(s, 0.0)
+                                                color = SECTION_COLORS.get(s, '#FFFFFF')
+                                                # elegir texto blanco/negro según luminancia del fondo
+                                                text_color = 'white' if int(color.lstrip('#')[0:2],16) < 200 else 'black'
+                                                html += f"<div style='background:{color}; padding:8px 10px; border-radius:8px; font-weight:700; color:{text_color};'> {s}: ${v:,.2f} </div>"
+                                            html += "</div>"
+                                            st.markdown(html, unsafe_allow_html=True)
+                                        except Exception:
+                                            pass
+
+                    # Gráficos: para cada categoría, mostrar barras apiladas por sección (SISTEMA DE FONDO/CABLE/Y-TOOL/SERVICIOS)
+                    try:
+                        import plotly.graph_objects as go
+                        for cat in ['FULL PRICE', 'R-R-I-G-O', 'ALTERNATIVA AHORRO']:
+                            if cat == 'FULL PRICE':
+                                df_cat_all = df_comp[df_comp['full_total'] > 0].copy()
+                                df_cat_all['total'] = df_cat_all['full_total']
+                            elif cat == 'R-R-I-G-O':
+                                df_cat_all = df_comp[df_comp['rrigo_total'] > 0].copy()
+                                df_cat_all['total'] = df_cat_all['rrigo_total']
+                            else:
+                                df_cat_all = df_comp[df_comp['alt_total'] > 0].copy()
+                                df_cat_all['total'] = df_cat_all['alt_total']
+
+                            if df_cat_all.empty:
+                                continue
+
+                            sec_table = df_cat_all.groupby(['provider','section'])['total'].sum().unstack(fill_value=0)
+                            # asegurar orden de secciones
+                            for s in expected_sections:
+                                if s not in sec_table.columns:
+                                    sec_table[s] = 0.0
+                            sec_table = sec_table[expected_sections]
+
+                            providers_order = list(sec_table.index)
+                            fig = go.Figure()
+                            for s in expected_sections:
+                                color = SECTION_COLORS.get(s, '#CCCCCC')
+                                # mostrar etiquetas de valor dentro de las barras
+                                vals = sec_table[s].values
+                                fig.add_trace(go.Bar(name=s, x=providers_order, y=vals, marker_color=color,
+                                                     text=[f"${v:,.2f}" for v in vals], textposition='inside'))
+                            fig.update_layout(barmode='stack', title=f'Costo por Proveedor desglosado por Sistema — {cat}', xaxis_title='Proveedor', yaxis_title='Valor (USD)')
+                            st.plotly_chart(fig, use_container_width=True)
+                    except Exception as e:
+                        st.write('No se pudo generar gráficos:', e)
+
+                    st.success('Comparativa detallada generada')
 
     for cat in categories:
         st.markdown(f"### {category_icons.get(cat, '📊')} {cat}")
@@ -1824,8 +2009,8 @@ elif motor_choice == 'COSTOS':
                     df_display['VARIABLE'] = df_display['VARIABLE'].str.replace(' + ', ' ', regex=True)
 
                     min_col = None
-                    if 'EQUIPO+SERVICIOS+TLCC' in df_display['VARIABLE'].values:
-                        total_row = df_display[df_display['VARIABLE'] == 'EQUIPO+SERVICIOS+TLCC']
+                    if 'TOTAL' in df_display['VARIABLE'].values:
+                        total_row = df_display[df_display['VARIABLE'] == 'TOTAL']
                         if not total_row.empty:
                             numeric_values = []
                             for col in df_display.columns[1:]:
@@ -1839,7 +2024,7 @@ elif motor_choice == 'COSTOS':
 
                     def highlight_winner(row):
                         styles = [''] * len(row)
-                        if row['VARIABLE'] == 'EQUIPO+SERVICIOS+TLCC' and min_col and min_col in row.index:
+                        if row['VARIABLE'] == 'TOTAL' and min_col and min_col in row.index:
                             idx = row.index.get_loc(min_col)
                             styles[idx] = 'background-color: #d4edda; font-weight: bold; color: #155724'
                         return styles
@@ -1876,11 +2061,17 @@ elif motor_choice == 'COSTOS':
             pipe = t['pipeSize']
             title = f"{provider} - {pump}"
 
+            # Preferir fila 'TOTAL' para obtener los valores; fallback a 'EQUIPO+SERVICIOS+TLCC'
             total_row = None
             for row in data:
-                if len(row) >= 1 and "equipo+servicios+tlcc" in str(row[0]).lower():
+                if len(row) >= 1 and row[0] is not None and 'total' == str(row[0]).strip().lower():
                     total_row = row
                     break
+            if total_row is None:
+                for row in data:
+                    if len(row) >= 1 and "equipo+servicios+tlcc" in str(row[0]).lower():
+                        total_row = row
+                        break
             if not total_row or len(total_row) < 4: continue
 
             def clean_val(val):
@@ -1980,6 +2171,8 @@ elif motor_choice == 'EV TECNICA':
     comp_minimo = []
     comp_optimo = []
     comp_maximo = []
+
+    
 
     def _is_cumple(val):
         import re
