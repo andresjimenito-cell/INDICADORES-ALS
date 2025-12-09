@@ -31,8 +31,7 @@ except ImportError as e:
 # --- CONFIGURACIÓN DE PÁGINA ---
 try:
     st.set_page_config(
-        page_title='Dashboard Operacional',
-        layout='wide',
+       
         initial_sidebar_state='collapsed',
         page_icon="📊"
     )
@@ -116,24 +115,28 @@ DASHBOARD_CSS = f"""
     max-width: 100%;
 }}
 
-/* 🔥 HEADER MEGA IMPACTANTE */
+/* 🏭 HEADER INDUSTRIAL MODERNO */
 .dashboard-header {{
-    background: var(--gradient-cosmic);
-    background-size: 200% 200%;
-    animation: gradient-shift 8s ease infinite;
-    padding: 3rem 3rem;
-    border-radius: var(--radius-mega);
-    margin-bottom: 3rem;
-    position: relative;
-    overflow: hidden;
+    /* Fondo oscuro sólido, azul grisáceo técnico (Slate) */
+    background: #1e293b; 
     
-    box-shadow: 
-        0 0 60px rgba(99, 102, 241, 0.6),
-        0 20px 80px rgba(0, 0, 0, 0.5),
-        inset 0 0 100px rgba(255, 255, 255, 0.1);
+    /* Sin animaciones locas */
     
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    transition: all var(--transition-smooth);
+    /* Espaciado más compacto y funcional */
+    padding: 1.5rem 2rem;
+    
+    /* Bordes menos redondeados, más técnicos */
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    
+    /* Sombra sutil, solo para elevarlo del fondo */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    
+    /* Borde inferior de acento (ej. Azul seguridad o Amarillo precaución) */
+    border-bottom: 4px solid #3b82f6; 
+    
+    /* Texto (asegúrate de que el h1 dentro sea blanco) */
+    color: #f8fafc;
 }}
 
 .dashboard-header::before {{
@@ -150,7 +153,7 @@ DASHBOARD_CSS = f"""
 .dashboard-header:hover {{
     transform: translateY(-8px) scale(1.01);
     box-shadow: 
-        0 0 100px rgba(236, 72, 153, 0.8),
+        0 0 100px rgba(236, 0, 212, 0.8),
         0 30px 100px rgba(0, 0, 0, 0.6),
         inset 0 0 150px rgba(255, 255, 255, 0.15);
 }}
@@ -179,7 +182,7 @@ DASHBOARD_CSS = f"""
     border: 2px solid rgba(255, 255, 255, 0.3);
     color: white;
     box-shadow: 
-        0 0 30px rgba(99, 102, 241, 0.5),
+        0 0 10px rgba(99, 241, 161, 0.5),
         inset 0 0 20px rgba(255, 255, 255, 0.1);
     position: relative;
     z-index: 1;
@@ -193,21 +196,21 @@ DASHBOARD_CSS = f"""
 
 /* 💎 KPI CARDS EXPLOSIVOS */
 .kpi-card {{
-    background: rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(15px);
-    border: 2px solid rgba(99, 102, 241, 0.25);
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(5px);
+    border: 1.5px solid rgba(0, 255, 153, 0.2);
     border-radius: var(--radius-xl);
-    padding: 1.2rem 1rem;
+    padding: 0.6rem 0.7rem;
     position: relative;
     overflow: hidden;
     
     box-shadow: 
-        0 0 20px rgba(99, 102, 241, 0.2),
-        0 5px 20px rgba(0, 0, 0, 0.1);
+        0 0 8px rgba(0, 255, 153, 0.1),
+        0 2px 10px rgba(0, 0, 0, 0.05);
     
     transition: all var(--transition-smooth);
-    animation: pulse-glow 4s ease-in-out infinite;
-    min-height: 160px;
+    animation: none;
+    min-height: 90px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -222,7 +225,7 @@ DASHBOARD_CSS = f"""
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 153, 0.1), transparent);
     transition: left 0.5s;
 }}
 
@@ -231,11 +234,11 @@ DASHBOARD_CSS = f"""
 }}
 
 .kpi-card:hover {{
-    transform: translateY(-10px) rotateZ(-2deg) scale(1.03);
-    border-color: rgba(236, 72, 153, 0.6);
+    transform: translateY(-5px) rotateZ(5deg) scale(1.02);
+    border-color: rgba(0, 255, 153, 0.4);
     box-shadow: 
-        0 0 60px rgba(236, 72, 153, 0.8),
-        0 20px 60px rgba(0, 0, 0, 0.5);
+        0 0 15px rgba(0, 255, 153, 0.2),
+        0 5px 15px rgba(0, 0, 0, 0.1);
     animation: none;
 }}
 
@@ -254,21 +257,24 @@ DASHBOARD_CSS = f"""
 }}
 
 .kpi-label {{
-    font-size: 0.8rem;
+    font-size: 0.65rem;
     font-weight: 700;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
     text-transform: uppercase;
-    background: linear-gradient(135deg, #a78bfa, #06b6d4);
+    background: linear-gradient(135deg, #00FF99, #00FF99);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    opacity: 0.9;
+    opacity: 0.8;
 }}
 
 .kpi-value {{
     font-size: 2rem;
     font-weight: 900;
-    color: white;
+    background: linear-gradient(135deg, #00FF99, #00FF99);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
     text-shadow: 
         0 0 20px rgba(99, 102, 241, 0.8),
         0 5px 15px rgba(0, 0, 0, 0.5);
@@ -426,7 +432,7 @@ DASHBOARD_CSS = f"""
 div[data-testid="stVerticalBlockBorderWrapper"] {{
     background: rgba(255, 255, 255, 0.05);
     backdrop-filter: blur(10px);
-    border: 2px solid rgba(99, 102, 241, 0.2);
+    border: 1px solid rgba(99, 102, 241, 0.2);
     border-radius: var(--radius-mega);
     padding: 1.5rem 1.3rem;
     margin-bottom: 0.8rem;
@@ -434,7 +440,7 @@ div[data-testid="stVerticalBlockBorderWrapper"] {{
     overflow: hidden;
     
     box-shadow: 
-        0 0 20px rgba(99, 102, 241, 0.2),
+        0 0 10px rgba(99, 102, 241, 0.2),
         0 10px 30px rgba(0, 0, 0, 0.1);
     
     transition: all var(--transition-smooth);
@@ -644,31 +650,146 @@ def _render_neon_button(icon, label, value, style_class="neon-neutral"):
     """
 
 def generar_grafico_radar(kpis):
-    """Radar con fondo transparente y altura fija."""
-    vals = [kpis.get('running',0), kpis.get('pozos_on',0), kpis.get('pozos_off',0), kpis.get('fallados',0),kpis.get('operativos',0)]
+    """
+    Genera un gráfico tipo 'radar' mejorado para mostrar la distribución de estado.
+    Estilizado para un dashboard oscuro.
+    """
+    # Definición de datos
+    vals = [kpis.get('running', 0), kpis.get('pozos_on', 0), kpis.get('pozos_off', 0), kpis.get('fallados', 0), kpis.get('operativos', 0)]
     cats = ['Running', 'Pozos ON', 'Pozos OFF', 'Fallados', 'Operativos']
     
+    # 1. Determinar el valor máximo para la escala (Mejora de visibilidad)
+    # Se añade un buffer de 10% para que el polígono no toque el borde
+    max_val = max(vals) * 1.15 if max(vals) > 0 else 100
+    
+    # Definición de constantes de estilo para consistencia
+    COLOR_LINEA = '#10B981'  # Ejemplo de PRIMARY (Verde/Éxito)
+    COLOR_RELLENO = 'rgba(16, 185, 129, 0.4)' # Verde con 40% de transparencia
+    COLOR_GRID = 'rgba(255, 255, 255, 0.3)' # Líneas de cuadrícula blancas y sutiles
+    COLOR_TICK_LABELS = 'white'
+    
     fig = go.Figure()
+    
     fig.add_trace(go.Scatterpolar(
-        r=vals, theta=cats, fill='toself',
-        line_color=PRIMARY,
-        fillcolor='rgba(59, 130, 246, 0.2)',
-    ))
-    fig.update_layout(
-        polar=dict(
-            # Se usa el mismo tamaño de cuadrícula para mantener la proporción visual
-            radialaxis=dict(visible=True, showticklabels=False, gridcolor='rgba(128,128,128,0.2)'),
-            angularaxis=dict(gridcolor='rgba(128,128,128,0.2)', color='gray'),
-            bgcolor='rgba(0,0,0,0)' # Transparente total
+        r=vals, 
+        theta=cats, 
+        fill='toself',
+        name='Distribución', # Se añade un nombre para la leyenda (aunque esté oculta)
+        
+        # Estilo de la línea del polígono
+        line=dict(
+            color=COLOR_LINEA,
+            width=3 # Línea más gruesa para destacar
         ),
-        margin=dict(l=30, r=30, t=10, b=10),
-        height=280, # ALTURA FIJA PARA SIMETRÍA CON EL GRÁFICO DE BARRAS
-        paper_bgcolor='rgba(0,0,0,0)',
+        
+        # Estilo del relleno del polígono
+        fillcolor=COLOR_RELLENO,
+        
+        # Marcadores para los puntos de datos
+        marker=dict(
+            size=6,
+            color='#37FF00',
+            symbol='circle'
+        )
+    ))
+    
+    fig.update_layout(
+        title={
+            'text': 'Distribución de Estado Operacional', 
+            'y': 0.99, 
+            'x': 0.5, 
+            'xanchor': 'center', 
+            'yanchor': 'top',
+            'font': {'color': 'white', 'size': 16}
+        },
+        polar=dict(
+            # Configuración del eje radial (valores)
+            radialaxis=dict(
+                visible=True, 
+                range=[0, max_val], # Rango dinámico y con buffer
+                showticklabels=False, # Ocultar los números en el eje para limpiar el gráfico
+                gridcolor=COLOR_GRID,
+                linecolor=COLOR_GRID,
+                linewidth=1
+            ),
+            # Configuración del eje angular (categorías)
+            angularaxis=dict(
+                gridcolor=COLOR_GRID, 
+                linecolor=COLOR_GRID,
+                tickfont=dict(color=COLOR_TICK_LABELS, size=11), # Etiquetas blancas
+                direction='clockwise' # Para un aspecto más formal de "reloj" o "telaraña"
+            ),
+            bgcolor='rgba(0,0,0,0)' # Fondo del polar transparente
+        ),
+        # Ajustes generales del layout
+        margin=dict(l=20, r=20, t=40, b=20),
+        height=340, 
+        paper_bgcolor='rgba(0,0,0,0)', # Fondo de la figura transparente
         plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='white', size=12),
         showlegend=False
     )
+    
     return fig
 
+
+def generar_grafico_severidad_acelerador(indice_severidad):
+    """
+    Genera un gráfico tipo 'velocímetro/gauge' para mostrar el índice de severidad.
+    """
+    # Normalizar el índice de severidad para el rango 0-3
+    max_valor = 3.0
+    valor_actual = min(max(indice_severidad, 0), max_valor)
+    
+    # Determinar color basado en el valor
+    if valor_actual > 1.5:
+        color_aguja = '#FF0000'  # Rojo para alto
+        label_estado = 'ALTO'
+    elif valor_actual > 1.0:
+        color_aguja = '#FF9000'  # Naranja para medio-alto
+        label_estado = 'MEDIO-ALTO'
+    else:
+        color_aguja = '#37FF00'  # Verde para bajo
+        label_estado = 'BAJO'
+    
+    fig = go.Figure()
+    
+    # Crear el velocímetro con go.Indicator
+    fig.add_trace(go.Indicator(
+        mode='gauge+number',
+        value=valor_actual,
+        domain={'x': [0, 1], 'y': [0, 1]},
+        title={'text': 'Severidad >1.05 Alerta '},
+        number={'suffix': '', 'valueformat': '.2f'},
+        gauge=go.indicator.Gauge(
+            axis=dict(range=[0, max_valor], tickwidth=2, tickcolor='white'),
+            bar=dict(color=color_aguja, thickness=0.2),
+            bgcolor='rgba(100, 100, 100, 0.2)',
+            borderwidth=2,
+            bordercolor='white',
+            steps=[
+                dict(range=[0, 1], color='rgba(55, 255, 0, 0.3)'),        # Verde
+                dict(range=[1, 1.05], color='rgba(255, 144, 0, 0.3)'),      # Naranja
+                dict(range=[1.05, max_valor], color='rgba(255, 0, 0, 0.3)') # Rojo
+            ],
+            threshold=dict(
+                line=dict(color='red', width=3),
+                thickness=1,
+                value=1.0
+            )
+        )
+    ))
+    
+    fig.update_layout(
+        height=320,
+        margin=dict(l=30, r=30, t=50, b=30),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='white', size=12),
+        showlegend=False
+    )
+    
+    return fig
 
 def get_color_sequence(mode=None):
     return [
@@ -1054,10 +1175,41 @@ def render_bopd_vs_runlife(df_bd, df_f9, fecha_eval):
 
 def show_resumen():
     st.markdown(DASHBOARD_CSS, unsafe_allow_html=True)
+
+    # Hero title similar to INDICADORES.py
+    try:
+        fecha_display = st.session_state.get('fecha_eval_resumen', get_last_day_of_previous_month())
+        try:
+            fecha_str = pd.to_datetime(fecha_display).strftime('%d %b %Y')
+        except Exception:
+            fecha_str = str(fecha_display)
+    except Exception:
+        fecha_str = ''
+
+    # Cargar logo via helper (fallback a imagen remota)
+    try:
+        from ui_helpers import get_logo_img_tag
+        logo_html = get_logo_img_tag(width=100, style='height:80px; filter: drop-shadow(0 0 10px rgba(200, 43, 150, 0.5));')
+    except Exception:
+        logo_html = "<img src='https://www.fronteraenergy.ca/wp-content/uploads/2023/05/logo-frontera-white.png' width='100'/>"
+
+    hero_html = f"""
+    <div class='dashboard-header'>
+        <div style='display:flex; align-items:center; justify-content:space-between;'>
+            <div style='display:flex; align-items:center; gap: 1.5rem;'>
+                {logo_html}
+                <div class='header-title'>INDICADORES ALS</div>
+            </div>
+            <div class='header-date'>{fecha_str}</div>
+        </div>
+    </div>
+    """
+    st.markdown(hero_html, unsafe_allow_html=True)
     
     if 'df_bd_calculated' not in st.session_state: st.session_state['df_bd_calculated'] = None
     if 'df_forma9_calculated' not in st.session_state: st.session_state['df_forma9_calculated'] = None
     if 'resumen_publico_calculated' not in st.session_state: st.session_state['resumen_publico_calculated'] = False
+    if 'fecha_eval_resumen' not in st.session_state: st.session_state['fecha_eval_resumen'] = get_last_day_of_previous_month()
 
     # Intentar cargar datos desde saved_uploads o descargar desde enlaces por defecto
     upload_dir = os.path.join(os.getcwd(), 'saved_uploads')
@@ -1173,64 +1325,224 @@ def show_resumen():
                 st.error(f'Error al intentar redescargar: {e}')
 
 
-    # Fecha por defecto: último día del mes anterior (no editable en resumen público)
+    # Fecha por defecto: último día del mes anterior (AHORA EDITABLE)
     default_date = get_last_day_of_previous_month()
-    if 'fecha_eval' not in st.session_state:
-        st.session_state['fecha_eval'] = default_date
-    fecha_eval = st.session_state.get('fecha_eval', default_date)
+    
+    # Usar la fecha del session_state si existe, sino usar la fecha por defecto
+    if st.session_state.get('fecha_eval_resumen') is None:
+        st.session_state['fecha_eval_resumen'] = default_date
+    
+    fecha_eval = st.session_state.get('fecha_eval_resumen', default_date)
     fecha_fmt = pd.to_datetime(fecha_eval).strftime('%d %b %Y')
 
-    # HEADER COMPACTO
-    st.markdown(f"""
-    <div class='dashboard-header' style='padding: 1.5rem 2rem; margin-bottom: 1rem;'>
-        <div style='display:flex; align-items:center; gap:0.8rem;'>
-            <span style='font-size:1.5rem;'>🚀</span>
-            <div>
-                <h1 class='header-title' style='font-size: 1.8rem; margin-bottom: 0.2rem;'>ALS FRONTERA - ESTADO DE SISTEMAS</h1>
-                <small style='opacity:0.5; font-size: 0.75rem;'>Visión General de Rendimiento</small>
-            </div>
-        </div>
-        <div class='header-date' style='font-size: 0.9rem;'>📅 {fecha_fmt}</div>
-    </div>
-    """, unsafe_allow_html=True)
+    # --- SECCIÓN DE FILTROS Y FECHA EDITABLE (MINIMIZABLE) ---
+    with st.expander("🔍 Filtros y Parámetros", expanded=False):
+        # Inicializar filtros únicos
+        if 'unique_bloques_resumen' not in st.session_state:
+            st.session_state['unique_bloques_resumen'] = ['TODOS']
+        if 'unique_campos_resumen' not in st.session_state:
+            st.session_state['unique_campos_resumen'] = ['TODOS']
+        if 'unique_proveedores_resumen' not in st.session_state:
+            st.session_state['unique_proveedores_resumen'] = ['TODOS']
+        
+        # Crear columnas para los filtros (2 filas)
+        col_fecha, col_activo, col_als, col_bloque = st.columns(4)
+        col_campo, col_proveedor, _, _ = st.columns(4)
+        
+        with col_fecha:
+            # Fecha editable
+            new_fecha = st.date_input(
+                "📅 Fecha de Evaluación",
+                value=fecha_eval,
+                key="fecha_eval_input"
+            )
+            st.session_state['fecha_eval_resumen'] = new_fecha
+            fecha_eval = new_fecha
+            fecha_fmt = pd.to_datetime(fecha_eval).strftime('%d %b %Y')
+        
+        # ===== FILTROS PROGRESIVOS =====
+        # Inicializar valores de filtros si no existen
+        if 'resumen_activo_filter' not in st.session_state:
+            st.session_state['resumen_activo_filter'] = 'TODOS'
+        if 'resumen_als_filter' not in st.session_state:
+            st.session_state['resumen_als_filter'] = 'TODOS'
+        if 'resumen_bloque_filter' not in st.session_state:
+            st.session_state['resumen_bloque_filter'] = 'TODOS'
+        if 'resumen_campo_filter' not in st.session_state:
+            st.session_state['resumen_campo_filter'] = 'TODOS'
+        if 'resumen_proveedor_filter' not in st.session_state:
+            st.session_state['resumen_proveedor_filter'] = 'TODOS'
+        
+        # Crear dataframe temporal para filtros progresivos
+        df_filter_temp = df_bd.copy()
+        
+        # 1. FILTRO DE ACTIVO
+        with col_activo:
+            unique_activos = sorted(df_filter_temp['ACTIVO'].dropna().unique().tolist()) if 'ACTIVO' in df_filter_temp.columns else []
+            activo_options = ['TODOS'] + unique_activos
+            
+            st.session_state['resumen_activo_filter'] = st.selectbox(
+                "🏭 Activo",
+                options=activo_options,
+                index=activo_options.index(st.session_state['resumen_activo_filter']) if st.session_state['resumen_activo_filter'] in activo_options else 0,
+                key='activo_resumen_select'
+            )
+        
+        # Aplicar filtro de Activo
+        if st.session_state['resumen_activo_filter'] != 'TODOS' and 'ACTIVO' in df_filter_temp.columns:
+            df_filter_temp = df_filter_temp[df_filter_temp['ACTIVO'] == st.session_state['resumen_activo_filter']]
+        
+        # 2. FILTRO DE ALS
+        with col_als:
+            unique_als = sorted(df_filter_temp['ALS'].dropna().unique().tolist()) if 'ALS' in df_filter_temp.columns else []
+            als_options = ['TODOS'] + unique_als
+            
+            # Si el valor actual no está en las opciones, resetear a TODOS
+            if st.session_state['resumen_als_filter'] not in als_options:
+                st.session_state['resumen_als_filter'] = 'TODOS'
+            
+            st.session_state['resumen_als_filter'] = st.selectbox(
+                "⚙️ ALS",
+                options=als_options,
+                index=als_options.index(st.session_state['resumen_als_filter']) if st.session_state['resumen_als_filter'] in als_options else 0,
+                key='als_resumen_select'
+            )
+        
+        # Aplicar filtro de ALS
+        if st.session_state['resumen_als_filter'] != 'TODOS' and 'ALS' in df_filter_temp.columns:
+            df_filter_temp = df_filter_temp[df_filter_temp['ALS'] == st.session_state['resumen_als_filter']]
+        
+        # 3. FILTRO DE BLOQUE
+        with col_bloque:
+            unique_bloques = sorted(df_filter_temp['BLOQUE'].dropna().unique().tolist()) if 'BLOQUE' in df_filter_temp.columns else []
+            bloque_options = ['TODOS'] + unique_bloques
+            
+            if st.session_state['resumen_bloque_filter'] not in bloque_options:
+                st.session_state['resumen_bloque_filter'] = 'TODOS'
+            
+            st.session_state['resumen_bloque_filter'] = st.selectbox(
+                "🎲 Bloque",
+                options=bloque_options,
+                index=bloque_options.index(st.session_state['resumen_bloque_filter']) if st.session_state['resumen_bloque_filter'] in bloque_options else 0,
+                key='bloque_resumen_select'
+            )
+        
+        # Aplicar filtro de Bloque
+        if st.session_state['resumen_bloque_filter'] != 'TODOS' and 'BLOQUE' in df_filter_temp.columns:
+            df_filter_temp = df_filter_temp[df_filter_temp['BLOQUE'] == st.session_state['resumen_bloque_filter']]
+        
+        # 4. FILTRO DE CAMPO
+        with col_campo:
+            unique_campos = sorted(df_filter_temp['CAMPO'].dropna().unique().tolist()) if 'CAMPO' in df_filter_temp.columns else []
+            campo_options = ['TODOS'] + unique_campos
+            
+            if st.session_state['resumen_campo_filter'] not in campo_options:
+                st.session_state['resumen_campo_filter'] = 'TODOS'
+            
+            st.session_state['resumen_campo_filter'] = st.selectbox(
+                "🎴 Campo",
+                options=campo_options,
+                index=campo_options.index(st.session_state['resumen_campo_filter']) if st.session_state['resumen_campo_filter'] in campo_options else 0,
+                key='campo_resumen_select'
+            )
+        
+        # Aplicar filtro de Campo
+        if st.session_state['resumen_campo_filter'] != 'TODOS' and 'CAMPO' in df_filter_temp.columns:
+            df_filter_temp = df_filter_temp[df_filter_temp['CAMPO'] == st.session_state['resumen_campo_filter']]
+        
+        # 5. FILTRO DE PROVEEDOR
+        with col_proveedor:
+            unique_proveedores = sorted(df_filter_temp['PROVEEDOR'].dropna().unique().tolist()) if 'PROVEEDOR' in df_filter_temp.columns else []
+            proveedor_options = ['TODOS'] + unique_proveedores
+            
+            if st.session_state['resumen_proveedor_filter'] not in proveedor_options:
+                st.session_state['resumen_proveedor_filter'] = 'TODOS'
+            
+            st.session_state['resumen_proveedor_filter'] = st.selectbox(
+                "🏢 Proveedor",
+                options=proveedor_options,
+                index=proveedor_options.index(st.session_state['resumen_proveedor_filter']) if st.session_state['resumen_proveedor_filter'] in proveedor_options else 0,
+                key='proveedor_resumen_select'
+            )
 
-    # CÁLCULO manual mediante botón (igual que INDICADORES.py)
-    col_calc = st.columns([1])[0]
-    with col_calc:
-        calcular_btn = st.button("🔄 DOBLE CLIP PARA MOSTRAR DATOS", key="calcular_btn_resumen", use_container_width=True, help="Procesar datos y mostrar KPIs")
+        # CÁLCULO manual mediante botón (igual que INDICADORES.py)
+        col_calc = st.columns([1])[0]
+        with col_calc:
+            calcular_btn = st.button("🔄 DOBLE CLIP PARA MOSTRAR DATOS", key="calcular_btn_resumen", use_container_width=True, help="Procesar datos y mostrar KPIs")
 
-    # Si el botón fue presionado y tenemos los DataFrames, normalizar columnas y marcar calculado
-    if calcular_btn:
-        if df_bd is None or df_f9 is None:
-            st.error('No hay datos disponibles para calcular. Revisa saved_uploads o la conectividad.')
-        else:
-            try:
-                # Primero limpiar/normalizar con la rutina local
-                processed_f9, processed_bd = _prepare_and_run(df_f9, df_bd, fecha_eval)
-                # Si existe la implementación compartida más fiel (desde INDICADORES), usarla
-                if shared_perform_initial_calculations is not None and processed_f9 is not None and processed_bd is not None:
-                    try:
-                        proc_f9_2, proc_bd_2 = shared_perform_initial_calculations(processed_f9.copy(), processed_bd.copy(), fecha_eval)
-                        # Si la llamada no devolvió None, preferir ese resultado (más cercano a INDICADORES.py)
-                        if proc_f9_2 is not None and proc_bd_2 is not None:
-                            processed_f9, processed_bd = proc_f9_2, proc_bd_2
-                    except Exception:
-                        # Si falla, quedarnos con la versión local
-                        pass
-                if processed_f9 is None or processed_bd is None:
-                    st.error('No se pudieron procesar los datos. Revisa los archivos en saved_uploads.')
-                else:
-                    st.session_state['df_bd_calculated'] = processed_bd
-                    st.session_state['df_forma9_calculated'] = processed_f9
-                    st.session_state['resumen_publico_calculated'] = True
-                    st.success('Cálculos iniciales procesados y guardados; ahora se muestran los KPIs.')
-            except Exception as e:
-                st.error(f'Error al preparar los datos para cálculo: {e}')
+        # Botón para ver análisis detallado (usar launch_module_path para navegación estable)
+        col_analisis = st.columns([1])[0]
+        with col_analisis:
+            if st.button("📊 Ver Análisis Detallado", key="btn_indicadores_resumen", use_container_width=True):
+                try:
+                    cwd_files = os.listdir('.')
+                    target = None
+                    if 'indicadores.py' in cwd_files:
+                        target = os.path.abspath('indicadores.py')
+                    else:
+                        for f in cwd_files:
+                            if f.lower() == 'indicadores.py':
+                                target = os.path.abspath(f)
+                                break
+                    if target is None:
+                        st.error('No se encontró indicadores.py en el directorio. No se puede abrir el análisis detallado.')
+                    else:
+                        # Evitar que indicadores.py vuelva a redirigir al resumen
+                        try:
+                            if 'show_resumen_publico' in st.session_state:
+                                st.session_state['show_resumen_publico'] = False
+                        except Exception:
+                            pass
+                        st.session_state['launch_module_path'] = target
+                        st.session_state['launch_module_name'] = os.path.splitext(os.path.basename(target))[0]
+                        st.rerun()
+                except Exception as e:
+                    st.error(f'Error al intentar abrir indicadores.py: {e}')
+
+        # Si el botón fue presionado y tenemos los DataFrames, normalizar columnas y marcar calculado
+        if calcular_btn:
+            if df_bd is None or df_f9 is None:
+                st.error('No hay datos disponibles para calcular. Revisa saved_uploads o la conectividad.')
+            else:
+                try:
+                    # Primero limpiar/normalizar con la rutina local
+                    processed_f9, processed_bd = _prepare_and_run(df_f9, df_bd, fecha_eval)
+                    # Si existe la implementación compartida más fiel (desde INDICADORES), usarla
+                    if shared_perform_initial_calculations is not None and processed_f9 is not None and processed_bd is not None:
+                        try:
+                            proc_f9_2, proc_bd_2 = shared_perform_initial_calculations(processed_f9.copy(), processed_bd.copy(), fecha_eval)
+                            # Si la llamada no devolvió None, preferir ese resultado (más cercano a INDICADORES.py)
+                            if proc_f9_2 is not None and proc_bd_2 is not None:
+                                processed_f9, processed_bd = proc_f9_2, proc_bd_2
+                        except Exception:
+                            # Si falla, quedarnos con la versión local
+                            pass
+                    if processed_f9 is None or processed_bd is None:
+                        st.error('No se pudieron procesar los datos. Revisa los archivos en saved_uploads.')
+                    else:
+                        st.session_state['df_bd_calculated'] = processed_bd
+                        st.session_state['df_forma9_calculated'] = processed_f9
+                        st.session_state['resumen_publico_calculated'] = True
+                        st.success('Cálculos iniciales procesados y guardados; ahora se muestran los KPIs.')
+                except Exception as e:
+                    st.error(f'Error al preparar los datos para cálculo: {e}')
 
     # Si aún no se ha calculado, detener para evitar mostrar KPIs vacíos
     if not st.session_state.get('resumen_publico_calculated'):
         st.info('Pulsa "Calcular Datos Iniciales" para generar el resumen con los enlaces por defecto.')
         st.stop()
+
+    # Actualizar listas de filtros únicas para usar en los selectboxes
+    if 'ACTIVO' in df_bd.columns:
+        st.session_state['unique_activos_resumen'] = sorted(df_bd['ACTIVO'].dropna().unique().tolist())
+    if 'ALS' in df_bd.columns:
+        st.session_state['unique_als_resumen'] = sorted(df_bd['ALS'].dropna().unique().tolist())
+    if 'BLOQUE' in df_bd.columns:
+        st.session_state['unique_bloques_resumen'] = sorted(df_bd['BLOQUE'].dropna().unique().tolist())
+    if 'CAMPO' in df_bd.columns:
+        st.session_state['unique_campos_resumen'] = sorted(df_bd['CAMPO'].dropna().unique().tolist())
+    if 'PROVEEDOR' in df_bd.columns:
+        st.session_state['unique_proveedores_resumen'] = sorted(df_bd['PROVEEDOR'].dropna().unique().tolist())
 
     # CÁLCULOS
     kpis = _calc_basic_kpis(df_bd, df_f9, fecha_eval)
@@ -1239,86 +1551,119 @@ def show_resumen():
     if 'RUN LIFE' in df_bd.columns:
         v = pd.to_numeric(df_bd['RUN LIFE'], errors='coerce').dropna()
         if not v.empty: rl_avg = float(v.mean())
+    
+    # --- APLICAR FILTROS (si existen) ---
+    df_bd_filtered = df_bd.copy()
+    df_f9_filtered = df_f9.copy()
+    
+    selected_activo = st.session_state.get('resumen_activo_filter', 'TODOS')
+    selected_als = st.session_state.get('resumen_als_filter', 'TODOS')
+    selected_bloque = st.session_state.get('resumen_bloque_filter', 'TODOS')
+    selected_campo = st.session_state.get('resumen_campo_filter', 'TODOS')
+    selected_proveedor = st.session_state.get('resumen_proveedor_filter', 'TODOS')
+    
+    if selected_activo != 'TODOS' and 'ACTIVO' in df_bd_filtered.columns:
+        df_bd_filtered = df_bd_filtered[df_bd_filtered['ACTIVO'] == selected_activo]
+    
+    if selected_als != 'TODOS' and 'ALS' in df_bd_filtered.columns:
+        df_bd_filtered = df_bd_filtered[df_bd_filtered['ALS'] == selected_als]
+    
+    if selected_bloque != 'TODOS' and 'BLOQUE' in df_bd_filtered.columns:
+        df_bd_filtered = df_bd_filtered[df_bd_filtered['BLOQUE'] == selected_bloque]
+    
+    if selected_campo != 'TODOS' and 'CAMPO' in df_bd_filtered.columns:
+        df_bd_filtered = df_bd_filtered[df_bd_filtered['CAMPO'] == selected_campo]
+    
+    if selected_proveedor != 'TODOS' and 'PROVEEDOR' in df_bd_filtered.columns:
+        df_bd_filtered = df_bd_filtered[df_bd_filtered['PROVEEDOR'] == selected_proveedor]
+    
+    # Filtrar forma9 por los pozos en bd_filtered
+    if not df_bd_filtered.empty and 'POZO' in df_bd_filtered.columns:
+        pozos_in_filtered = df_bd_filtered['POZO'].unique()
+        df_f9_filtered = df_f9_filtered[df_f9_filtered['POZO'].isin(pozos_in_filtered)]
+    
+    # Recalcular KPIs con filtros aplicados
+    kpis = _calc_basic_kpis(df_bd_filtered, df_f9_filtered, fecha_eval)
+    
+    rl_avg = 0.0
+    if 'RUN LIFE' in df_bd_filtered.columns:
+        v = pd.to_numeric(df_bd_filtered['RUN LIFE'], errors='coerce').dropna()
+        if not v.empty: rl_avg = float(v.mean())
+    
+    # Recalcular severidad con filtros (Total de fallas / Pozos con fallas) - Últimos 365 días
+    indice_severidad = 0.0
+    try:
+        if 'POZO' in df_bd_filtered.columns and 'RUN' in df_bd_filtered.columns and 'FECHA_FALLA' in df_bd_filtered.columns:
+            # Convertir fecha_eval a date si no lo es ya
+            fecha_eval_date = fecha_eval if isinstance(fecha_eval, pd.Timestamp) or hasattr(fecha_eval, 'date') is False else pd.to_datetime(fecha_eval).date()
+            if hasattr(fecha_eval, 'date'):
+                fecha_eval_date = fecha_eval if hasattr(fecha_eval, 'year') and hasattr(fecha_eval, 'month') and hasattr(fecha_eval, 'day') else pd.to_datetime(fecha_eval).date()
+            else:
+                fecha_eval_date = pd.to_datetime(fecha_eval).date()
+            
+            # Filtrar solo las fallas de los últimos 365 días (como en INDICADORES.py)
+            # Asegurar que FECHA_FALLA sea datetime
+            df_bd_filtered['FECHA_FALLA'] = pd.to_datetime(df_bd_filtered['FECHA_FALLA'], errors='coerce')
+            
+            pozos_fallados_df = df_bd_filtered[
+                (df_bd_filtered['FECHA_FALLA'].dt.date >= fecha_eval_date - timedelta(days=365)) &
+                (df_bd_filtered['FECHA_FALLA'].dt.date <= fecha_eval_date)
+            ]
+            
+            if not pozos_fallados_df.empty:
+                # Contar fallas por pozo
+                fallas_por_pozo = pozos_fallados_df.groupby('POZO')['RUN'].count().reset_index()
+                fallas_por_pozo.rename(columns={'RUN': 'Cantidad de Fallas'}, inplace=True)
+                
+                total_fallas_severidad = fallas_por_pozo['Cantidad de Fallas'].sum()
+                num_pozos_fallados = fallas_por_pozo.shape[0]
+                indice_severidad = (total_fallas_severidad / num_pozos_fallados) if num_pozos_fallados > 0 else 0.0
+    except Exception as e:
+        indice_severidad = 0.0
         
-    # Índice de falla: preferimos cálculo sobre últimos 365 días (pozos fallados / pozos ON según FORMA9)
+    # --- CÁLCULOS DE ÍNDICE DE FALLA ---
     try:
-        fecha_eval_ts = pd.to_datetime(fecha_eval)
-        # Intentar usar la misma función y fuente que usa kpis.py
+        from indice_falla import calcular_indice_falla_anual
+        indice_resumen_df, df_mensual_if = calcular_indice_falla_anual(df_bd_filtered, df_f9_filtered, fecha_eval)
+        if_on_raw = None
+        if_als_on_raw = None
         try:
-            from indice_falla import calcular_indice_falla_anual
-        except Exception:
-            calcular_indice_falla_anual = None
+            if 'Valor' in indice_resumen_df.columns and 'Indicador' in indice_resumen_df.columns:
+                row = indice_resumen_df[indice_resumen_df['Indicador'] == 'Índice de Falla ON']
+                if not row.empty:
+                    if_on_raw = row['Valor'].values[0]
+                
+                row_als = indice_resumen_df[indice_resumen_df['Indicador'] == 'Índice de Falla ALS ON']
+                if not row_als.empty:
+                    if_als_on_raw = row_als['Valor'].values[0]
+        except:
+            if_on_raw = None
+            if_als_on_raw = None
+    except Exception as e:
+        indice_resumen_df = None
+        df_mensual_if = None
+        if_on_raw = None
+        if_als_on_raw = None
+    
+    # Convertir porcentaje a número
+    def _pctstr_to_float(s):
+        try:
+            if s is None: return None
+            s2 = str(s).strip()
+            if s2.endswith('%'):
+                s2 = s2.replace('%', '')
+            return float(s2.replace(',', '.'))
+        except:
+            return None
+    
+    parsed_if_on = _pctstr_to_float(if_on_raw)
+    fail_idx = parsed_if_on if parsed_if_on is not None else 0.0
+    if_on_str = if_on_raw if if_on_raw is not None else 'N/D'
+    if_als_on_str = if_als_on_raw if if_als_on_raw is not None else 'N/D'
 
-        # Determinar ALS seleccionado (la app usa 'kpis_als_filter')
-        sel_raw = st.session_state.get('kpis_als_filter', 'TODOS')
-        sel_als = sel_raw if sel_raw and sel_raw != 'TODOS' else None
-
-        # Calcular resumen global (sin filtrar ALS)
-        if calcular_indice_falla_anual is not None:
-            try:
-                indice_resumen_global, _ = calcular_indice_falla_anual(df_bd.copy(), df_f9.copy(), fecha_eval_ts)
-            except Exception:
-                indice_resumen_global = None
-        else:
-            indice_resumen_global = None
-
-        # Calcular resumen para ALS específico si se seleccionó uno
-        indice_resumen_als = None
-        if sel_als and calcular_indice_falla_anual is not None:
-            try:
-                df_bd_als = df_bd.copy() if df_bd is not None else pd.DataFrame()
-                df_f9_als = df_f9.copy() if df_f9 is not None else pd.DataFrame()
-                if 'ALS' in df_bd_als.columns:
-                    df_bd_als = df_bd_als[df_bd_als['ALS'] == sel_als]
-                if 'ALS' in df_f9_als.columns:
-                    df_f9_als = df_f9_als[df_f9_als['ALS'] == sel_als]
-                indice_resumen_als, _ = calcular_indice_falla_anual(df_bd_als, df_f9_als, fecha_eval_ts)
-            except Exception:
-                indice_resumen_als = None
-
-        # Extraer valores EXACTOS como hace kpis.get_if_val
-        def _get_if_from_df(df_if, indicador):
-            try:
-                if df_if is None: return None
-                if 'Indicador' in df_if.columns and 'Valor' in df_if.columns:
-                    row = df_if[df_if['Indicador'] == indicador]
-                    if not row.empty:
-                        return str(row['Valor'].values[0])
-                return None
-            except Exception:
-                return None
-
-        if_on_raw = _get_if_from_df(indice_resumen_global, 'Índice de Falla ON')
-        if_als_on_raw = _get_if_from_df(indice_resumen_als if indice_resumen_als is not None else indice_resumen_global, 'Índice de Falla ALS ON')
-
-        # Convertir strings tipo '1.23%' a valores numéricos para el KPI principal (fail_idx)
-        def _pctstr_to_float(s):
-            try:
-                if s is None: return None
-                s2 = str(s).strip()
-                if s2.endswith('%'):
-                    s2 = s2.replace('%', '')
-                if s2.endswith('%%'):
-                    s2 = s2.replace('%%', '')
-                return float(s2.replace(',', '.'))
-            except Exception:
-                return None
-
-        parsed_if_on = _pctstr_to_float(if_on_raw)
-        fail_idx = parsed_if_on if parsed_if_on is not None else ( (kpis.get('fallados',0) / max(1, kpis.get('running',0) + kpis.get('fallados',0))) * 100 )
-
-        if_on_str = if_on_raw if if_on_raw is not None else 'N/D'
-        if_als_on_str = if_als_on_raw if if_als_on_raw is not None else 'N/D'
-
-    except Exception:
-        den = (kpis.get('running', 0) + kpis.get('fallados', 0))
-        fail_idx = (kpis.get('fallados', 0) / den) * 100 if den > 0 else 0.0
-        if_on_str = "N/D"
-        if_als_on_str = "N/D"
-
-    # --- TABLERO DASHBOARD: Fila 1 con 5 KPIs principales ---
+    # --- TABLERO DASHBOARD: Fila 1 con 6 KPIs principales (incluyendo severidad) ---
     try:
-        selected_als_display = st.session_state.get('kpis_als_filter', 'TODOS')
+        selected_als_display = st.session_state.get('resumen_als_filter', 'TODOS')
     except Exception:
         selected_als_display = 'TOTAL'
     
@@ -1326,72 +1671,128 @@ def show_resumen():
     total_corridas = kpis['extraidos'] + kpis['running']
     pct_extraccion = (kpis['extraidos'] / total_corridas * 100) if total_corridas > 0 else 0
     
-    # Fila 1: 5 KPIs principales
-    kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns([1, 1, 1, 1, 1])
+    # Fila 1: 6 KPIs principales (MTBF, Run Life, Índice Falla ON, Índice Falla ALS, Extracción, Pozos ON)
+    kpi1, kpi2, kpi3, kpi4, kpi5, kpi6 = st.columns([1, 1, 1, 1, 1, 1])
     
     with kpi1: st.markdown(_render_top_kpi("⏱️", "MTBF Estimado", kpis['mtbf'], "días"), unsafe_allow_html=True)
     with kpi2: st.markdown(_render_top_kpi("📈", "Run Life Prom.", f"{rl_avg:.1f}", "días"), unsafe_allow_html=True)
-    with kpi3: st.markdown(_render_top_kpi("📉", "Índice Falla ON", if_on_str, "%"), unsafe_allow_html=True)
-    with kpi4: st.markdown(_render_top_kpi("🎯", "Índice Falla ALS", if_als_on_str, "%"), unsafe_allow_html=True)
+    with kpi3: st.markdown(_render_top_kpi("📉", "Índice Falla ON", if_on_str, ""), unsafe_allow_html=True)
+    with kpi4: st.markdown(_render_top_kpi("🎯", "Índice Falla ALS", if_als_on_str, ""), unsafe_allow_html=True)
     with kpi5: st.markdown(_render_top_kpi("🔄", "Extracción %", f"{pct_extraccion:.1f}", "%"), unsafe_allow_html=True)
+    with kpi6: st.markdown(_render_top_kpi("📊", "Equipos ON", kpis['pozos_on'], "Rns"), unsafe_allow_html=True)
 
-    st.markdown("<div style='height: 2rem;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height: 1rem;'></div>", unsafe_allow_html=True)
 
-    # --- LAYOUT DASHBOARD COMPACTO (Gráficos 2x2) ---
-    # Fila superior: Gráfico histórico (ancho completo, altura reducida)
-    with st.container(border=True):
-        st.markdown("##### 📉 Tendencia Histórica")
-        try:
-            fig1, _ = generar_grafico_resumen(df_bd, df_f9, fecha_eval)
-            if fig1:
-                fig1.update_layout(
-                    margin=dict(l=20,r=20,t=10,b=20),
-                    height=250,
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    legend=dict(orientation="h", y=1.1)
-                )
-                st.plotly_chart(fig1, use_container_width=True)
-        except: st.error("Error en gráfico histórico")
+    # --- LAYOUT PRINCIPAL (0.8 - 0.2) - Desde Tendencia Histórica ---
+    col_main_content, col_estado_main = st.columns([0.8, 0.2])
 
-    st.markdown("<div style='height: 0.5rem;'></div>", unsafe_allow_html=True)
+    with col_main_content:
+        # Fila 1: Gráfico histórico (0.4) y Mapa de KPIs (0.4)
+        col_historico, col_mapa = st.columns([0.5, 0.5])
+        
+        with col_historico:
+            # Gráfico histórico
+            with st.container(border=True):
+                st.markdown("##### 📉 Histórico", help="Últimos 12 meses")
+                try:
+                    fig1, _ = generar_grafico_resumen(df_bd_filtered, df_f9_filtered, fecha_eval)
+                    if fig1:
+                        fig1.update_layout(
+                            margin=dict(l=15,r=15,t=15,b=15),
+                            height=320,
+                            paper_bgcolor='rgba(0,0,0,0)',
+                            plot_bgcolor='rgba(0,0,0,0)',
+                            legend=dict(orientation="h", y=8.0, font=dict(size=8))
+                        )
+                        st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False})
+                except: st.error("Error en gráfico histórico")
+        
+        with col_mapa:
+            # Mapa conceptual de KPIs
+            with st.container(border=True):
+                st.markdown("##### 🗺️ KPIs", help="Mapa conceptual de indicadores")
+                try:
+                    from kpis import mostrar_kpis
+                    indice_resumen_for_map = indice_resumen_df if 'indice_resumen_df' in dir() else None
+                    
+                    # Construir reporte_run_life similar a indicadores.generar_reporte_completo
+                    reporte_run_life = None
+                    try:
+                        if 'RUN LIFE' in df_bd_filtered.columns:
+                            tmp = df_bd_filtered.copy()
+                            tmp['FECHA_PULL_DATE'] = pd.to_datetime(tmp.get('FECHA_PULL', pd.NaT), errors='coerce')
+                            tmp['FECHA_FALLA_DATE'] = pd.to_datetime(tmp.get('FECHA_FALLA', pd.NaT), errors='coerce')
+                            rl_vals = pd.to_numeric(tmp[(tmp['FECHA_PULL_DATE'].notna()) | (tmp['FECHA_FALLA_DATE'].notna())]['RUN LIFE'], errors='coerce').dropna()
+                            if not rl_vals.empty:
+                                rl_mean = float(rl_vals.mean())
+                            else:
+                                rl_mean = float('nan')
+                            reporte_run_life = pd.DataFrame({
+                                'Categoría': ['Run Life Apagados + Fallados'],
+                                'Valor': [rl_mean]
+                            })
+                    except Exception:
+                        reporte_run_life = None
 
-    # Fila central: Dos gráficos simétricos (BOPD y Radar) - altura uniforme
-    col_a, col_b = st.columns([1, 1])
+                    mostrar_kpis(
+                        df_bd=df_bd_filtered,
+                        reporte_runes=None,
+                        reporte_run_life=reporte_run_life,
+                        indice_resumen_df=indice_resumen_for_map,
+                        mtbf_global=kpis['mtbf'],
+                        mtbf_als=None,
+                        df_forma9=df_f9_filtered,
+                        fecha_evaluacion=fecha_eval
+                    )
+                except Exception as e:
+                    st.info(f"Mapa no disponible")
 
-    with col_a:
-        with st.container(border=True):
-            st.markdown("##### 📌 BOPD vs Run Life")
-            try:
-                render_bopd_vs_runlife(df_bd, df_f9, fecha_eval)
-            except Exception as e:
-                st.error(f"Error en BOPD vs Run Life: {e}")
+        st.markdown("<div style='height: 0.5rem;'></div>", unsafe_allow_html=True)
 
-    with col_b:
-        with st.container(border=True):
-            st.markdown("##### 🕸️ Distribución de Estado")
-            try:
-                fig2 = generar_grafico_radar(kpis)
-                st.plotly_chart(fig2, use_container_width=True)
-            except: st.error("Error en radar")
+        # Fila 2: Tres gráficos en fila - Severidad, BOPD vs RunLife, y Radar
+        col_sev, col_bopd, col_radar = st.columns([1, 1, 1])
 
-    st.markdown("<div style='height: 0.5rem;'></div>", unsafe_allow_html=True)
+        with col_sev:
+            with st.container(border=True):
+                st.markdown("##### ⚡ Índice de Severidad")
+                try:
+                    fig_sev = generar_grafico_severidad_acelerador(indice_severidad)
+                    st.plotly_chart(fig_sev, use_container_width=True)
+                    
+                    # Botón/métrica del índice de severidad
+                    estado_sev = "🔴 ALTO" if indice_severidad > 1.5 else ("🟠 MEDIO-ALTO" if indice_severidad > 1.0 else "🟢 BAJO")
+                    st.markdown(f"<div style='text-align: center; font-weight: bold; color: white; font-size: 1.1rem;'>{estado_sev}</div>", unsafe_allow_html=True)
+                except Exception as e:
+                    st.error(f"Error en gráfico de severidad: {e}")
 
-    # --- BOTONES SIMÉTRICOS EN 2 FILAS (3 columnas cada una) ---
-    st.markdown("<div style='margin-top: 0.8rem;'></div>", unsafe_allow_html=True)
-    st.markdown("#### 📊 Estado Operacional")
-    
-    # Fila 1 de botones - Equipos en operación
-    btn1, btn2, btn3 = st.columns(3)
-    with btn1: st.markdown(_render_neon_button("🟢", "Running", kpis['running'], "neon-success"), unsafe_allow_html=True)
-    with btn2: st.markdown(_render_neon_button("🔴", "Fallados", kpis['fallados'], "neon-danger"), unsafe_allow_html=True)
-    with btn3: st.markdown(_render_neon_button("💡", "Pozos ON", kpis['pozos_on'], "neon-info"), unsafe_allow_html=True)
+        with col_bopd:
+            with st.container(border=True):
+                st.markdown("##### 📌 BOPD vs Run Life")
+                try:
+                    render_bopd_vs_runlife(df_bd_filtered, df_f9_filtered, fecha_eval)
+                except Exception as e:
+                    st.error(f"Error en BOPD vs Run Life: {e}")
 
-    # Fila 2 de botones - Equipos fuera de operación
-    btn4, btn5, btn6 = st.columns(3)
-    with btn4: st.markdown(_render_neon_button("⚫", "Pozos OFF", kpis['pozos_off'], "neon-neutral"), unsafe_allow_html=True)
-    with btn5: st.markdown(_render_neon_button("🔧", "Extraídos", kpis['extraidos'], "neon-danger"), unsafe_allow_html=True)
-    with btn6: st.markdown(_render_neon_button("📊", "Total Corridas", str(kpis['extraidos']+kpis['running']), "neon-info"), unsafe_allow_html=True)
+        with col_radar:
+            with st.container(border=True):
+                st.markdown("##### 🕸️ Distribución de Estado")
+                try:
+                    fig2 = generar_grafico_radar(kpis)
+                    st.plotly_chart(fig2, use_container_width=True)
+                except: st.error("Error en radar")
+
+    with col_estado_main:
+        # --- ESTADO OPERACIONAL EN COLUMNA VERTICAL (Derecha 0.2) ---
+        st.markdown("#### 📊 Estado Operacional")
+        
+        # Botones apilados verticalmente
+        st.markdown(_render_neon_button("🟢", "Running", kpis['running'], "neon-success"), unsafe_allow_html=True)
+        st.markdown(_render_neon_button("🔴", "Fallados", kpis['fallados'], "neon-danger"), unsafe_allow_html=True)
+        st.markdown(_render_neon_button("💡", "Pozos ON", kpis['pozos_on'], "neon-info"), unsafe_allow_html=True)
+        st.markdown(_render_neon_button("⚫", "Pozos OFF", kpis['pozos_off'], "neon-neutral"), unsafe_allow_html=True)
+        st.markdown(_render_neon_button("🔧", "Extraídos", kpis['extraidos'], "neon-danger"), unsafe_allow_html=True)
+        st.markdown(_render_neon_button("📊", "Total Corridas", str(kpis['extraidos']+kpis['running']), "neon-info"), unsafe_allow_html=True)
+
 
 if __name__ == '__main__':
     show_resumen()
