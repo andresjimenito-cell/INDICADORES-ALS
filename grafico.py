@@ -257,7 +257,7 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
         xaxis=xaxis_config,
         yaxis=yaxis1_config,
         yaxis2=yaxis2_config,
-        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
+        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1, font=dict(color='white')),
         margin=dict(t=100, b=50, l=50, r=50)
     )
     
@@ -266,5 +266,8 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
     # `theme.get_plotly_layout()` deja el fondo a Streamlit (background=None).
     layout_updates = {k: v for k, v in layout_base.items() if v is not None}
     fig.update_layout(**layout_updates)
+
+    # Asegurar que la leyenda tenga texto blanco (reaplicar por si el tema la sobreescribe)
+    fig.update_layout(legend=dict(font=dict(color='white')))
     
     return fig, df_monthly

@@ -12,7 +12,7 @@ else:
     COLOR_FONDO_OSCURO = _bg_raw or '#1a1a2e'
 get_color_sequence = _colors.get('color_sequence', lambda mode=None: [
     '#00A2FF',  # 1. Azul Zafiro Eléctrico
-    '#5EFF00',  # 2. Verde Lima Neón
+    '#55228A',  # 2. Verde Lima Neón
     '#0011D1',  # 3. Azul Cobalto Profundo
     '#00FF0D',  # 4. Verde Neón Puro
     '#4B0073',  # 5. Morado Índigo Profundo

@@ -26,18 +26,33 @@ COLOR_TEXTO_PRINCIPAL = _colors.get('text_on_primary', _colors.get('text', '#fff
 def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resumen_df=None, mtbf_global=None, mtbf_als=None, df_forma9=None, fecha_evaluacion=None):
     # Contenedor para el filtro y el título (código omitido por brevedad)
     with st.container():
-        # Title and brief description using native Streamlit components so they adapt to theme
-        st.header("KPIs")  
-        als_options = ['ESP'] + sorted(df_bd['ALS'].dropna().unique().tolist()) if 'ALS' in df_bd.columns else ['TODOS']
+        # Usar la misma clave que el resto de la app para mantener sincronía
+        # Construir opciones seguras y estables
+        if 'ALS' in df_bd.columns:
+            als_opts = sorted([str(x).strip() for x in df_bd['ALS'].dropna().unique() if str(x).strip() != ''])
+        else:
+            als_opts = []
+
+        als_options = ['ESP'] + als_opts
+
+        # Mantener selección previa si existe
+        cur = st.session_state.get('kpis_als_filter', 'ESP')
+        try:
+            idx = als_options.index(str(cur)) if str(cur) in als_options else 0
+        except Exception:
+            idx = 0
+
         selected_als = st.selectbox(
             'Filtro por Sistema de Levantamiento (ALS):',
             als_options,
-            key='kpis_als_filter_cyber',
-            index=0,
+            key='kpis_als_filter',
+            index=idx,
             help='Selecciona un sistema ALS para refinar el análisis',
         )
-        if selected_als != 'ESP':
-            df_bd_als = df_bd[df_bd['ALS'] == selected_als]
+
+        # Filtrar df según la selección (TODOS = no filtrar)
+        if selected_als and selected_als != 'TODOS':
+            df_bd_als = df_bd[df_bd['ALS'].astype(str).str.strip() == str(selected_als).strip()].copy()
         else:
             df_bd_als = df_bd.copy()
 
@@ -57,9 +72,9 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
     'RL': '#00F5FF',         # 1. Run Life - Verde Bosque Profundo
     'MTBF': '#A1039D',       # 2. MTBF - Púrpura Oscuro / Berenjena
     'IF': '#5EFF00',         # 3. Índice de Falla - Rojo Ladrillo / Óxido Oscuro (Alerta Sutil)
-    'RUNs': '#0011D1',       # 4. Corridas - Azul Marino Sólido (Diferente a ON)
-    'ON': '#0011D1',         # 5. Pozos ON - Dorado Opaco / Oliváceo
-    'OFF': '#0011D1',        # 6. Pozos OFF - Gris Oscuro (Visible, no negro)
+    'RUNs': '#00A2FF',       # 4. Corridas - Azul Marino Sólido (Diferente a ON)
+    'ON': '#00A2FF',         # 5. Pozos ON - Dorado Opaco / Oliváceo
+    'OFF': '#00A2FF',        # 6. Pozos OFF - Gris Oscuro (Visible, no negro)
     }
     
     # Estilo de nodos de Concepto

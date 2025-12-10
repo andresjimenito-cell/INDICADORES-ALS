@@ -37,3 +37,13 @@ def exportar_excel_con_graficas(tablas: dict, graficas: dict) -> bytes:
     with io.BytesIO() as output:
         wb.save(output)
         return output.getvalue()
+
+# Ejemplo de uso en Streamlit:
+# import streamlit as st
+# from descargar import exportar_excel_con_graficas
+# if st.button('Descargar Reporte Completo'):
+#     excel_bytes = exportar_excel_con_graficas({'Tabla1': df1, 'Tabla2': df2}, {'Graf1': fig1, 'Graf2': fig2})
+#     st.download_button('Descargar Excel', data=excel_bytes, file_name='reporte_completo.xlsx', mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+# La funcionalidad de generación de diapositivas con IA ha sido eliminada.
+# Si necesitas exportar a PowerPoint en el futuro, podemos agregar una
+# función limpia que use `python-pptx` sin dependencias de IA.
