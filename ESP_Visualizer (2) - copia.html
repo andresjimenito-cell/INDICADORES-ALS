@@ -1,0 +1,358 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ESP Visualizer Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+      body { background-color: #f8fafc; font-family: 'Inter', sans-serif; color: #1e293b; }
+      ::-webkit-scrollbar { width: 6px; height: 6px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+      input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; height: 24px; cursor: pointer; }
+      input[type=range]:focus { outline: none; }
+      input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: #ffffff; border: 2px solid #2563eb; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: grab; margin-top: -7px; }
+      input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; border-radius: 99px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel" data-presets="react,typescript">
+        const MotorType = { AMM: "AMM", PMM: "PMM" };
+
+        const SliderControl = ({ label, value, min, max, step, unit, onChange, subtext }) => {
+            const percentage = ((value - min) / (max - min)) * 100;
+            return (
+                <div className="mb-8 group">
+                    <div className="flex justify-between items-end mb-2.5">
+                        <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest group-hover:text-blue-600 transition-colors">{label}</label>
+                        <div className="flex items-center justify-center bg-slate-50 border border-slate-200 rounded px-2 py-0.5 min-w-[3.5rem] transition-colors group-hover:border-blue-200 group-hover:bg-blue-50">
+                            <span className="text-xs font-bold text-slate-700 group-hover:text-blue-700">{value}</span>
+                            {unit && <span className="text-[10px] font-medium text-slate-400 ml-1">{unit}</span>}
+                        </div>
+                    </div>
+                    <div className="relative h-6 flex items-center">
+                        <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(parseFloat(e.target.value))} className="absolute w-full z-10" 
+                        style={{ background: `linear-gradient(to right, #2563eb 0%, #2563eb ${percentage}%, #e2e8f0 ${percentage}%, #e2e8f0 100%)` }} />
+                    </div>
+                    {subtext && <div className="mt-0.5"><p className="text-[10px] text-slate-400 font-medium">{subtext}</p></div>}
+                </div>
+            );
+        };
+
+        const ToggleControl = ({ label, checked, onChange }) => (
+            <div className={`flex items-center justify-between p-3.5 rounded-xl border transition-all duration-200 mb-6 cursor-pointer select-none ${checked ? 'bg-blue-50/60 border-blue-200 shadow-sm' : 'bg-white border-slate-200'}`} onClick={() => onChange(!checked)}>
+                <label className={`text-xs font-bold uppercase tracking-wide cursor-pointer ${checked ? 'text-blue-800' : 'text-slate-600'}`}>{label}</label>
+                <div className="relative inline-flex items-center pointer-events-none">
+                     <div className={`w-10 h-6 rounded-full transition-colors duration-300 ${checked ? 'bg-blue-600' : 'bg-slate-200'}`}></div>
+                     <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full shadow-sm transition-transform duration-300 ${checked ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                </div>
+            </div>
+        );
+
+        const ConfigPanel = ({ config, onChange }) => (
+            <div className="p-6 pb-24 font-sans">
+              <SliderControl label="Zoom General" value={config.zoom} min={0.6} max={1.5} step={0.1} unit="x" onChange={(v) => onChange('zoom', v)} />
+              <SliderControl label="Frecuencia VSD" value={config.vsdFreq} min={30} max={75} step={1} unit="Hz" onChange={(v) => onChange('vsdFreq', v)} />
+              <SliderControl label="Nivel de Fluido" value={config.fluidLevel} min={0} max={100} step={1} unit="%" onChange={(v) => onChange('fluidLevel', v)} subtext="0% (Vacío) — 100% (Superficie)" />
+              <SliderControl label="Presión Intake (PIP)" value={config.pip} min={100} max={3000} step={50} unit="psi" onChange={(v) => onChange('pip', v)} />
+              <SliderControl label="Calibre de Cable" value={config.cableSize} min={2} max={6} step={1} unit="AWG" onChange={(v) => onChange('cableSize', v)} subtext="#2 (Mayor) — #6 (Menor)" />
+              <ToggleControl label="Y-Tool (By-pass)" checked={config.yTool} onChange={(val) => onChange('yTool', val)} />
+              <div className="mb-8">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-3 block">Tecnología de Motor</label>
+                <div className="flex p-1 bg-slate-100 border border-slate-200 rounded-xl">
+                    <button onClick={() => onChange('motorType', MotorType.AMM)} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${config.motorType === MotorType.AMM ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}>Asincrónico</button>
+                    <button onClick={() => onChange('motorType', MotorType.PMM)} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${config.motorType === MotorType.PMM ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}>Imanes P.</button>
+                </div>
+              </div>
+              <SliderControl label="Potencia Motor" value={config.motorHp} min={50} max={1000} step={25} unit="HP" onChange={(v) => onChange('motorHp', v)} />
+              <div className="grid grid-cols-2 gap-5">
+                <div><SliderControl label="Upper Pump" value={config.stagesUpper} min={0} max={400} step={10} unit="Stg" onChange={(v) => onChange('stagesUpper', v)} /></div>
+                <div><SliderControl label="Lower Pump" value={config.stagesLower} min={0} max={400} step={10} unit="Stg" onChange={(v) => onChange('stagesLower', v)} /></div>
+              </div>
+              <ToggleControl label="Sensor de Fondo" checked={config.sensor} onChange={(val) => onChange('sensor', val)} />
+            </div>
+        );
+
+        const seededRandom = (seed) => {
+            let state = seed;
+            return () => { state = (1103515245 * state + 12345) % 0x80000000; return state / 0x7FFFFFFF; };
+        };
+
+        const DiagramCanvas = ({ config }) => {
+          const BASE_WIDTH = 950; const WELL_X = 400; const CASING_WIDTH = 220; const TUBING_WIDTH = 26; const ESP_WIDTH = 52;
+          const HP_FACTOR = config.motorType === MotorType.PMM ? 0.35 : 0.55;
+          const MOTOR_H = Math.max(90, config.motorHp * HP_FACTOR);
+          const PUMP_UPPER_H = config.stagesUpper > 0 ? Math.max(60, config.stagesUpper * 1.3) : 0;
+          const PUMP_LOWER_H = config.stagesLower > 0 ? Math.max(60, config.stagesLower * 1.3) : 0;
+          const PUMP_GAP = (config.stagesUpper > 0 && config.stagesLower > 0) ? 10 : 0;
+          const TOTAL_PUMP_H = PUMP_UPPER_H + PUMP_LOWER_H + PUMP_GAP;
+          const INTAKE_H = 55; const SEAL_H = 160; const SEAL_SECTION_H = SEAL_H / 2; const SENSOR_H = 80;
+          const SURFACE_H = 380; const TUBING_LEN = 500; const YTOOL_HEIGHT = config.yTool ? 90 : 0;
+          const TUBING_END_Y = SURFACE_H + TUBING_LEN;
+          const ESP_START_Y = TUBING_END_Y + YTOOL_HEIGHT;
+          const PUMP_Y = ESP_START_Y; const INTAKE_Y = PUMP_Y + TOTAL_PUMP_H; const SEAL_Y = INTAKE_Y + INTAKE_H; const MOTOR_Y = SEAL_Y + SEAL_H; const SENSOR_Y = MOTOR_Y + MOTOR_H;
+          const ESP_BOTTOM = config.sensor ? SENSOR_Y + SENSOR_H : MOTOR_Y + MOTOR_H;
+          const RAT_HOLE = 150; const TOTAL_HEIGHT = ESP_BOTTOM + RAT_HOLE + 100;
+          const PERF_Y = TOTAL_HEIGHT - 180; const PERF_TOP = PERF_Y - 20; const PERF_LEN = 140;
+          const WELL_HEIGHT = TOTAL_HEIGHT - SURFACE_H; const LIQUID_HEIGHT = WELL_HEIGHT * (config.fluidLevel / 100); const FLUID_Y = TOTAL_HEIGHT - LIQUID_HEIGHT;
+          const isLowLevel = FLUID_Y > (INTAKE_Y + 10);
+          const CABLE_W = Math.max(6, 18 - (config.cableSize * 2)); const CABLE_COLOR = "#d97706";
+          const CABLE_RIGHT_X = WELL_X + TUBING_WIDTH / 2 + 8; const POTHEAD_X = ESP_WIDTH / 2 - 5; const MLE_X = WELL_X + ESP_WIDTH / 2 + 10;
+          const CASING_LEFT_X = WELL_X - CASING_WIDTH / 2; const CASING_RIGHT_X = WELL_X + CASING_WIDTH / 2;
+          const pipLabelY = Math.max(FLUID_Y, SURFACE_H + 50);
+          
+          let pipPath = `M${CASING_LEFT_X} ${FLUID_Y}`;
+          if (pipLabelY > FLUID_Y + 5) { pipPath += ` L${CASING_LEFT_X - 25} ${FLUID_Y} L${250} ${pipLabelY} L40 ${pipLabelY}`; } 
+          else { pipPath += ` L60 ${FLUID_Y} L40 ${FLUID_Y}`; }
+
+          const bubbles = React.useMemo(() => {
+            if (config.fluidLevel === 0) return [];
+            const rng = seededRandom(123);
+            const items = [];
+            for (let i = 0; i < 70; i++) {
+                const bx = (CASING_LEFT_X + 20) + rng() * (CASING_WIDTH - 40);
+                const by = FLUID_Y + 40 + rng() * (TOTAL_HEIGHT - FLUID_Y - 100);
+                if (by < TOTAL_HEIGHT - RAT_HOLE && by > FLUID_Y) items.push({ x: bx, y: by, type: rng(), rBase: 3 + rng() * 4 });
+            }
+            return items;
+          }, [config.fluidLevel, FLUID_Y, TOTAL_HEIGHT]);
+
+          const Defs = () => (
+            <defs>
+              <linearGradient id="skyGrad" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="#38bdf8" stopOpacity="0.8" /><stop offset="100%" stopColor="#eff6ff" stopOpacity="1" /></linearGradient>
+              <radialGradient id="sunGrad" cx="50%" cy="50%" r="50%" fx="50%" fy="50%"><stop offset="0%" stopColor="#ffffff" stopOpacity="0.9" /><stop offset="40%" stopColor="#fcd34d" stopOpacity="0.8" /><stop offset="100%" stopColor="#fcd34d" stopOpacity="0" /></radialGradient>
+              <pattern id="patSoil" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse"><rect width="40" height="40" fill="#e7e5e4" /><circle cx="5" cy="5" r="1.5" fill="#a8a29e" opacity="0.4" /><circle cx="25" cy="25" r="1.5" fill="#a8a29e" opacity="0.4" /><circle cx="35" cy="10" r="1" fill="#a8a29e" opacity="0.3" /></pattern>
+              <pattern id="patRock" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse"><rect width="60" height="60" fill="#d6d3d1" /><path d="M0 40 L20 30 L40 50 M10 10 L30 5 L50 15" stroke="#a8a29e" strokeWidth="1" fill="none" opacity="0.5" /></pattern>
+              <linearGradient id="metalGrad"><stop offset="0%" stopColor="#64748b" /><stop offset="25%" stopColor="#cbd5e1" /><stop offset="50%" stopColor="#f8fafc" /><stop offset="75%" stopColor="#cbd5e1" /><stop offset="100%" stopColor="#64748b" /></linearGradient>
+              <linearGradient id="sealGrad"><stop offset="0%" stopColor="#334155" /><stop offset="35%" stopColor="#64748b" /><stop offset="50%" stopColor="#94a3b8" /><stop offset="65%" stopColor="#64748b" /><stop offset="100%" stopColor="#334155" /></linearGradient>
+              <linearGradient id="trafoGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#475569" /><stop offset="1" stopColor="#1e293b" /></linearGradient>
+              <linearGradient id="whRedGrad"><stop offset="0" stopColor="#7f1d1d" /><stop offset="20%" stopColor="#b91c1c" /><stop offset="50%" stopColor="#ef4444" /><stop offset="80%" stopColor="#b91c1c" /><stop offset="100%" stopColor="#7f1d1d" /></linearGradient>
+              <linearGradient id="gradCasingInterior"><stop offset="0" stopColor="#000" stopOpacity="0.5" /><stop offset="10%" stopColor="#000" stopOpacity="0.1" /><stop offset="50%" stopColor="#fff" stopOpacity="0.05" /><stop offset="90%" stopColor="#000" stopOpacity="0.1" /><stop offset="100%" stopColor="#000" stopOpacity="0.5" /></linearGradient>
+              <pattern id="cementPat" width="10" height="10" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="#d1d5db" /><circle cx="3" cy="3" r="1" fill="#9ca3af" /><circle cx="8" cy="8" r="1" fill="#9ca3af" /></pattern>
+              <filter id="boxShadow"><feGaussianBlur in="SourceAlpha" stdDeviation="2" /><feOffset dy="2" /><feComponentTransfer><feFuncA type="linear" slope="0.2"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+              <pattern id="intakeMesh" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="4" fill="#64748b"/><rect width="3" height="3" fill="#1e293b"/></pattern>
+            </defs>
+          );
+
+          const Cloud = ({ cx, cy }) => (
+            <g opacity="0.8" fill="#ffffff" filter="url(#boxShadow)"><ellipse cx={cx} cy={cy} rx="50" ry="30" /><ellipse cx={cx + 30} cy={cy - 10} rx="60" ry="35" /><ellipse cx={cx - 30} cy={cy + 10} rx="50" ry="25" /></g>
+          );
+
+          const Callout = ({ y, title, subtitle }) => (
+            <g>
+                <path d={`M${WELL_X} ${y} L${WELL_X + 210} ${y}`} stroke="#334155" strokeWidth="1" fill="none"/>
+                <circle cx={WELL_X} cy={y} r="2.5" fill="#334155" stroke="white" strokeWidth="1"/>
+                <g transform={`translate(${WELL_X + 220}, ${y - 23})`} filter="url(#boxShadow)">
+                    <rect width="220" height="46" rx="4" fill="#ffffff" stroke="#cbd5e1" strokeWidth="1"/>
+                    <path d="M4 0 V46" stroke="#2563eb" strokeWidth="4"/>
+                    <text x="16" y="18" fontSize="12" fontWeight="700" fill="#1e293b" dominantBaseline="hanging" fontFamily="sans-serif">{title}</text>
+                    <text x="16" y="32" fontSize="11" fontWeight="500" fill="#64748b" dominantBaseline="hanging" fontFamily="sans-serif">{subtitle}</text>
+                </g>
+            </g>
+          );
+
+          const TOPSOIL_H = 150;
+
+          return (
+            <svg width={BASE_WIDTH} height={TOTAL_HEIGHT} className="block select-none font-sans">
+              <Defs />
+              <rect x="0" y={SURFACE_H} width={BASE_WIDTH} height={TOPSOIL_H} fill="url(#patSoil)" />
+              <rect x="0" y={SURFACE_H + TOPSOIL_H} width={BASE_WIDTH} height={TOTAL_HEIGHT - SURFACE_H - TOPSOIL_H} fill="url(#patRock)" />
+              <rect x="0" y={SURFACE_H} width={BASE_WIDTH} height={TOTAL_HEIGHT - SURFACE_H} fill="linear-gradient(to bottom, transparent, rgba(0,0,0,0.5))" style={{ opacity: 0.3 }} />
+              <line x1="0" y1={SURFACE_H + TOPSOIL_H} x2={BASE_WIDTH} y2={SURFACE_H + TOPSOIL_H} stroke="#a8a29e" strokeWidth="1" strokeDasharray="6,4" />
+              <rect x="0" y="0" width={BASE_WIDTH} height={SURFACE_H} fill="url(#skyGrad)" />
+              <circle cx="100" cy="80" r="60" fill="url(#sunGrad)" style={{ mixBlendMode: 'screen' }} />
+              <Cloud cx={400} cy={90} />
+              <Cloud cx={750} cy={100} />
+              <rect x="0" y={SURFACE_H - 6} width={BASE_WIDTH} height="8" fill="#57534e" />
+              <line x1="0" y1={SURFACE_H} x2={BASE_WIDTH} y2={SURFACE_H} stroke="#292524" strokeWidth="2" />
+              
+              <rect x={CASING_LEFT_X - 20} y={SURFACE_H} width={CASING_WIDTH + 40} height={TOTAL_HEIGHT - SURFACE_H} fill="url(#cementPat)" stroke="#9ca3af" strokeWidth="1" />
+              <rect x={CASING_LEFT_X} y={SURFACE_H} width={CASING_WIDTH} height={TOTAL_HEIGHT - SURFACE_H} fill="#f1f5f9" />
+              <rect x={CASING_LEFT_X} y={SURFACE_H} width={CASING_WIDTH} height={TOTAL_HEIGHT - SURFACE_H} fill="url(#gradCasingInterior)" style={{ pointerEvents: 'none' }} />
+
+              <rect x="0" y={PERF_TOP} width={CASING_LEFT_X} height={PERF_LEN} fill="#fef3c7" fillOpacity="0.4" />
+              <rect x={CASING_RIGHT_X} y={PERF_TOP} width={BASE_WIDTH - CASING_RIGHT_X} height={PERF_LEN} fill="#fef3c7" fillOpacity="0.4" />
+              <line x1="0" y1={PERF_TOP} x2={CASING_LEFT_X} y2={PERF_TOP} stroke="#d97706" strokeWidth="1" strokeDasharray="4,2" opacity="0.6" />
+              <line x1="0" y1={PERF_TOP + PERF_LEN} x2={CASING_LEFT_X} y2={PERF_TOP + PERF_LEN} stroke="#d97706" strokeWidth="1" strokeDasharray="4,2" opacity="0.6" />
+              <line x1={CASING_RIGHT_X} y1={PERF_TOP} x2={BASE_WIDTH} y2={PERF_TOP} stroke="#d97706" strokeWidth="1" strokeDasharray="4,2" opacity="0.6" />
+              <line x1={CASING_RIGHT_X} y1={PERF_TOP + PERF_LEN} x2={BASE_WIDTH} y2={PERF_TOP + PERF_LEN} stroke="#d97706" strokeWidth="1" strokeDasharray="4,2" opacity="0.6" />
+              
+              {[1, 2, 3, 4, 5].map(i => {
+                const rowSpacing = PERF_LEN / 6;
+                const y = PERF_TOP + (i * rowSpacing);
+                const coneLen = 60;
+                return (
+                    <g key={i} fill="#1e293b" opacity="0.8">
+                        <polygon points={`${CASING_LEFT_X},${y-4} ${CASING_LEFT_X},${y+4} ${CASING_LEFT_X-coneLen},${y}`}/>
+                        <polygon points={`${CASING_RIGHT_X},${y-4} ${CASING_RIGHT_X},${y+4} ${CASING_RIGHT_X+coneLen},${y}`}/>
+                    </g>
+                )
+              })}
+
+              <text x="40" y={PERF_TOP + PERF_LEN/2} transform={`rotate(-90 40 ${PERF_TOP + PERF_LEN/2})`} textAnchor="middle" fontSize="11" fontWeight="bold" fill="#b45309" letterSpacing="1">ZONA PRODUCTORA</text>
+              <g transform={`translate(${CASING_RIGHT_X + 100}, ${PERF_TOP + PERF_LEN / 2})`}>
+                <line x1="-10" y1="0" x2="-60" y2="0" stroke="#334155" strokeWidth="1" strokeDasharray="2,2" />
+                <circle cx="-60" cy="0" r="2" fill="#334155" />
+                <text x="0" y="4" fontSize="11" fontWeight="700" fill="#334155">INTERVALO CAÑONEADO</text>
+              </g>
+
+              {config.fluidLevel > 0 && (
+                <>
+                    <rect x={CASING_LEFT_X + 1} y={FLUID_Y} width={CASING_WIDTH - 2} height={TOTAL_HEIGHT - FLUID_Y} fill={isLowLevel ? "#ef4444" : "#0ea5e9"} fillOpacity={isLowLevel ? 0.4 : 0.25} />
+                    <line x1={CASING_LEFT_X} y1={FLUID_Y} x2={CASING_RIGHT_X} y2={FLUID_Y} stroke={isLowLevel ? "#dc2626" : "#0284c7"} strokeWidth="2" strokeDasharray="6,3" />
+                    {bubbles.map((b, i) => {
+                         if (b.type < 0.45) return <g key={i}><circle cx={b.x} cy={b.y} r={b.rBase} fill="#0f172a" opacity="0.8"/><circle cx={b.x - b.rBase*0.3} cy={b.y - b.rBase*0.3} r={b.rBase*0.3} fill="white" opacity="0.2"/></g>
+                         else if (b.type < 0.8) return <circle key={i} cx={b.x} cy={b.y} r={b.rBase} fill="#e0f2fe" stroke="#bae6fd" strokeWidth="0.5" opacity="0.6"/>
+                         else return <circle key={i} cx={b.x} cy={b.y} r={b.rBase/1.5} fill="#78716c" opacity="0.8"/>
+                    })}
+                    <g filter="url(#boxShadow)">
+                        <path d={pipPath} stroke="#334155" strokeWidth="1" strokeDasharray="3,2" fill="none"/>
+                        <circle cx={CASING_LEFT_X} cy={FLUID_Y} r="3" fill={isLowLevel ? "#ef4444" : "#0ea5e9"} stroke="white" strokeWidth="1"/>
+                        <g transform={`translate(20, ${pipLabelY - 22})`}>
+                            <rect width="220" height="44" rx="4" fill="#ffffff" stroke={isLowLevel ? "#ef4444" : "#cbd5e1"} strokeWidth={isLowLevel ? 2 : 1}/>
+                            <path d="M6 0 H0 V44 H6" fill={isLowLevel ? "#ef4444" : "#0ea5e9"} />
+                            <text x="16" y="18" fontSize="12" fontWeight="bold" fill={isLowLevel ? "#b91c1c" : "#1e293b"} dominantBaseline="hanging">{isLowLevel ? "⚠️ ALARMA: BAJO NIVEL" : "Nivel de Fluido"}</text>
+                            <text x="16" y="31" fontSize="11" fill="#64748b" dominantBaseline="hanging">Presión de Entrada: {config.pip} psi</text>
+                        </g>
+                    </g>
+                </>
+              )}
+              {isLowLevel && <g transform={`translate(${WELL_X + ESP_WIDTH + 10}, ${INTAKE_Y})`}><circle cx="0" cy="25" r="14" fill="#ef4444" stroke="white" strokeWidth="2"/><text x="0" y="30" textAnchor="middle" fontSize="16" fontWeight="bold" fill="white">!</text></g>}
+              
+              <line x1={CASING_LEFT_X} y1={SURFACE_H} x2={CASING_LEFT_X} y2={TOTAL_HEIGHT} stroke="#334155" strokeWidth="3" />
+              <line x1={CASING_RIGHT_X} y1={SURFACE_H} x2={CASING_RIGHT_X} y2={TOTAL_HEIGHT} stroke="#334155" strokeWidth="3" />
+              <rect x={CASING_LEFT_X} y={TOTAL_HEIGHT - RAT_HOLE + 20} width={CASING_WIDTH} height={RAT_HOLE - 20} fill="#475569" opacity="0.9" />
+
+              <rect x={WELL_X - 360} y={SURFACE_H - 10} width={100} height={10} fill="#d6d3d1" stroke="#a8a29e" />
+              <rect x={WELL_X - 240} y={SURFACE_H - 10} width={110} height={10} fill="#d6d3d1" stroke="#a8a29e" />
+
+              <g transform={`translate(${WELL_X - 350}, ${SURFACE_H - 160})`} filter="url(#boxShadow)">
+                 <rect x="10" y="100" width="10" height="50" fill="#475569" /><rect x="60" y="100" width="10" height="50" fill="#475569" />
+                 <rect width="80" height="100" fill="url(#trafoGrad)" stroke="#334155" strokeWidth="1" rx="2" />
+                 {[1, 2, 3, 4, 5, 6].map(i => <line key={i} x1={i * (80/7)} y1="5" x2={i * (80/7)} y2="95" stroke="#64748b" strokeWidth="2" />)}
+                 <rect x="15" y="-12" width="10" height="12" fill="#57534e" stroke="#292524" strokeWidth="0.5"/>
+                 <rect x="55" y="-12" width="10" height="12" fill="#57534e" stroke="#292524" strokeWidth="0.5"/>
+                 <text x="40" y="-25" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#1e293b">TRANSFORMADOR</text>
+              </g>
+              <g transform={`translate(${WELL_X - 230}, ${SURFACE_H - 180})`} filter="url(#boxShadow)">
+                 <rect x="10" y="120" width="10" height="50" fill="#475569" /><rect x="70" y="120" width="10" height="50" fill="#475569" />
+                 <rect width="90" height="120" fill="#f8fafc" stroke="#334155" strokeWidth="1" rx="2" />
+                 <rect x="10" y="15" width="70" height="40" rx="2" fill="#0f172a" stroke="#334155" />
+                 <text x="45" y="38" textAnchor="middle" fontFamily="monospace" fontSize="14" fill="#22c55e" fontWeight="bold">{config.vsdFreq} Hz</text>
+                 <circle cx="25" cy="70" r="4" fill="#ef4444" stroke="#b91c1c" strokeWidth="0.5" />
+                 <circle cx="45" cy="70" r="4" fill="#eab308" stroke="#a16207" strokeWidth="0.5" />
+                 <circle cx="65" cy="70" r="4" fill="#22c55e" stroke="#15803d" strokeWidth="0.5" />
+                 <line x1="10" y1="95" x2="80" y2="95" stroke="#cbd5e1" strokeWidth="2" />
+                 <line x1="10" y1="100" x2="80" y2="100" stroke="#cbd5e1" strokeWidth="2" />
+                 <text x="45" y="-15" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#1e293b">VSD</text>
+              </g>
+              <path d={`M${WELL_X - 270} ${SURFACE_H - 110} L${WELL_X - 230} ${SURFACE_H - 110}`} stroke="#1e293b" strokeWidth="3"/>
+              <path d={`M${WELL_X - 140} ${SURFACE_H - 100} L${WELL_X - 90} ${SURFACE_H - 100} L${WELL_X - 90} ${SURFACE_H - 55} L${WELL_X - 65} ${SURFACE_H - 55}`} stroke={CABLE_COLOR} strokeWidth={CABLE_W * 0.7} fill="none"/>
+
+              <rect x={WELL_X - TUBING_WIDTH / 2} y={SURFACE_H} width={TUBING_WIDTH} height={TUBING_END_Y - SURFACE_H} fill="url(#metalGrad)" stroke="#475569" />
+              {[100, 200, 300, 400].map(offset => <rect key={offset} x={WELL_X - TUBING_WIDTH / 2 - 2} y={SURFACE_H + offset} width={TUBING_WIDTH + 4} height="8" fill="#475569" stroke="#1e293b" />)}
+
+              {config.yTool ? (
+                <>
+                 <path d={`M${WELL_X - TUBING_WIDTH/2} ${TUBING_END_Y} L${WELL_X + TUBING_WIDTH/2} ${TUBING_END_Y} Q${WELL_X+20} ${TUBING_END_Y+20} ${WELL_X+65} ${TUBING_END_Y+60} L${WELL_X+65} ${TUBING_END_Y+90} L${WELL_X+45} ${TUBING_END_Y+90} L${WELL_X+45} ${TUBING_END_Y+60} L${WELL_X+20} ${TUBING_END_Y+50} L${WELL_X+20} ${TUBING_END_Y+90} L${WELL_X-15} ${TUBING_END_Y+90} L${WELL_X-15} ${TUBING_END_Y+50} Q${WELL_X-20} ${TUBING_END_Y+20} ${WELL_X-TUBING_WIDTH/2} ${TUBING_END_Y} Z`} fill="url(#metalGrad)" stroke="#334155" filter="url(#boxShadow)"/>
+                 <rect x={WELL_X + 45} y={TUBING_END_Y + 90} width="20" height={(ESP_BOTTOM - (TUBING_END_Y+90)) + 50} fill="url(#metalGrad)" stroke="#334155" />
+                 {[0, 140, 280, 420].map(offset => {
+                     const y = TUBING_END_Y + 90 + 80 + offset;
+                     if(y < ESP_BOTTOM) return <rect key={offset} x={WELL_X + 42} y={y} width={26} height="10" rx="1" fill="#475569" stroke="#1e293b" />;
+                     return null;
+                 })}
+                 <path d={`M${CABLE_RIGHT_X} ${SURFACE_H} L${CABLE_RIGHT_X} ${TUBING_END_Y} Q${CABLE_RIGHT_X+5} ${TUBING_END_Y+40} ${CABLE_RIGHT_X+5} ${TUBING_END_Y+100} L${CABLE_RIGHT_X+5} ${PUMP_Y}`} stroke={CABLE_COLOR} strokeWidth={CABLE_W} fill="none" strokeLinecap="round"/>
+                 <path d={`M${CABLE_RIGHT_X - 1} ${SURFACE_H} L${CABLE_RIGHT_X - 1} ${TUBING_END_Y} Q${CABLE_RIGHT_X+4} ${TUBING_END_Y+40} ${CABLE_RIGHT_X+4} ${TUBING_END_Y+100} L${CABLE_RIGHT_X+4} ${PUMP_Y}`} stroke="rgba(255,255,255,0.4)" strokeWidth="2" fill="none" />
+                </>
+              ) : (
+                <>
+                <line x1={CABLE_RIGHT_X} y1={SURFACE_H} x2={CABLE_RIGHT_X} y2={PUMP_Y} stroke={CABLE_COLOR} strokeWidth={CABLE_W} strokeLinecap="round" />
+                <line x1={CABLE_RIGHT_X - 1} y1={SURFACE_H} x2={CABLE_RIGHT_X - 1} y2={PUMP_Y} stroke="rgba(255,255,255,0.4)" strokeWidth="2" />
+                {[50, 170, 290, 410].map(offset => <rect key={offset} x={CABLE_RIGHT_X - 6} y={SURFACE_H + offset} width="12" height="12" rx="1" fill="#1e293b" />)}
+                </>
+              )}
+
+              <g transform={`translate(${WELL_X}, 0)`} filter="url(#boxShadow)">
+                {config.stagesUpper > 0 && <><rect x={-ESP_WIDTH/2} y={PUMP_Y} width={ESP_WIDTH} height={PUMP_UPPER_H} fill="url(#metalGrad)" stroke="#334155" />{[1,2,3,4,5,6,7,8,9].map(i => <line key={i} x1={-ESP_WIDTH/2} y1={PUMP_Y+i*(PUMP_UPPER_H/10)} x2={ESP_WIDTH/2} y2={PUMP_Y+i*(PUMP_UPPER_H/10)} stroke="#64748b" opacity="0.3"/>)}</>}
+                {config.stagesUpper > 0 && config.stagesLower > 0 && <rect x={-ESP_WIDTH/2 + 10} y={PUMP_Y + PUMP_UPPER_H} width={ESP_WIDTH - 20} height={PUMP_GAP} fill="#334155" />}
+                {config.stagesLower > 0 && <><rect x={-ESP_WIDTH/2} y={PUMP_Y + PUMP_UPPER_H + PUMP_GAP} width={ESP_WIDTH} height={PUMP_LOWER_H} fill="url(#metalGrad)" stroke="#334155" />{[1,2,3,4,5,6,7,8,9].map(i => <line key={i} x1={-ESP_WIDTH/2} y1={PUMP_Y+PUMP_UPPER_H+PUMP_GAP+i*(PUMP_LOWER_H/10)} x2={ESP_WIDTH/2} y2={PUMP_Y+PUMP_UPPER_H+PUMP_GAP+i*(PUMP_LOWER_H/10)} stroke="#64748b" opacity="0.3"/>)}</>}
+                <rect x={-ESP_WIDTH/2+2} y={INTAKE_Y} width={ESP_WIDTH-4} height={INTAKE_H} fill="#94a3b8" stroke="#334155" />
+                <rect x={-ESP_WIDTH/2+6} y={INTAKE_Y+8} width={ESP_WIDTH-12} height={INTAKE_H-16} fill="url(#intakeMesh)" stroke="#475569" />
+                <rect x={-ESP_WIDTH/2+3} y={SEAL_Y} width={ESP_WIDTH-6} height={SEAL_SECTION_H} fill="url(#sealGrad)" stroke="#1e293b" />
+                <rect x={-ESP_WIDTH/2-2} y={SEAL_Y+SEAL_SECTION_H-4} width={ESP_WIDTH+4} height="8" fill="#1e293b" rx="1" />
+                <rect x={-ESP_WIDTH/2+3} y={SEAL_Y+SEAL_SECTION_H+4} width={ESP_WIDTH-6} height={SEAL_SECTION_H-4} fill="url(#sealGrad)" stroke="#1e293b" />
+                <rect x={-ESP_WIDTH/2} y={MOTOR_Y} width={ESP_WIDTH} height={MOTOR_H} fill="url(#metalGrad)" stroke="#334155" />
+                {config.motorType === MotorType.PMM ? [...Array(12)].map((_, k) => <line key={k} x1={-ESP_WIDTH/2} y1={MOTOR_Y + k*(MOTOR_H/12)} x2={ESP_WIDTH/2} y2={MOTOR_Y + k*(MOTOR_H/12)} stroke="#1e293b" opacity="0.1" />) : <><line x1="-12" y1={MOTOR_Y} x2="-12" y2={MOTOR_Y + MOTOR_H} stroke="#1e293b" opacity="0.1" /><line x1="12" y1={MOTOR_Y} x2="12" y2={MOTOR_Y + MOTOR_H} stroke="#1e293b" opacity="0.1" /></>}
+                <g transform={`translate(${POTHEAD_X}, ${MOTOR_Y + 20})`}><rect x="-10" y="0" width="20" height="25" fill="#334155" rx="2" stroke="#1e293b"/><rect x="-6" y="-5" width="12" height="5" fill="#d97706" /></g>
+                {config.sensor && <><rect x={-ESP_WIDTH/2+10} y={SENSOR_Y} width={ESP_WIDTH-20} height="10" fill="#334155"/><rect x={-ESP_WIDTH/2+12} y={SENSOR_Y+10} width={ESP_WIDTH-24} height={SENSOR_H-25} fill="url(#metalGrad)" stroke="#334155"/><path d={`M${-ESP_WIDTH/2 + 12} ${SENSOR_Y + SENSOR_H - 15} L${ESP_WIDTH/2 - 12} ${SENSOR_Y + SENSOR_H - 15} Q${0} ${SENSOR_Y + SENSOR_H + 5} ${-ESP_WIDTH/2 + 12} ${SENSOR_Y + SENSOR_H - 15}`} fill="#64748b" stroke="#334155" /><rect x={-ESP_WIDTH/2+14} y={SENSOR_Y+25} width={ESP_WIDTH-28} height="6" fill="#fbbf24" stroke="#d97706" strokeWidth="0.5"/></>}
+                {[70, 140, 210, 280, 350, 420, 490].map(offset => { const y = PUMP_Y + offset; if(y < MOTOR_Y) return <rect key={offset} x={-ESP_WIDTH/2 - 2} y={y} width={ESP_WIDTH + 4} height="4" rx="1" fill="#1e293b" />; return null; })}
+              </g>
+
+              <path d={`M${CABLE_RIGHT_X + (config.yTool ? 5 : 0)} ${PUMP_Y} L${MLE_X} ${PUMP_Y + 20} L${MLE_X} ${MOTOR_Y + 20} L${WELL_X + POTHEAD_X} ${MOTOR_Y + 20}`} stroke={CABLE_COLOR} strokeWidth="5" fill="none" />
+              <path d={`M${CABLE_RIGHT_X + (config.yTool ? 5 : 0) - 1} ${PUMP_Y} L${MLE_X - 1} ${PUMP_Y + 20} L${MLE_X - 1} ${MOTOR_Y + 20} L${WELL_X + POTHEAD_X} ${MOTOR_Y + 20}`} stroke="rgba(255,255,255,0.3)" strokeWidth="2" fill="none" />
+
+              <g transform={`translate(${WELL_X}, ${SURFACE_H})`}>
+                <rect x="-70" y="-20" width="140" height="20" rx="1" fill="#1f2937" stroke="#000" />
+                {[-60, -40, -20, 0, 20, 40, 60].map(i => <circle key={i} cx={i} cy="-10" r="2.5" fill="#94a3b8" />)}
+                <rect x="-40" y="-80" width="80" height="60" fill="url(#whRedGrad)" stroke="#7f1d1d" strokeWidth="1" />
+                <rect x="-55" y="-90" width="110" height="12" rx="1" fill="#1f2937" stroke="#000" />
+                {[-45, -25, 0, 25, 45].map(i => <circle key={i} cx={i} cy="-84" r="2" fill="#94a3b8" />)}
+                <rect x="-35" y="-160" width="70" height="70" fill="url(#whRedGrad)" stroke="#7f1d1d" strokeWidth="1" />
+                <rect x="-90" y="-145" width="55" height="18" fill="url(#whRedGrad)" stroke="#7f1d1d" />
+                <circle cx="-100" cy="-136" r="14" fill="#dc2626" stroke="#7f1d1d" strokeWidth="2" />
+                <circle cx="-100" cy="-136" r="4" fill="#1f2937" />
+                <rect x="35" y="-145" width="55" height="18" fill="url(#whRedGrad)" stroke="#7f1d1d" />
+                <circle cx="100" cy="-136" r="14" fill="#dc2626" stroke="#7f1d1d" strokeWidth="2" />
+                <circle cx="100" cy="-136" r="4" fill="#1f2937" />
+                <rect x="-45" y="-175" width="90" height="15" rx="1" fill="#1f2937" stroke="#000" />
+                <rect x="-15" y="-195" width="30" height="20" fill="#374151" />
+                <rect x="-25" y="-205" width="50" height="10" fill="#111827" />
+                <rect x="-65" y="-70" width="25" height="30" fill="#334155" rx="2" stroke="#1e293b"/>
+                <text x="0" y="-215" textAnchor="middle" fontSize="12" fontWeight="800" fill="#1e293b">WELLHEAD</text>
+              </g>
+
+              {config.stagesUpper > 0 && <Callout y={PUMP_Y + PUMP_UPPER_H/2} title="Bomba Upper" subtitle={`Etapas: ${config.stagesUpper}`} />}
+              {config.stagesLower > 0 && <Callout y={PUMP_Y + (config.stagesUpper > 0 ? PUMP_UPPER_H + PUMP_GAP : 0) + PUMP_LOWER_H/2} title="Bomba Lower" subtitle={`Etapas: ${config.stagesLower}`} />}
+              <Callout y={INTAKE_Y + INTAKE_H/2} title="Intake / Separador" subtitle="Entrada de fluido" />
+              <Callout y={SEAL_Y + SEAL_H/2} title="Sección de Sellos" subtitle="Doble cámara" />
+              <Callout y={MOTOR_Y + MOTOR_H/2} title={config.motorType === MotorType.AMM ? "MOTOR AMM" : "MOTOR PMM"} subtitle={`${config.motorHp} HP`} />
+              {config.sensor && <Callout y={SENSOR_Y + SENSOR_H/2} title="Sensor de Fondo" subtitle="P/T/Vib" />}
+              
+              <text x={BASE_WIDTH - 15} y={TOTAL_HEIGHT - 15} textAnchor="end" fontSize="10" fontWeight="500" fill="#94a3b8" opacity="0.6" fontFamily="sans-serif">Elaborado por Sergio Pinto • 2025</text>
+            </svg>
+          );
+        };
+
+        const App = () => {
+          const [config, setConfig] = React.useState({ zoom: 1.0, vsdFreq: 50, fluidLevel: 100, pip: 1000, cableSize: 4, yTool: false, motorType: MotorType.AMM, motorHp: 375, stagesUpper: 60, stagesLower: 60, sensor: true });
+          const handleConfigChange = (key, value) => setConfig((prev) => ({ ...prev, [key]: value }));
+          return (
+            <div className="flex flex-col h-screen w-full bg-slate-50 overflow-hidden text-slate-800">
+              <header className="flex items-center justify-between px-6 py-3 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm z-30 sticky top-0">
+                <div className="flex items-center gap-3">
+                    <div className="bg-blue-600 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-md">
+                       <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20"/><path d="M5 9h14"/><path d="M5 15h14"/><circle cx="12" cy="12" r="3" /></svg>
+                    </div>
+                    <div><h1 className="text-lg font-bold text-slate-900 leading-none">ESP Visualizer</h1><p className="text-[11px] text-slate-500 uppercase">Standalone Version</p></div>
+                </div>
+              </header>
+              <div className="flex flex-1 overflow-hidden">
+                <aside className="w-80 md:w-96 flex-shrink-0 bg-white border-r border-slate-200 overflow-y-auto z-20 shadow-lg"><ConfigPanel config={config} onChange={handleConfigChange} /></aside>
+                <main className="flex-1 overflow-auto bg-slate-100 p-6 flex justify-center items-start"><div className="bg-white shadow-xl rounded-sm border border-slate-300 transition-transform origin-top" style={{ transform: `scale(${config.zoom})` }}><DiagramCanvas config={config} /></div></main>
+              </div>
+            </div>
+          );
+        };
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
+    

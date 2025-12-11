@@ -1681,7 +1681,7 @@ def show_resumen():
     with kpi5: st.markdown(_render_top_kpi("🔄", "Extracción %", f"{pct_extraccion:.1f}", "%"), unsafe_allow_html=True)
     with kpi6: st.markdown(_render_top_kpi("📊", "Equipos ON", kpis['pozos_on'], "Rns"), unsafe_allow_html=True)
 
-    st.markdown("<div style='height: 1rem;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height: 2rem;'></div>", unsafe_allow_html=True)
 
     # --- LAYOUT PRINCIPAL (0.8 - 0.2) - Desde Tendencia Histórica ---
     col_main_content, col_estado_main = st.columns([0.8, 0.2])

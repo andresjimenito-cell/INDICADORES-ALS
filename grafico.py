@@ -218,9 +218,14 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
     # Rango de Y2: usar un margen alrededor del máximo
     upper_y2 = max(0.01, max_indice * 1.2)
 
-    # Rango del eje X (desde el primer mes con datos de índice rolling)
-    x_start = df_monthly['Mes'].min() if not df_monthly.empty else pd.to_datetime('2014-01-01')
-    x_end = df_monthly['Mes'].max() if not df_monthly.empty else pd.to_datetime(fecha_evaluacion)
+    # Rango del eje X (forzar inicio en 2019)
+    # Iniciar siempre desde 2019-01-01; terminar en el último mes con datos
+    if not df_monthly.empty:
+        x_start = pd.to_datetime('2019-01-01')
+        x_end = df_monthly['Mes'].max()
+    else:
+        x_start = pd.to_datetime('2019-01-01')
+        x_end = pd.to_datetime(fecha_evaluacion)
     x_range = [x_start, x_end]
 
     # Aplicar el layout base del tema

@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "C:\Users\andre\OneDrive\Imágenes\Capturas de pantalla\debug_import.py", line 4, in <module>
+    import INDICADORES
+  File "c:\Users\andre\OneDrive\Imágenes\Capturas de pantalla\INDICADORES.py", line 37, in <module>
+    from kpis import mostrar_kpis
+  File "c:\Users\andre\OneDrive\Imágenes\Capturas de pantalla\kpis.py", line 3, in <module>
+    from graphviz import Digraph
+ModuleNotFoundError: No module named 'graphviz'
