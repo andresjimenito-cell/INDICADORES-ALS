@@ -1,0 +1,5 @@
+{
+  "name": "ESP Visualizer Pro",
+  "description": "Interactive wellbore diagram visualizer for Electrical Submersible Pumps (ESP) with animated fluid dynamics.",
+  "requestFramePermissions": []
+}
