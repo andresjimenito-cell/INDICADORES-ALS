@@ -522,7 +522,7 @@ def show_dashboard():
     </div>
     """, unsafe_allow_html=True)
     
-    col1, col2 = st.columns(2, gap="medium")
+    col1, col2, col3 = st.columns(3, gap="medium")
     
     with col1:
         st.markdown("""
@@ -564,6 +564,23 @@ def show_dashboard():
         st.markdown("<div style='margin-top: 0.8rem;'></div>", unsafe_allow_html=True)
         if st.button("🚀 INICIAR EVALUACIÓN", key="btn_evaluacion", use_container_width=True):
             open_module("evaluacion.py")
+
+    with col3:
+        st.markdown("""
+        <div class="module-card">
+            <div class="module-badge">INNOVACIÓN</div>
+            <div class="module-icon">🖥️</div>
+            <div class="module-title">ESP VISUALIZER</div>
+            <div class="module-description">
+                Visualización gráfica avanzada e interactiva para sistemas ESP. 
+                Entorno visual moderno implementado con tecnología web de última generación.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("<div style='margin-top: 0.8rem;'></div>", unsafe_allow_html=True)
+        if st.button("🚀 INICIAR VISUALIZADOR", key="btn_visualizador", use_container_width=True):
+            open_module("esp_visualizer.py")
     
     st.markdown("---")
     
@@ -598,7 +615,7 @@ def show_dashboard():
     
     st.markdown("<br>", unsafe_allow_html=True)
     with st.expander("📁 VERIFICACIÓN DE ARCHIVOS DEL SISTEMA"):
-        col_check1, col_check2 = st.columns(2)
+        col_check1, col_check2, col_check3 = st.columns(3)
         
         with col_check1:
             if os.path.exists("indicadores.py"):
@@ -611,6 +628,12 @@ def show_dashboard():
                 st.success("✅ **evaluacion.py** encontrado y listo.")
             else:
                 st.error("❌ **evaluacion.py** no encontrado. Módulo Inactivo.")
+        
+        with col_check3:
+            if os.path.exists("esp_visualizer.py"):
+                st.success("✅ **esp_visualizer.py** encontrado y listo.")
+            else:
+                st.error("❌ **esp_visualizer.py** no encontrado. Módulo Inactivo.")
     
     st.markdown("<br>", unsafe_allow_html=True)
     col_logout1, col_logout2, col_logout3 = st.columns([1, 2, 1])
