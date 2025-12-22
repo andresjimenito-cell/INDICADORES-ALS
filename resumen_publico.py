@@ -1210,6 +1210,12 @@ def show_resumen():
     if 'df_forma9_calculated' not in st.session_state: st.session_state['df_forma9_calculated'] = None
     if 'resumen_publico_calculated' not in st.session_state: st.session_state['resumen_publico_calculated'] = False
     if 'fecha_eval_resumen' not in st.session_state: st.session_state['fecha_eval_resumen'] = get_last_day_of_previous_month()
+    
+    # --- CONTROL DE ESTADO DE FILTROS ---
+    if 'filters_expanded' not in st.session_state: st.session_state['filters_expanded'] = True
+
+    def _collapse_filters():
+        st.session_state['filters_expanded'] = False
 
     # Intentar cargar datos desde saved_uploads o descargar desde enlaces por defecto
     upload_dir = os.path.join(os.getcwd(), 'saved_uploads')
@@ -1336,7 +1342,8 @@ def show_resumen():
     fecha_fmt = pd.to_datetime(fecha_eval).strftime('%d %b %Y')
 
     # --- SECCIÓN DE FILTROS Y FECHA EDITABLE (MINIMIZABLE) ---
-    with st.expander("🔍 Filtros y Parámetros", expanded=False):
+    # --- SECCIÓN DE FILTROS Y FECHA EDITABLE (MINIMIZABLE) ---
+    with st.expander("🔍 Filtros y Parámetros", expanded=st.session_state['filters_expanded']):
         # Inicializar filtros únicos
         if 'unique_bloques_resumen' not in st.session_state:
             st.session_state['unique_bloques_resumen'] = ['TODOS']
@@ -1468,12 +1475,12 @@ def show_resumen():
         # CÁLCULO manual mediante botón (igual que INDICADORES.py)
         col_calc = st.columns([1])[0]
         with col_calc:
-            calcular_btn = st.button("🔄 DOBLE CLIP PARA MOSTRAR DATOS", key="calcular_btn_resumen", use_container_width=True, help="Procesar datos y mostrar KPIs")
+            calcular_btn = st.button("🔄 DOBLE CLIP PARA MOSTRAR DATOS", key="calcular_btn_resumen", use_container_width=True, help="Procesar datos y mostrar KPIs", on_click=_collapse_filters)
 
         # Botón para ver análisis detallado (usar launch_module_path para navegación estable)
         col_analisis = st.columns([1])[0]
         with col_analisis:
-            if st.button("📊 Ver Análisis Detallado", key="btn_indicadores_resumen", use_container_width=True):
+            if st.button("📊 Ver Análisis Detallado", key="btn_indicadores_resumen", use_container_width=False):
                 try:
                     cwd_files = os.listdir('.')
                     target = None
