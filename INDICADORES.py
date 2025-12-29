@@ -553,14 +553,14 @@ def generar_reporte_completo(df_bd, df_forma9, fecha_evaluacion):
     totales_count = extraidos_count + running_count
 
     reporte_runes = pd.DataFrame({
-        'Categoría': ['Extraídos', 'Running', 'Fallados', 'Pozos ON', 'Pozos OFF', 'Pozos Operativos', 'Totales'],
+        'Categoría': ['Extraídos', 'En Fondo', 'Fallados', 'Pozos ON', 'Pozos OFF', 'Pozos Operativos', 'Totales'],
         'Conteo': [extraidos_count, running_count, fallados_count, pozos_on, pozos_off, pozos_operativos, totales_count]
     })
     
     verificaciones = {
         'On + Off = Operativos': pozos_on + pozos_off == pozos_operativos,
-        'Fallados + Operativos = Running': fallados_count + pozos_operativos == running_count,
-        'Running + Extraídos = Totales': running_count + extraidos_count == totales_count
+        'Fallados + Operativos = En Fondo': fallados_count + pozos_operativos == running_count,
+        'En Fondo + Extraídos = Totales': running_count + extraidos_count == totales_count
     }
 
     run_life_apagados_fallados = df_bd_eval[
@@ -568,7 +568,7 @@ def generar_reporte_completo(df_bd, df_forma9, fecha_evaluacion):
     ]['RUN LIFE'].mean()
     
     reporte_run_life = pd.DataFrame({
-        'Categoría': ['Run Life Apagados + Fallados'],
+        'Categoría': ['Tiempo Op. (Apagados + Fallados)'],
         'Valor': [run_life_apagados_fallados]
     })
     
@@ -600,7 +600,7 @@ def generar_historico_run_life(df_bd_calculated, fecha_evaluacion):
     if historico:
         df_historico = pd.concat(historico, ignore_index=True)
         df_historico = df_historico[['Mes', 'ACTIVO', 'RUN_LIFE_MES']]
-        df_historico.rename(columns={'RUN_LIFE_MES': 'Run Life Promedio'}, inplace=True)
+        df_historico.rename(columns={'RUN_LIFE_MES': 'Tiempo Op. Promedio'}, inplace=True)
         return df_historico
     else:
         return pd.DataFrame(columns=['Mes', 'ACTIVO', 'Run Life Promedio'])
@@ -1107,7 +1107,7 @@ st.sidebar.markdown(f"""
 
 st.sidebar.markdown("""
 <a href="#resultados-y-reportes" class='sidebar-anchor-link'>    \U0001F4CA Reportes</a>
-<a href="#reporte-de-runes" class='sidebar-anchor-link'>         \U0001F3C3 Run Life </a>
+<a href="#reporte-de-runes" class='sidebar-anchor-link'>         \U0001F3C3 Tiempo Vida </a>
 <a href="#fallas-mensuales" class='sidebar-anchor-link'>        \U0001F6A8 Fallas </a>
 <a href="#listado-de-pozos-fallados" class='sidebar-anchor-link'>\U0001F525 Pozos Fallados</a>
 <a href="#indices-de-falla" class='sidebar-anchor-link'>        \U0001F4C9 Índices de Falla</a>
@@ -1628,7 +1628,7 @@ if st.session_state['reporte_runes'] is not None:
         st.plotly_chart(fig, use_container_width=True)
     # --- Nueva sección: BOPD vs Run Life por Bloque ---
     st.markdown("""
-    <h4 style='margin-top:1em;'>BOPD vs Run Life por Bloque en (años)</h4>
+    <h4 style='margin-top:1em;'>BOPD vs Tiempo de Vida por Bloque en (años)</h4>
     """, unsafe_allow_html=True)
 
     # Determinar qué pozos y runs usar: tomar último RUN por pozo con FECHA_RUN <= fecha_evaluacion
@@ -1810,8 +1810,8 @@ if st.session_state['reporte_runes'] is not None:
             st.info('No hay datos suficientes para generar la gráfica por buckets de Run Life.')
         else:
             # Mostrar tabla agregada (sujeta a filtros generales aplicados previamente)
-            st.markdown('**Tabla agregada: BOPD (suma) y número de pozos  de Run Life**')
-            st.dataframe(agg.rename(columns={'RunLifeBucket': 'Bucket Run Life', 'BOPD_sum': 'BOPD (suma)', 'Pozos': 'Número de Pozos'}), hide_index=True)
+            st.markdown('**Tabla agregada: BOPD (suma) y número de pozos  de Tiempo de Vida**')
+            st.dataframe(agg.rename(columns={'RunLifeBucket': 'Bucket Tiempo Vida', 'BOPD_sum': 'BOPD (suma)', 'Pozos': 'Número de Pozos'}), hide_index=True)
 
             # Gráfica: 4 columnas (x = buckets) con la suma total de BOPD (y). Añadir número de pozos en un cuadrito sobre cada columna.
             fig2 = px.bar(
@@ -1820,8 +1820,8 @@ if st.session_state['reporte_runes'] is not None:
                 y='BOPD_sum',
                 color='RunLifeBucket',
                 color_discrete_sequence=get_color_sequence(),
-                labels={'RunLifeBucket': 'Run Life (años)', 'BOPD_sum': 'BOPD (suma)'},
-                title=styled_title('BOPD total por Run Life')
+                labels={'RunLifeBucket': 'Tiempo de Vida (años)', 'BOPD_sum': 'BOPD (suma)'},
+                title=styled_title('BOPD total por Tiempo de Vida')
             )
             # Añadir anotaciones (cuadrito) con número de pozos
             max_y = agg['BOPD_sum'].max() if not agg['BOPD_sum'].empty else 0
@@ -1862,7 +1862,7 @@ if st.session_state['reporte_runes'] is not None:
     
     st.markdown(f"""
     <h3 id="historico-de-run-life-por-campo" style='font-size:1.4rem; font-weight:700; margin-top:1em;'>
-        <span style='color:{COLOR_PRINCIPAL};'> Histórico RUN LIFE por Campo</span>
+        <span style='color:{COLOR_PRINCIPAL};'> Histórico TIEMPO DE VIDA por Campo</span>
     </h3>
     """, unsafe_allow_html=True)
     # Ajuste de columnas a 50/50 para simetría
@@ -1879,7 +1879,7 @@ if st.session_state['reporte_runes'] is not None:
         ((df_runlife_total['FECHA_PULL'].notna()) | (df_runlife_total['FECHA_FALLA'].notna())) &
         (df_runlife_total['FECHA_RUN'].dt.date <= fecha_evaluacion)
     ]['RUN LIFE'].mean()
-    st.metric(label=f"Run Life Total ({'Todos' if activo_runlife == 'TODOS' else activo_runlife}) para la fecha evaluada", value=f"{runlife_total:.2f}" if not pd.isna(runlife_total) else "No disponible")
+    st.metric(label=f"Tiempo de Vida Total ({'Todos' if activo_runlife == 'TODOS' else activo_runlife}) para la fecha evaluada", value=f"{runlife_total:.2f}" if not pd.isna(runlife_total) else "No disponible")
 
     # Generar histórico por campo
 
@@ -1898,11 +1898,11 @@ if st.session_state['reporte_runes'] is not None:
             fig = px.bar(
                 historico_run_life,
                 x='Mes',
-                y='Run Life Promedio',
+                y='Tiempo Op. Promedio',
                 color='ACTIVO',
                 barmode='group',
-                title=styled_title('Run Life Promedio Mensual por Activo'),
-                labels={'Mes': 'Mes', 'Run Life Promedio': 'Run Life Promedio', 'ACTIVO': 'Campo'},
+                title=styled_title('Tiempo de Vida Promedio Mensual por Activo'),
+                labels={'Mes': 'Mes', 'Tiempo Op. Promedio': 'Tiempo Vida Promedio', 'ACTIVO': 'Campo'},
                 color_discrete_sequence=color_sequence
             )
             layout = get_plotly_layout()
@@ -1912,9 +1912,9 @@ if st.session_state['reporte_runes'] is not None:
             fig = px.bar(
                 historico_run_life,
                 x='Mes',
-                y='Run Life',
-                title=styled_title('Run Life Promedio Mensual'),
-                labels={'Mes': 'Mes', 'Run Life': 'Run Life Promedio'}
+                y='Tiempo Op. Promedio',
+                title=styled_title('Tiempo de Vida Promedio Mensual'),
+                labels={'Mes': 'Mes', 'Tiempo Op. Promedio': 'Tiempo Vida Promedio'}
             )
             # Usar layout del theme para respetar la detección de Streamlit
             layout = get_plotly_layout()
@@ -1952,7 +1952,7 @@ if st.session_state['reporte_runes'] is not None:
                     'Mes': mes,
                     'Pozo': run.get('POZO', ''),
                     'Fecha Falla': run.get('FECHA_FALLA', ''),
-                    'Run Life a Falla': run.get('RUN LIFE', ''),
+                    'Tiempo Vida a Falla': run.get('RUN LIFE', ''),
                     'Razón de Pull': razon,
                     'Clasificación IA': clasificacion
                 })
@@ -1985,8 +1985,8 @@ if st.session_state['reporte_runes'] is not None:
                     elif rl > 1100:
                         return 'Sin Garantía'
                     return 'Sin Dato'
-                df_graf['Clasificación Run Life'] = df_graf['Run Life a Falla'].apply(clasificar_runlife)
-                conteo = df_graf.groupby(['Clasificación Run Life', 'Clasificación IA']).size().reset_index(name='Cantidad')
+                df_graf['Clasif. Tiempo Vida'] = df_graf['Tiempo Vida a Falla'].apply(clasificar_runlife)
+                conteo = df_graf.groupby(['Clasif. Tiempo Vida', 'Clasificación IA']).size().reset_index(name='Cantidad')
                 orden_runlife = ['Infantil', 'Prematura', 'En Garantía', 'Sin Garantía']
                 colores_runlife = {
                     'Infantil': tema.COLOR_RL_INFANTIL,
@@ -1997,7 +1997,7 @@ if st.session_state['reporte_runes'] is not None:
                 import plotly.graph_objects as go
                 fig_runlife = go.Figure()
                 for runlife in orden_runlife:
-                    df_cat = conteo[conteo['Clasificación Run Life'] == runlife]
+                    df_cat = conteo[conteo['Clasif. Tiempo Vida'] == runlife]
                     fig_runlife.add_trace(go.Bar(
                         x=df_cat['Clasificación IA'],
                         y=df_cat['Cantidad'],
@@ -2005,7 +2005,7 @@ if st.session_state['reporte_runes'] is not None:
                         marker_color=colores_runlife.get(runlife, COLOR_PRINCIPAL)
                     ))
                 layout = get_plotly_layout()
-                fig_runlife.update_layout(barmode='group', title=styled_title('Distribución de Fallas por Run Life y Tipo de Falla IA'), xaxis_title='Tipo de Falla IA', yaxis_title='Cantidad de Fallas', legend_title='Clasificación Run Life')
+                fig_runlife.update_layout(barmode='group', title=styled_title('Distribución de Fallas por Tiempo de Vida y Tipo de Falla IA'), xaxis_title='Tipo de Falla IA', yaxis_title='Cantidad de Fallas', legend_title='Clasif. Tiempo Vida')
                 fig_runlife.update_layout(**layout)
                 st.plotly_chart(fig_runlife, use_container_width=True)
 
@@ -2283,7 +2283,7 @@ if st.session_state['reporte_runes'] is not None:
         # Mostrar MTBF después del índice de falla
         st.markdown(f"""
         <h3 id="mtbf" style='font-size:1.4rem; font-weight:700; margin-top:1em;'>
-            <span style='color:{COLOR_PRINCIPAL};'>MTBF</span>
+            <span style='color:{COLOR_PRINCIPAL};'>TMEF</span>
         </h3>
         """, unsafe_allow_html=True)
         try:
@@ -2350,6 +2350,8 @@ if st.session_state['reporte_runes'] is not None:
                 # ELIMINADO: No se muestra la tabla (df_resumen) para que el gráfico sea el único foco
                 # st.dataframe(df_resumen, hide_index=True) 
         except Exception as e:
-            st.warning(f"No se pudo generar el gráfico resumen: {{e}}")
+            import traceback
+            st.warning(f"No se pudo generar el gráfico resumen: {e}")
+            st.text(traceback.format_exc())
 
 
