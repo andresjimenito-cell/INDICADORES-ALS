@@ -98,6 +98,7 @@ def generar_resumen_mensual(df_bd, df_forma9, fecha_evaluacion):
         runlife_rows.append({
             'Mes_dt': mes_inicio,
             'RunLife_Promedio': runlife_promedio,
+            'TMEF_Promedio': (active_bd['FECHA_RUN'].apply(lambda d: (mes_fin - d).days).mean()) if not active_bd.empty else 0.0
         })
 
     df_runlife = pd.DataFrame(runlife_rows)
@@ -129,7 +130,7 @@ def generar_resumen_mensual(df_bd, df_forma9, fecha_evaluacion):
     df_final = df_final[df_final['Indice_Falla_ON'].notna()]
     
     # Seleccionar y ordenar las columnas finales
-    final_cols = ['Mes', 'Pozos_Operativos', 'Pozos_ON', 'Pozos_OFF', 'RunLife_Promedio', 'Indice_Falla_ON', 'Indice_Falla_ON_ALS']
+    final_cols = ['Mes', 'Pozos_Operativos', 'Pozos_ON', 'Pozos_OFF', 'RunLife_Promedio', 'TMEF_Promedio', 'Indice_Falla_ON', 'Indice_Falla_ON_ALS']
     return df_final[final_cols].sort_values('Mes').reset_index(drop=True)
 
 
@@ -158,6 +159,7 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
 
     # Colores base para las líneas
     COLOR_RUNLIFE = '#0A4D57'
+    COLOR_TMEF = '#A1039D'
     COLOR_IF_ON = '#F52738' 
     COLOR_IF_ALS = '#360A57' 
 
@@ -173,7 +175,7 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
     fig.add_trace(go.Scatter(
         x=df_monthly['Mes'], 
         y=df_monthly['RunLife_Promedio'], 
-        name='Run Life Promedio (días/pozo)', 
+        name='Tiempo Vida Promedio (días/pozo)', 
         mode='lines+markers',
         marker_symbol='diamond', 
         marker_color=COLOR_RUNLIFE, 
@@ -182,7 +184,20 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
         yaxis='y1'
     ))
 
-    # 3. Índices de Falla (Rolling) - Eje Y2 
+    # 3. Línea (TMEF Promedio) - Eje Y1
+    fig.add_trace(go.Scatter(
+        x=df_monthly['Mes'], 
+        y=df_monthly['TMEF_Promedio'], 
+        name='TMEF Promedio (días)', 
+        mode='lines+markers',
+        marker_symbol='circle', 
+        marker_color=COLOR_TMEF, 
+        line=dict(width=4, dash='dot', color=COLOR_TMEF),
+        marker=dict(size=4), 
+        yaxis='y1'
+    ))
+
+    # 4. Índices de Falla (Rolling) - Eje Y2 
     fig.add_trace(go.Scatter(
         x=df_monthly['Mes'], 
         y=df_monthly['Indice_Falla_ON'], 
@@ -233,7 +248,7 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
     
     # Configuración de ejes específicos
     yaxis1_config = dict(
-        title='# Pozos / Run Life (días)', 
+        title='# Pozos / Tiempo Vida / TMEF (días)', 
         side='left', 
         color=layout_base['yaxis']['color']
     )
