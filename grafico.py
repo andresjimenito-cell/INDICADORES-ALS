@@ -157,17 +157,17 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
 
 
     # Colores base para las líneas
-    COLOR_RUNLIFE = '#00520F'
-    COLOR_IF_ON = '#F52727' 
-    COLOR_IF_ALS = '#B427F5' 
+    COLOR_RUNLIFE = '#0A4D57'
+    COLOR_IF_ON = '#F52738' 
+    COLOR_IF_ALS = '#360A57' 
 
     fig = go.Figure()
 
     # --- Trazas ---
 
     # 1. Barras (Pozos ON/OFF) - Eje Y1
-    fig.add_trace(go.Bar(x=df_monthly['Mes'], y=df_monthly['Pozos_ON'], name='Pozos ON', marker_color='#76B879', offsetgroup=1))
-    fig.add_trace(go.Bar(x=df_monthly['Mes'], y=df_monthly['Pozos_OFF'], name='Pozos OFF', marker_color='#E39A62', offsetgroup=1, base=df_monthly['Pozos_ON'])) # STACKED BAR (OFF sobre ON)
+    fig.add_trace(go.Bar(x=df_monthly['Mes'], y=df_monthly['Pozos_ON'], name='Pozos ON', marker_color='#27E0F5', offsetgroup=1))
+    fig.add_trace(go.Bar(x=df_monthly['Mes'], y=df_monthly['Pozos_OFF'], name='Pozos OFF', marker_color='#2757F5', offsetgroup=1, base=df_monthly['Pozos_ON'])) # STACKED BAR (OFF sobre ON)
 
     # 2. Línea (Run Life Promedio) - Eje Y1 
     fig.add_trace(go.Scatter(
