@@ -68,15 +68,22 @@ def calcular_mtbf(df_bd, fecha_evaluacion):
     return mtbf, df[['ITEM', 'RUN LIFE @ FALLA', 'R(ti/Ti-1)', 'R(Ti)', 'R(Ti)*dt']]
 
 def mostrar_mtbf(mtbf_global, mtbf_por_pozo, df_bd=None, fecha_evaluacion=None):
-    st.subheader('MTBF (Mean Time Between Failures)')
-    st.metric(label='MTBF Global (días)', value=f"{mtbf_global:.2f}")
+    st.subheader('TMEF (Tiempo Medio Entre Fallas)')
+    st.markdown(f"""
+    <div style="display: flex; gap: 20px; align-items: center; margin-bottom: 20px;">
+        <div style="flex: 1; padding: 25px; background: linear-gradient(135deg, #0011D1, #00A2FF); border-radius: 15px; box-shadow: 0 10px 25px rgba(0, 17, 209, 0.4); text-align: center; color: white;">
+            <div style="font-size: 16px; text-transform: uppercase; letter-spacing: 2px; font-weight: 600; opacity: 0.9;">TMEF GLOBAL ESTIMADO</div>
+            <div style="font-size: 48px; font-weight: 900; margin-top: 5px; text-shadow: 0 2px 10px rgba(0,0,0,0.3);">{mtbf_global:.2f} <span style="font-size: 18px; font-weight: 500;">días</span></div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     col_tabla, col_graf = st.columns([0.4, 0.6])
     with col_tabla:
         # Si es la tabla auxiliar, mostrar index desde 1
         if isinstance(mtbf_por_pozo, pd.DataFrame) and 'ITEM' in mtbf_por_pozo.columns:
             st.dataframe(mtbf_por_pozo.set_index('ITEM'), use_container_width=True)
         else:
-            st.dataframe(mtbf_por_pozo.reset_index().rename(columns={0: 'MTBF (días)'}), use_container_width=True, hide_index=True)
+            st.dataframe(mtbf_por_pozo.reset_index().rename(columns={0: 'TMEF (días)'}), use_container_width=True, hide_index=True)
     with col_graf:
         if df_bd is not None and fecha_evaluacion is not None:
             df_hist = historico_mtbf(df_bd, fecha_evaluacion)
@@ -112,10 +119,10 @@ def historico_mtbf(df_bd, fecha_evaluacion):
     if historico:
         df_hist = pd.concat(historico, ignore_index=True)
         df_hist = df_hist[['Mes', 'ACTIVO', 'MTBF_MES']]
-        df_hist.rename(columns={'MTBF_MES': 'MTBF Promedio'}, inplace=True)
+        df_hist.rename(columns={'MTBF_MES': 'TMEF Promedio'}, inplace=True)
         return df_hist
     else:
-        return pd.DataFrame(columns=['Mes', 'ACTIVO', 'MTBF Promedio'])
+        return pd.DataFrame(columns=['Mes', 'ACTIVO', 'TMEF Promedio'])
 
 def graficar_historico_mtbf(df_hist):
     if not df_hist.empty and 'ACTIVO' in df_hist.columns:
@@ -123,11 +130,11 @@ def graficar_historico_mtbf(df_hist):
         fig = px.bar(
             df_hist,
             x='Mes',
-            y='MTBF Promedio',
+            y='TMEF Promedio',
             color='ACTIVO',
             barmode='group',
-        title=styled_title('MTBF promedio mensual por campo  (últimos 3 años)'),
-            labels={'Mes': 'Mes', 'MTBF Promedio': 'MTBF Promedio (días)', 'ACTIVO': 'ACTIVO'},
+        title=styled_title('TMEF promedio mensual por campo  (últimos 3 años)'),
+            labels={'Mes': 'Mes', 'TMEF Promedio': 'TMEF Promedio (días)', 'ACTIVO': 'ACTIVO'},
             color_discrete_sequence=color_sequence
         )
         # Obtener layout desde theme (respetará si Streamlit gestiona el fondo)
