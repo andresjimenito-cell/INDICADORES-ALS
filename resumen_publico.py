@@ -656,7 +656,7 @@ def generar_grafico_radar(kpis):
     """
     # Definición de datos
     vals = [kpis.get('running', 0), kpis.get('pozos_on', 0), kpis.get('pozos_off', 0), kpis.get('fallados', 0), kpis.get('operativos', 0)]
-    cats = ['Running', 'Pozos ON', 'Pozos OFF', 'Fallados', 'Operativos']
+    cats = ['En Fondo', 'Pozos ON', 'Pozos OFF', 'Fallados', 'Operativos']
     
     # 1. Determinar el valor máximo para la escala (Mejora de visibilidad)
     # Se añade un buffer de 10% para que el polígono no toque el borde
@@ -1688,6 +1688,98 @@ def show_resumen():
     with kpi5: st.markdown(_render_top_kpi("🔄", "Extracción %", f"{pct_extraccion:.1f}", "%"), unsafe_allow_html=True)
     with kpi6: st.markdown(_render_top_kpi("📊", "Equipos ON", kpis['pozos_on'], "Rns"), unsafe_allow_html=True)
 
+    # --- NUEVA SECCIÓN: ESTADO DE LA CAMPAÑA (RESUMEN) ---
+    st.markdown("<div style='height: 1.5rem;'></div>", unsafe_allow_html=True)
+    
+    # Asegurar fecha timestamp
+    try:
+        fecha_eval_ts = pd.to_datetime(fecha_eval)
+        anio_campana = fecha_eval_ts.year
+    except:
+        anio_campana = datetime.now().year
+        fecha_eval_ts = pd.Timestamp(datetime.now())
+
+    # Contenedor visual
+    st.markdown(f"""
+    <div style="background: linear-gradient(90deg, rgba(85, 255, 0, 0.05), transparent); padding: 8px 12px; border-left: 4px solid #55ff00; border-radius: 4px; margin-bottom: 1em;">
+        <h4 style='font-size:1.1rem; font-weight:700; margin:0; color:#55ff00; letter-spacing: 1px; text-transform: uppercase;'>
+             Estado de Campaña {anio_campana}
+        </h4>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Lógica de cálculo (Copia adaptada de INDICADORES.py)
+    df_campana = df_bd_filtered[pd.to_datetime(df_bd_filtered['FECHA_RUN'], errors='coerce').dt.year == anio_campana].copy()
+    
+    col_camp_1, col_camp_2 = st.columns(2)
+    
+    if df_campana.empty:
+        st.info(f"No hay registros de campaña para {anio_campana}.")
+    else:
+        df_campana['RUN'] = pd.to_numeric(df_campana['RUN'], errors='coerce').fillna(0)
+        df_nuevos = df_campana[df_campana['RUN'] == 1].copy()
+        df_interv = df_campana[df_campana['RUN'] > 1].copy()
+
+        def _render_campaign_card(df_g, title, color_hex):
+            if df_g.empty:
+                return f"""<div style="background:rgba(255,255,255,0.02); border:1px solid {color_hex}44; border-radius:10px; padding:12px; opacity:0.7;">
+                    <div style="color:{color_hex}; font-weight:bold;">{title}</div>
+                    <small>Sin datos</small>
+                </div>"""
+            
+            total = df_g['POZO'].nunique()
+            # Conversión segura de fechas
+            df_g['FECHA_FALLA_DT'] = pd.to_datetime(df_g['FECHA_FALLA'], errors='coerce')
+            df_g['FECHA_PULL_DT'] = pd.to_datetime(df_g['FECHA_PULL'], errors='coerce')
+            
+            fallados = df_g[(df_g['FECHA_FALLA_DT'].notna()) & (df_g['FECHA_FALLA_DT'] <= fecha_eval_ts)]['POZO'].nunique()
+            
+            # Operativos logic
+            operativos = df_g[
+                ((df_g['FECHA_PULL_DT'].isna()) | (df_g['FECHA_PULL_DT'] > fecha_eval_ts)) &
+                ((df_g['FECHA_FALLA_DT'].isna()) | (df_g['FECHA_FALLA_DT'] > fecha_eval_ts))
+            ]['POZO'].nunique()
+            
+            # Producción
+            pozos_ids = df_g['POZO'].unique()
+            df_f9_sub = df_f9_filtered[df_f9_filtered['POZO'].isin(pozos_ids)].copy()
+            prod_val = 0.0
+            if not df_f9_sub.empty:
+                # Usar FECHA_FORMA9
+                df_f9_sub['FECHA_FORMA9'] = pd.to_datetime(df_f9_sub['FECHA_FORMA9'], errors='coerce')
+                df_last = df_f9_sub.sort_values('FECHA_FORMA9').groupby('POZO').last()
+                # Buscar columna BOPD
+                c_bopd = next((c for c in df_last.columns if 'BOPD' in str(c).upper()), None)
+                if c_bopd:
+                    prod_val = pd.to_numeric(df_last[c_bopd], errors='coerce').sum()
+            
+            return f"""<div style="background:linear-gradient(135deg, rgba(255,255,255,0.03), rgba(0,0,0,0.2)); border:1px solid {color_hex}55; border-radius:12px; padding:15px; position:relative; overflow:hidden;">
+ <div style="position:absolute; top:0; left:0; width:4px; height:100%; background:{color_hex};"></div>
+ <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+  <span style="color:{color_hex}; font-weight:700; font-size:0.95rem; text-transform:uppercase;">{title}</span>
+  <span style="background:{color_hex}22; color:{color_hex}; padding:2px 8px; border-radius:10px; font-size:0.75rem; font-weight:bold;">{total} CORRIDAS</span>
+ </div>
+ <div style="display:flex; justify-content:space-between; text-align:center; font-family:'Rajdhani', sans-serif;">
+  <div>
+   <div style="font-size:1.2rem; font-weight:800; color:#00ff99;">{operativos}</div>
+   <div style="font-size:0.7rem; opacity:0.7;">OPERATIVOS</div>
+  </div>
+  <div>
+   <div style="font-size:1.2rem; font-weight:800; color:#ff4b4b;">{fallados}</div>
+   <div style="font-size:0.7rem; opacity:0.7;">FALLADOS</div>
+  </div>
+  <div style="border-left:1px solid rgba(255,255,255,0.1); padding-left:10px;">
+   <div style="font-size:1.2rem; font-weight:800; color:#E0FFFF;">{prod_val:,.0f}</div>
+   <div style="font-size:0.7rem; opacity:0.7;">PRODUCCION</div>
+  </div>
+ </div>
+</div>"""
+
+        with col_camp_1:
+            st.markdown(_render_campaign_card(df_nuevos, "Pozos Nuevos", "#00cfff"), unsafe_allow_html=True)
+        with col_camp_2:
+            st.markdown(_render_campaign_card(df_interv, "Intervenciones", "#ff00ff"), unsafe_allow_html=True)
+
     st.markdown("<div style='height: 2rem;'></div>", unsafe_allow_html=True)
 
     # --- LAYOUT PRINCIPAL (0.8 - 0.2) - Desde Tendencia Histórica ---
@@ -1735,7 +1827,7 @@ def show_resumen():
                             else:
                                 rl_mean = float('nan')
                             reporte_run_life = pd.DataFrame({
-                                'Categoría': ['Run Life Apagados + Fallados'],
+                                'Categoría': ['Tiempo Op. (Apagados + Fallados)'],
                                 'Valor': [rl_mean]
                             })
                     except Exception:
