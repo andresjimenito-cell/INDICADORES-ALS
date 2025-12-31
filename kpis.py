@@ -120,10 +120,10 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
     node_style_lvl1['fontsize'] = '20'
     node_style_lvl1['fontcolor'] = COLOR_TEXTO_PRINCIPAL
     
-    dot.node('RUNs', label='RUNS', fillcolor=kpi_node_colors['RUNs'], **node_style_lvl1)
-    dot.node('RL', label='RUN LIFE ', fillcolor=kpi_node_colors['RL'], **node_style_lvl1)
-    dot.node('MTBF', label='MTBF ', fillcolor=kpi_node_colors['MTBF'], **node_style_lvl1)
-    dot.node('IF', label='FAILURE INDEX', fillcolor=kpi_node_colors['IF'], **node_style_lvl1)
+    dot.node('RUNs', label='CORRIDAS', fillcolor=kpi_node_colors['RUNs'], **node_style_lvl1)
+    dot.node('RL', label='TIEMPO VIDA', fillcolor=kpi_node_colors['RL'], **node_style_lvl1)
+    dot.node('MTBF', label='TMEF', fillcolor=kpi_node_colors['MTBF'], **node_style_lvl1)
+    dot.node('IF', label='INDICE FALLA', fillcolor=kpi_node_colors['IF'], **node_style_lvl1)
     
     # [ --- Lógica de Cálculo de Datos (Omitida por brevedad, pero debe estar aquí) --- ]
     # Se asume que las variables *_label están definidas.
@@ -205,7 +205,7 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
         rl_todos = 0
         rl_als = 0
         if reporte_run_life is not None and not reporte_run_life.empty:
-            val = reporte_run_life.loc[reporte_run_life['Categoría'] == 'Run Life Apagados + Fallados', 'Valor']
+            val = reporte_run_life.loc[reporte_run_life['Categoría'] == 'Tiempo Op. (Apagados + Fallados)', 'Valor']
             if not val.empty:
                 rl_todos = float(val.values[0])
         
@@ -255,8 +255,8 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
     node_style_lvl2['shape'] = 'BOX'
     node_style_lvl2['fontsize'] = '20'
     
-    dot.node('fallado_node', 'FAILED', fillcolor=kpi_node_colors['IF'], **node_style_lvl2) 
-    dot.node('operativos_node', 'OPERATIONAL', fillcolor=kpi_node_colors['RUNs'], **node_style_lvl2)
+    dot.node('fallado_node', 'FALLADOS', fillcolor=kpi_node_colors['IF'], **node_style_lvl2) 
+    dot.node('operativos_node', 'OPERATIVOS', fillcolor=kpi_node_colors['RUNs'], **node_style_lvl2)
     
     dot.edge('KPIs', 'RUNs', penwidth='3', color="#0011D1", arrowhead='none')
     dot.edge('KPIs', 'RL', penwidth='3', color='#00F5FF', arrowhead='none')
@@ -287,8 +287,8 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
     node_style_lvl3 = node_style_lvl2.copy()
     node_style_lvl3['shape'] = 'ellipse'
     
-    dot.node('on_node', 'ON', fillcolor=kpi_node_colors['ON'], **node_style_lvl3) 
-    dot.node('off_node', 'OFF', fillcolor=kpi_node_colors['OFF'], **node_style_lvl3) 
+    dot.node('on_node', 'ENCENDIDOS', fillcolor=kpi_node_colors['ON'], **node_style_lvl3) 
+    dot.node('off_node', 'APAGADOS', fillcolor=kpi_node_colors['OFF'], **node_style_lvl3) 
     
     dot.edge('operativos_data', 'on_node', penwidth='3', color=kpi_node_colors['ON'], arrowhead='normal')
     dot.edge('operativos_data', 'off_node', penwidth='3', color=kpi_node_colors['OFF'], arrowhead='normal')
@@ -367,7 +367,7 @@ def build_kpis_graph(df_bd, df_forma9=None, reporte_run_life=None, indice_resume
     # Run Life promedio
     rl_todos = None
     if reporte_run_life is not None and not reporte_run_life.empty:
-        val = reporte_run_life.loc[reporte_run_life['Categoría'] == 'Run Life Apagados + Fallados', 'Valor']
+        val = reporte_run_life.loc[reporte_run_life['Categoría'] == 'Tiempo Op. (Apagados + Fallados)', 'Valor']
         if not val.empty:
             try:
                 rl_todos = float(val.values[0])
@@ -412,10 +412,10 @@ def build_kpis_graph(df_bd, df_forma9=None, reporte_run_life=None, indice_resume
     dot.attr('node', **node_attr)
 
     dot.node('KPIS', label='KPIs')
-    dot.node('RUN', label=f"RUNs\n{run_label}")
-    dot.node('RL', label=f"RunLife\n{rl_label}")
-    dot.node('MTBF', label=f"MTBF\n{mtbf_label}")
-    dot.node('IF', label=f"IF\n{if_label}")
+    dot.node('RUN', label=f"Corridas\n{run_label}")
+    dot.node('RL', label=f"TiempoVida\n{rl_label}")
+    dot.node('MTBF', label=f"TMEF\n{mtbf_label}")
+    dot.node('IF', label=f"Ind.Falla\n{if_label}")
     dot.node('ON', label=on_label)
     dot.node('OFF', label=off_label)
 
