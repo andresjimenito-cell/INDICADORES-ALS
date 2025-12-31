@@ -453,5 +453,279 @@ h5::after {
     background-clip: border-box !important;
     -webkit-background-clip: border-box !important;
 }
+
+/* ========================================================================
+   🎨 SIDEBAR COMPLETO - REDISEÑO PROFESIONAL Y COHESIVO
+   ======================================================================== */
+
+/* Contenedor principal del sidebar - MÁS ANCHO */
+section[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #0A0E27 0%, #0f1535 50%, #0A0E27 100%);
+    border-right: 2px solid rgba(255, 0, 255, 0.15);
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.5);
+    min-width: 280px !important;
+    max-width: 320px !important;
+}
+
+section[data-testid="stSidebar"] > div {
+    padding: 0 !important;
+}
+
+section[data-testid="stSidebar"] > div > div {
+    background: transparent;
+    padding: 1.2rem 1rem !important;
+}
+
+/* ===== BOTONES DEL SIDEBAR ===== */
+section[data-testid="stSidebar"] .stButton > button {
+    width: 100%;
+    background: linear-gradient(135deg, rgba(255, 0, 255, 0.08), rgba(0, 217, 255, 0.08));
+    border: 1.5px solid rgba(255, 0, 255, 0.25);
+    border-radius: 10px;
+    color: #E0FFFF;
+    font-family: 'Rajdhani', 'Segoe UI', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    text-align: left;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+section[data-testid="stSidebar"] .stButton > button:hover {
+    background: linear-gradient(135deg, rgba(255, 0, 255, 0.15), rgba(0, 217, 255, 0.15));
+    border-color: rgba(255, 0, 255, 0.5);
+    transform: translateX(4px);
+    box-shadow: 0 4px 16px rgba(255, 0, 255, 0.3);
+}
+
+section[data-testid="stSidebar"] .stButton > button:active {
+    transform: translateX(2px);
+}
+
+/* Botón de Dashboard (destacado) */
+section[data-testid="stSidebar"] .stButton > button[kind="primary"] {
+    background: linear-gradient(135deg, rgba(255, 0, 255, 0.2), rgba(0, 217, 255, 0.2));
+    border-color: rgba(255, 0, 255, 0.4);
+    font-weight: 700;
+}
+
+/* ===== DIVISORES ===== */
+section[data-testid="stSidebar"] hr {
+    margin: 1.2rem 0;
+    border: none;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 0, 255, 0.3), transparent);
+}
+
+/* ===== TEXTO Y MARKDOWN ===== */
+section[data-testid="stSidebar"] p,
+section[data-testid="stSidebar"] div {
+    color: #CBD5E1;
+    font-family: 'Rajdhani', 'Segoe UI', sans-serif;
+}
+
+/* Títulos pequeños (etiquetas de sección) */
+section[data-testid="stSidebar"] div[style*="font-size:0.8rem"] {
+    color: #94A3B8 !important;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 700;
+    margin-bottom: 0.8rem;
+    padding-left: 0.5rem;
+    border-left: 3px solid rgba(0, 217, 255, 0.5);
+}
+
+/* ===== SELECTBOX Y WIDGETS ===== */
+section[data-testid="stSidebar"] .stSelectbox label {
+    font-size: 0.85rem;
+    color: #94A3B8 !important;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+section[data-testid="stSidebar"] .stSelectbox [data-baseweb="select"] > div {
+    background: rgba(15, 21, 53, 0.6);
+    border: 1.5px solid rgba(255, 0, 255, 0.2);
+    border-radius: 8px;
+    color: #E0FFFF;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+section[data-testid="stSidebar"] .stSelectbox [data-baseweb="select"] > div:hover {
+    border-color: rgba(255, 0, 255, 0.4);
+    background: rgba(15, 21, 53, 0.9);
+    box-shadow: 0 0 12px rgba(255, 0, 255, 0.2);
+}
+
+/* ===== NAVEGACIÓN INTERNA (LINKS) ===== */
+.sidebar-anchor-link {
+    display: block;
+    padding: 0.65rem 1rem;
+    margin-bottom: 0.4rem;
+    color: #CBD5E1 !important;
+    text-decoration: none !important;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border-radius: 8px;
+    border-left: 3px solid transparent;
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.sidebar-anchor-link:hover {
+    background: rgba(255, 0, 255, 0.1);
+    border-left-color: #FF00FF;
+    color: #E0FFFF !important;
+    transform: translateX(4px);
+    box-shadow: 0 2px 8px rgba(255, 0, 255, 0.2);
+}
+
+/* ===== TÍTULO DE NAVEGACIÓN ===== */
+.sidebar-nav-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #00D9FF;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    padding: 0.8rem 0;
+    margin: 1rem 0 0.8rem 0;
+    background: linear-gradient(135deg, rgba(255, 0, 255, 0.1), rgba(0, 217, 255, 0.1));
+    border-radius: 8px;
+    border: 1px solid rgba(0, 217, 255, 0.3);
+}
+
+/* ===== METADATA DEL SIDEBAR ===== */
+.sidebar-metadata {
+    margin-top: 2rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    text-align: center;
+}
+
+.sidebar-metadata p {
+    margin: 0.3rem 0;
+    font-size: 0.8rem;
+    color: #94A3B8;
+    line-height: 1.4;
+}
+
+.sidebar-metadata strong {
+    color: #00D9FF;
+    font-weight: 700;
+}
+
+/* ===== SCROLLBAR DEL SIDEBAR ===== */
+section[data-testid="stSidebar"] ::-webkit-scrollbar {
+    width: 8px;
+}
+
+section[data-testid="stSidebar"] ::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+section[data-testid="stSidebar"] ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #FF00FF, #00D9FF);
+    border-radius: 4px;
+}
+
+section[data-testid="stSidebar"] ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #FF33FF, #33E5FF);
+}
+
+/* ===== ANIMACIONES ===== */
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+section[data-testid="stSidebar"] .stButton,
+section[data-testid="stSidebar"] .stSelectbox {
+    animation: slideInLeft 0.4s ease-out;
+}
+
+/* Títulos de sección internos */
+section[data-testid="stSidebar"] h3 {
+    font-size: 0.9rem !important;
+    color: #CBD5E1 !important;
+    font-weight: 600 !important;
+    margin-top: 1.5rem !important;
+    margin-bottom: 0.5rem !important;
+    padding-left: 0.5rem;
+    border-left: 2px solid var(--color-secondary);
+}
+
+/* 💠 CAJAS DE DETALLE (FINE COQUETRY) */
+.detail-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 12px;
+    transition: all 0.3s ease;
+    border-left: 3px solid transparent;
+}
+
+.detail-card:hover {
+    transform: translateX(5px);
+    background: rgba(255, 255, 255, 0.06);
+    border-left: 3px solid var(--color-primary);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.detail-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.detail-content {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.highlight-pill {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-accent-green);
+}
+
+/* 🏷️ SUBTÍTULOS ELEGANTES */
+.fancy-subtitle {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.8);
+    margin-top: 1.5rem;
+    margin-bottom: 0.8rem;
+    padding-bottom: 0.3rem;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 </style>
 """
