@@ -532,7 +532,7 @@ def show_dashboard():
             <div class="module-title">INDICADORES ALS</div>
             <div class="module-description">
                 Plataforma integral de análisis y monitoreo de indicadores de Sistemas Artificiales
-                de Levantamiento (ALS). Incluye métricas clave como MTBF, Run Life, índices de falla y 
+                de Levantamiento (ALS). Incluye métricas clave como TMEF, Tiempo de Vida, índices de falla y 
                 reportes de performance de equipos.
             </div>
         </div>
@@ -644,11 +644,54 @@ def show_dashboard():
             st.session_state['hide_main_menu_only'] = False
             st.rerun()
 
+# === NAV SIDEBAR ===
+def render_sidebar():
+    with st.sidebar:
+        st.markdown(f"""
+        <div style="text-align:center; padding:10px 0;">
+            <div style="font-family:'Orbitron'; font-weight:900; font-size:1.4rem; color:{COLOR_ACENTO}; margin-bottom:5px;">FRONTERA</div>
+            <div style="font-family:'Rajdhani'; font-size:0.9rem; letter-spacing:2px; opacity:0.8;">ALS SYSTEM</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.divider()
+        
+        if st.button("🏠 DASHBOARD", use_container_width=True):
+             for key in ['launch_module_path', 'launch_module_name']:
+                if key in st.session_state:
+                    del st.session_state[key]
+             st.rerun()
+        
+        st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size:0.8rem; font-weight:bold; opacity:0.6; margin-bottom:5px;'>MÓDULOS</div>", unsafe_allow_html=True)
+        
+        if st.button("📊 INDICADORES", use_container_width=True):
+             open_module("indicadores.py")
+             
+        if st.button("🌍 RESUMEN PÚBLICO", use_container_width=True):
+             open_module("resumen_publico.py")
+
+        if st.button("⚙️ EVALUACIÓN ESP", use_container_width=True):
+             open_module("evaluacion.py")
+
+        if st.button("🖥️ VISUALIZER", use_container_width=True):
+             open_module("esp_visualizer.py")
+
+        st.divider()
+        if st.button("🚪 CERRAR SESIÓN", key="btn_logout_sidebar", use_container_width=True):
+            st.session_state.authenticated = False
+            st.session_state.username = ""
+            st.session_state['hide_main_menu_only'] = False
+            st.rerun()
+
 # === LÓGICA PRINCIPAL ===
 def main():
     if not st.session_state.authenticated:
         show_login()
     else:
+        # Renderizar sidebar siempre si está autenticado
+        render_sidebar()
+        
         username = (st.session_state.get('username') or '').strip().lower()
 
         if username == 'invitado':
