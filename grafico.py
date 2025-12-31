@@ -68,17 +68,31 @@ def generar_resumen_mensual(df_bd, df_forma9, fecha_evaluacion):
 
     runlife_rows = []
     
+    # Importar la función oficial de cálculo de MTBF
+    from mtbf import calcular_mtbf
+
+    runlife_rows = []
+    
+    # Pre-calcular fechas para eficiencia
+    if 'FECHA_RUN' in df_bd.columns:
+        df_bd['FECHA_RUN_DT'] = pd.to_datetime(df_bd['FECHA_RUN'], errors='coerce')
+    if 'FECHA_PULL' in df_bd.columns:
+        df_bd['FECHA_PULL_DT'] = pd.to_datetime(df_bd['FECHA_PULL'], errors='coerce')
+    if 'FECHA_FALLA' in df_bd.columns:
+        df_bd['FECHA_FALLA_DT'] = pd.to_datetime(df_bd['FECHA_FALLA'], errors='coerce')
+
     # Iterar sobre los meses que ya tienen los índices calculados
     for _, r in df_mensual_full.iterrows():
         mes_inicio = r['Mes_dt']
         mes_fin = (mes_inicio + pd.offsets.MonthEnd(0)).normalize()
 
+        # --- CÁLCULO DE RUN LIFE PROMEDIO (Método Simple: Activos) ---
         # Corridas (NICK) activas a fin de mes
         active_bd = df_bd[
-            (df_bd['FECHA_RUN'].notna()) &
-            (df_bd['FECHA_RUN'] <= mes_fin) &
-            ((df_bd['FECHA_PULL'].isna()) | (df_bd['FECHA_PULL'] > mes_fin)) &
-            ((df_bd['FECHA_FALLA'].isna()) | (df_bd['FECHA_FALLA'] > mes_fin))
+            (df_bd['FECHA_RUN_DT'].notna()) &
+            (df_bd['FECHA_RUN_DT'] <= mes_fin) &
+            ((df_bd['FECHA_PULL_DT'].isna()) | (df_bd['FECHA_PULL_DT'] > mes_fin)) &
+            ((df_bd['FECHA_FALLA_DT'].isna()) | (df_bd['FECHA_FALLA_DT'] > mes_fin))
         ].copy()
         
         # Asegurar NICK en active_bd
@@ -95,10 +109,19 @@ def generar_resumen_mensual(df_bd, df_forma9, fecha_evaluacion):
         suma_acumulados = cum_por_nick.loc[cum_por_nick.index.intersection(active_nicks)].sum()
         runlife_promedio = (suma_acumulados / n_corridas) if n_corridas > 0 else 0.0
 
+        # --- CÁLCULO DE TMEF (Coherente con INDICADORES.py) ---
+        # Usamos la función oficial calcular_mtbf pasando el dataframe completo y la fecha de corte.
+        # La función interno filtra por FECHA_RUN <= mes_fin y usa los valores estáticos de RUN LIFE / INDICADOR
+        # tal como lo hace el indicador global.
+        try:
+            tmef_calc, _ = calcular_mtbf(df_bd, mes_fin)
+        except Exception:
+            tmef_calc = 0.0
+
         runlife_rows.append({
             'Mes_dt': mes_inicio,
             'RunLife_Promedio': runlife_promedio,
-            'TMEF_Promedio': (active_bd['FECHA_RUN'].apply(lambda d: (mes_fin - d).days).mean()) if not active_bd.empty else 0.0
+            'TMEF_Promedio': tmef_calc
         })
 
     df_runlife = pd.DataFrame(runlife_rows)
