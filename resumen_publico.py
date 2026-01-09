@@ -8,6 +8,23 @@ import re
 import html
 import plotly.graph_objects as go
 import plotly.express as px
+import pickle
+from pathlib import Path
+
+CACHE_DIR = Path("cache_data")
+CACHE_FILE = CACHE_DIR / "last_run_data.pkl"
+
+def load_cached_data():
+    """Carga los datos desde el archivo pickle si existe (compartido con INDICADORES.py)."""
+    if not CACHE_FILE.exists():
+        return None
+    try:
+        with open(CACHE_FILE, 'rb') as f:
+            data = pickle.load(f)
+        return data
+    except Exception as e:
+        print(f"Error cargando caché en resumen: {e}")
+        return None
 
 # Intentar usar el módulo de procesamiento compartido si existe
 try:
@@ -1223,21 +1240,38 @@ def show_resumen():
     f9_path = os.path.join(upload_dir, 'forma9_online.xlsx')
     bd_path = os.path.join(upload_dir, 'bd_online.xlsx')
 
-    # Si no hay datos en session_state, intentar leer desde disco
+    # Si no hay datos en session_state, intentar leer desde CACHÉ PRIMERO
     if st.session_state.get('df_forma9_calculated') is None or st.session_state.get('df_bd_calculated') is None:
+        cached_data = load_cached_data()
         loaded = False
-        try:
-            if os.path.exists(f9_path) and os.path.exists(bd_path):
-                try:
-                    with open(f9_path, 'rb') as f:
-                        st.session_state['df_forma9_calculated'] = _read_simple(f)
-                    with open(bd_path, 'rb') as f:
-                        st.session_state['df_bd_calculated'] = _read_simple(f)
-                    loaded = True
-                except Exception:
-                    loaded = False
-        except Exception:
-            loaded = False
+        
+        if cached_data:
+            try:
+                st.session_state['df_bd_calculated'] = cached_data['df_bd']
+                st.session_state['df_forma9_calculated'] = cached_data['df_forma9']
+                # Sincronizar fecha si está disponible
+                if 'fecha_evaluacion' in cached_data:
+                    st.session_state['fecha_eval_resumen'] = cached_data['fecha_evaluacion']
+                loaded = True
+                st.toast(f"⚡ Datos cargados desde memoria caché ({cached_data.get('fecha_evaluacion', 'Fecha desc.')})")
+            except Exception as e:
+                st.warning(f"Error al aplicar datos de caché: {e}")
+                loaded = False
+        
+        # Si no funcionó la caché, intentar leer desde disco (saved_uploads)
+        if not loaded:
+            try:
+                if os.path.exists(f9_path) and os.path.exists(bd_path):
+                    try:
+                        with open(f9_path, 'rb') as f:
+                            st.session_state['df_forma9_calculated'] = _read_simple(f)
+                        with open(bd_path, 'rb') as f:
+                            st.session_state['df_bd_calculated'] = _read_simple(f)
+                        loaded = True
+                    except Exception:
+                        loaded = False
+            except Exception:
+                loaded = False
 
         # Si no se pudieron leer, intentar descargar desde los enlaces por defecto
         if not loaded:
@@ -1804,7 +1838,22 @@ def show_resumen():
                             legend=dict(orientation="h", y=8.0, font=dict(size=8))
                         )
                         st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False})
-                except: st.error("Error en gráfico histórico")
+
+                        # Botón de descarga PNG con fondo claro y texto/leyenda oscuros
+                        try:
+                            from grafico import exportar_png_claro_bytes
+                            img_bytes = exportar_png_claro_bytes(fig1, width=1200, height=600, scale=2)
+                            # Nombre de archivo con fecha de evaluación
+                            try:
+                                fname_date = pd.to_datetime(fecha_eval).strftime('%Y%m%d')
+                            except Exception:
+                                fname_date = 'grafico'
+                            st.download_button(label='📥 Descargar PNG (fondo claro)', data=img_bytes, file_name=f"historico_{fname_date}.png", mime='image/png')
+                        except Exception:
+                            # Si falla la generación en bytes, no romper la UI
+                            pass
+                except Exception:
+                    st.error("Error en gráfico histórico")
         
         with col_mapa:
             # Mapa conceptual de KPIs
