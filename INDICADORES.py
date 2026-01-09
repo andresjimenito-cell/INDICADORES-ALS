@@ -152,6 +152,124 @@ def inject_custom_css():
         background-color: #131A3F !important;
     }
     
+    /* ========================================
+       ESTILOS PARA GRÁFICAS (Plotly)
+       Fondo oscuro fijo sin importar tema
+    ======================================== */
+    
+    /* Contenedor de gráficas */
+    [data-testid="stPlotlyChart"] {
+        background-color: transparent !important;
+    }
+    
+    /* SVG de Plotly */
+    .plotly-graph-div {
+        background-color: transparent !important;
+    }
+    
+    .plotly .bg, .plotly .plotbg, .plotly .bgrect {
+        fill: #0A0E27 !important;
+    }
+    
+    /* Leyenda en gráficas */
+    .plotly .legend {
+        background-color: rgba(10, 14, 39, 0.95) !important;
+    }
+    
+    .plotly .legendtext {
+        fill: #E0FFFF !important;
+        color: #E0FFFF !important;
+    }
+    
+    /* Ejes y etiquetas */
+    .plotly .xtick text, .plotly .ytick text {
+        fill: #E0FFFF !important;
+        color: #E0FFFF !important;
+    }
+    
+    .plotly .xaxislayer-below text, .plotly .yaxislayer-below text {
+        fill: #E0FFFF !important;
+        color: #E0FFFF !important;
+    }
+    
+    /* Títulos de ejes */
+    .plotly .xtitle, .plotly .ytitle {
+        fill: #E0FFFF !important;
+        color: #E0FFFF !important;
+    }
+    
+    /* Título principal */
+    .plotly .title {
+        fill: #FF00FF !important;
+        color: #FF00FF !important;
+    }
+    
+    /* ========================================
+       HEADER/BARRA SUPERIOR Y ELEMENTOS GLOBALES
+       Fondo oscuro fijo sin importar tema
+    ======================================== */
+    
+    /* Header de Streamlit */
+    [data-testid="stHeader"] {
+        background-color: #0A0E27 !important;
+    }
+    
+    /* Toolbar */
+    [data-testid="stToolbar"] {
+        background-color: #0A0E27 !important;
+    }
+    
+    /* Elementos del header */
+    header {
+        background-color: #0A0E27 !important;
+    }
+    
+    /* Sidebar */
+    [data-testid="stSidebar"] {
+        background-color: #0A0E27 !important;
+    }
+    
+    [data-testid="stSidebar"] * {
+        color: #E0FFFF !important;
+    }
+    
+    /* Texto principal */
+    .stMarkdown h1, .stMarkdown h2, .stMarkdown h3, .stMarkdown h4, .stMarkdown h5, .stMarkdown h6 {
+        color: #E0FFFF !important;
+    }
+    
+    /* Selectbox y inputs */
+    [data-testid="stSelectbox"] > div {
+        background-color: #0F1535 !important;
+    }
+    
+    [data-testid="stTextInput"] input {
+        background-color: #0F1535 !important;
+        color: #E0FFFF !important;
+        border-color: rgba(0, 217, 255, 0.3) !important;
+    }
+    
+    /* Botones */
+    .stButton > button {
+        background-color: #131A3F !important;
+        color: #E0FFFF !important;
+        border-color: rgba(255, 0, 255, 0.3) !important;
+    }
+    
+    .stButton > button:hover {
+        background-color: #1A2350 !important;
+        border-color: rgba(255, 0, 255, 0.6) !important;
+    }
+    
+    /* Expander y containers */
+    [data-testid="stExpander"] {
+        background-color: #0F1535 !important;
+    }
+    
+    [data-testid="stVerticalBlock"] {
+        background-color: transparent !important;
+    }
+    
     </style>
     """, unsafe_allow_html=True)
 
@@ -203,8 +321,42 @@ import html
 import importlib
 import tema
 import base64
+import pickle
+from pathlib import Path
 
-# Obtener una paleta sencilla y no intrusiva desde `theme.py`.
+CACHE_DIR = Path("cache_data")
+CACHE_FILE = CACHE_DIR / "last_run_data.pkl"
+
+def save_cached_data(df_bd, df_forma9, fecha_eval, reporte_runes, historico, reporte_fallas):
+    """Guarda los dataframes y variables clave en un archivo pickle."""
+    try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        data = {
+            'df_bd': df_bd,
+            'df_forma9': df_forma9,
+            'fecha_evaluacion': fecha_eval,
+            'reporte_runes': reporte_runes,
+            'historico_run_life': historico,
+            'reporte_fallas': reporte_fallas
+        }
+        with open(CACHE_FILE, 'wb') as f:
+            pickle.dump(data, f)
+        return True
+    except Exception as e:
+        print(f"Error guardando caché: {e}")
+        return False
+
+def load_cached_data():
+    """Carga los datos desde el archivo pickle si existe."""
+    if not CACHE_FILE.exists():
+        return None
+    try:
+        with open(CACHE_FILE, 'rb') as f:
+            data = pickle.load(f)
+        return data
+    except Exception as e:
+        print(f"Error cargando caché: {e}")
+        return None
 # Usamos valores neutros para evitar efectos (sombras, bordes, grillas) que
 # oculten controles o filtors en la UI.
 _colors = get_colors()
@@ -297,6 +449,22 @@ def get_base64_image(fname: str) -> str:
 
 # =================== ESTILOS CSS MEJORADOS ===================
 st.set_page_config(page_title="Indicadores ALS", layout="wide", initial_sidebar_state="auto")
+
+# --- INTENTO DE CARGA AUTOMÁTICA DE CACHÉ AL INICIO ---
+if 'data_loaded_from_cache' not in st.session_state:
+    cached_data = load_cached_data()
+    if cached_data:
+        st.session_state['df_bd_calculated'] = cached_data['df_bd']
+        st.session_state['df_forma9_calculated'] = cached_data['df_forma9']
+        st.session_state['fecha_evaluacion_state'] = cached_data['fecha_evaluacion'] # Guardar fecha para usarla
+        st.session_state['reporte_runes'] = cached_data['reporte_runes']
+        st.session_state['historico_run_life'] = cached_data['historico_run_life']
+        st.session_state['reporte_fallas'] = cached_data['reporte_fallas']
+        st.session_state['data_loaded_from_cache'] = True
+        # Mensaje discreto de éxito
+        st.toast(f"✅ Datos precargados del {cached_data['fecha_evaluacion'].strftime('%d-%m-%Y')}", icon="💾")
+    else:
+        st.session_state['data_loaded_from_cache'] = False
 
 # Bloque CSS inicial: tarjetas, botones y inputs con gradientes y efecto 3D sutil
 _css_lines = []
@@ -717,9 +885,12 @@ def generar_reporte_completo(df_bd, df_forma9, fecha_evaluacion):
         'En Fondo + Extraídos = Totales': running_count + extraidos_count == totales_count
     }
 
-    run_life_apagados_fallados = df_bd_eval[
-        (df_bd_eval['FECHA_PULL_DATE'].notna()) | (df_bd_eval['FECHA_FALLA_DATE'].notna())
-    ]['RUN LIFE'].mean()
+    # Calculo Correcto de Run Life Promedio (Solo eventos YA ocurridos a la fecha de corte)
+    mask_ended_eval = (
+        ((df_bd_eval['FECHA_PULL_DATE'].notna()) & (df_bd_eval['FECHA_PULL_DATE'].dt.date <= fecha_evaluacion.date())) |
+        ((df_bd_eval['FECHA_FALLA_DATE'].notna()) & (df_bd_eval['FECHA_FALLA_DATE'].dt.date <= fecha_evaluacion.date()))
+    )
+    run_life_apagados_fallados = df_bd_eval[mask_ended_eval]['RUN LIFE'].mean()
     
     reporte_run_life = pd.DataFrame({
         'Categoría': ['Tiempo Op. (Apagados + Fallados)'],
@@ -730,34 +901,66 @@ def generar_reporte_completo(df_bd, df_forma9, fecha_evaluacion):
 
 def generar_historico_run_life(df_bd_calculated, fecha_evaluacion):
     """
-    Calcula el run life promedio mensual por ACTIVO considerando todos los RUNs activos en cada mes.
+    Calcula el run life promedio mensual acumulado por ACTIVO considerando todos los RUNs
+    FALLADOS o FINALIZADOS (Pull) hasta el cierre de cada mes.
+    Lógica: Para cada mes, filtrar runs con Fecha Fin <= Fin Mes. Calcular promedio acumulado.
     """
     end_date = pd.to_datetime(fecha_evaluacion)
     start_date = end_date - timedelta(days=365 * 3)
     meses = pd.date_range(start=start_date, end=end_date, freq='MS')
     historico = []
 
+    # Asegurar columnas de fecha temporales para filtrado
+    df_bd = df_bd_calculated.copy()
+    if 'FECHA_PULL' in df_bd.columns:
+        df_bd['FECHA_PULL_DT'] = pd.to_datetime(df_bd['FECHA_PULL'], errors='coerce')
+    else:
+        df_bd['FECHA_PULL_DT'] = pd.NaT
+        
+    if 'FECHA_FALLA' in df_bd.columns:
+        df_bd['FECHA_FALLA_DT'] = pd.to_datetime(df_bd['FECHA_FALLA'], errors='coerce')
+    else:
+        df_bd['FECHA_FALLA_DT'] = pd.NaT
+
+    # Asegurar que RUN LIFE exista o recalcularlo para consistencia
+    if 'RUN LIFE' not in df_bd.columns:
+         df_bd['RUN LIFE'] = np.where(
+            df_bd['FECHA_FALLA_DT'].notna(),
+            (df_bd['FECHA_FALLA_DT'] - pd.to_datetime(df_bd['FECHA_RUN'], errors='coerce')).dt.days,
+            np.where(
+                df_bd['FECHA_PULL_DT'].notna(),
+                (df_bd['FECHA_PULL_DT'] - pd.to_datetime(df_bd['FECHA_RUN'], errors='coerce')).dt.days,
+                np.nan
+            )
+        )
+
     for mes in meses:
         fin_mes = mes + pd.offsets.MonthEnd(0)
-        activos_mes = df_bd_calculated[
-            (df_bd_calculated['FECHA_RUN'] <= fin_mes) &
-            (
-                (df_bd_calculated['FECHA_PULL'].isna() | (df_bd_calculated['FECHA_PULL'] > fin_mes)) &
-                (df_bd_calculated['FECHA_FALLA'].isna() | (df_bd_calculated['FECHA_FALLA'] > fin_mes))
-            )
-        ].copy()
-        if not activos_mes.empty:
-            activos_mes['RUN_LIFE_MES'] = (fin_mes - activos_mes['FECHA_RUN']).dt.days
-            promedio = activos_mes.groupby('ACTIVO')['RUN_LIFE_MES'].mean().reset_index()
-            promedio['Mes'] = fin_mes
-            historico.append(promedio)
+        
+        # Filtro: Runs que terminaron (Falla o Pull) en o antes de fin_mes
+        mask_ended = (
+            ((df_bd['FECHA_FALLA_DT'].notna()) & (df_bd['FECHA_FALLA_DT'] <= fin_mes)) |
+            ((df_bd['FECHA_PULL_DT'].notna()) & (df_bd['FECHA_PULL_DT'] <= fin_mes))
+        )
+        ended_runs = df_bd[mask_ended].copy()
+
+        if not ended_runs.empty:
+            if 'ACTIVO' in ended_runs.columns:
+                # Agrupar por activo
+                promedio = ended_runs.groupby('ACTIVO')['RUN LIFE'].mean().reset_index()
+                promedio['Mes'] = fin_mes
+                promedio.rename(columns={'RUN LIFE': 'Tiempo Op. Promedio'}, inplace=True)
+                historico.append(promedio)
+            else:
+                # Sin activo, global (aunque la función espera por activo, defensive)
+                val = ended_runs['RUN LIFE'].mean()
+                historico.append(pd.DataFrame({'Mes': [fin_mes], 'ACTIVO': ['Global'], 'Tiempo Op. Promedio': [val]}))
+
     if historico:
         df_historico = pd.concat(historico, ignore_index=True)
-        df_historico = df_historico[['Mes', 'ACTIVO', 'RUN_LIFE_MES']]
-        df_historico.rename(columns={'RUN_LIFE_MES': 'Tiempo Op. Promedio'}, inplace=True)
-        return df_historico
+        return df_historico[['Mes', 'ACTIVO', 'Tiempo Op. Promedio']]
     else:
-        return pd.DataFrame(columns=['Mes', 'ACTIVO', 'Run Life Promedio'])
+        return pd.DataFrame(columns=['Mes', 'ACTIVO', 'Tiempo Op. Promedio'])
 
 
 def highlight_problema(s):
@@ -1616,21 +1819,34 @@ with col_params:
                         # Ejecutar cálculos iniciales y procesamientos
                         df_forma9_calc, df_bd_calc = perform_initial_calculations(df_forma9_raw, df_bd_raw, fecha_evaluacion)
                         df_trabajo, reporte_fallas = calcular_indicadores_finales(df_forma9_calc, df_bd_calc)
-                        reporte_runes, reporte_run_life, verificaciones = generar_reporte_completo(df_bd_calc, df_forma9_calc, fecha_evaluacion)
+                        df_forma9_calculated, df_bd_calculated = perform_initial_calculations(df_forma9_raw, df_bd_raw, fecha_evaluacion)
+                        df_trabajo, reporte_fallas = calcular_indicadores_finales(df_forma9_calculated, df_bd_calculated)
+                        reporte_runes_final, historico_run_life, verificaciones = generar_reporte_completo(df_bd_calculated, df_forma9_calculated, fecha_evaluacion)
 
                         # Guardar en session_state para uso posterior en la UI
                         st.session_state['df_forma9_raw'] = df_forma9_raw
                         st.session_state['df_bd_raw'] = df_bd_raw
-                        st.session_state['df_forma9_calculated'] = df_forma9_calc
-                        st.session_state['df_bd_calculated'] = df_bd_calc
-                        st.session_state['reporte_runes'] = reporte_runes
-                        st.session_state['reporte_run_life'] = reporte_run_life
+                        # --- GUARDAR EN CACHÉ PARA PRÓXIMAS SESIONES ---
+                        save_cached_data(
+                            df_bd_calculated, 
+                            df_forma9_calculated, 
+                            fecha_evaluacion,
+                            reporte_runes_final,
+                            historico_run_life,
+                            reporte_fallas
+                        )
+                        st.toast("Datos guardados en caché para carga rápida", icon="💾")
+                        
+                        st.session_state['df_bd_calculated'] = df_bd_calculated
+                        st.session_state['df_forma9_calculated'] = df_forma9_calculated
+                        st.session_state['fecha_evaluacion_state'] = fecha_evaluacion # Actualizar session state
+                        st.session_state['reporte_runes'] = reporte_runes_final
+                        st.session_state['historico_run_life'] = historico_run_life
                         st.session_state['reporte_fallas'] = reporte_fallas
                         st.session_state['df_trabajo'] = df_trabajo
                         st.session_state['verificaciones'] = verificaciones
 
                         # Listas únicas para filtros
-                        st.session_state['unique_pozos'] = sorted(df_bd_calc['POZO'].dropna().unique().tolist()) if 'POZO' in df_bd_calc.columns else []
                         st.session_state['unique_als'] = sorted(df_bd_calc['ALS'].dropna().unique().tolist()) if 'ALS' in df_bd_calc.columns else []
                         st.session_state['unique_activos'] = sorted(df_bd_calc['ACTIVO'].dropna().unique().tolist()) if 'ACTIVO' in df_bd_calc.columns else []
 
@@ -2286,6 +2502,7 @@ if st.session_state['reporte_runes'] is not None:
             )
             layout = get_plotly_layout()
             fig.update_layout(**layout)
+            st.session_state['fig_historico_runlife'] = fig
             st.plotly_chart(fig, use_container_width=True)
         elif historico_run_life is not None:
             fig = px.bar(
@@ -2300,6 +2517,7 @@ if st.session_state['reporte_runes'] is not None:
             # forzar color de título con acento
             layout.update({'title_font_color': COLOR_PRINCIPAL})
             fig.update_layout(**layout)
+            st.session_state['fig_historico_runlife'] = fig
             st.plotly_chart(fig, use_container_width=True)
     st.markdown(f"""
     <div style="background: linear-gradient(90deg, rgba(245, 39, 56, 0.1), transparent); padding: 10px; border-left: 5px solid #F52738; border-radius: 5px; margin-top: 2em; margin-bottom: 1em;">
@@ -2388,6 +2606,7 @@ if st.session_state['reporte_runes'] is not None:
                 layout = get_plotly_layout()
                 fig_runlife.update_layout(barmode='group', title=styled_title('Distribución de Fallas por Tiempo de Vida y Tipo de Falla IA'), xaxis_title='Tipo de Falla IA', yaxis_title='Cantidad de Fallas', legend_title='Clasif. Tiempo Vida')
                 fig_runlife.update_layout(**layout)
+                st.session_state['fig_runlife'] = fig_runlife
                 st.plotly_chart(fig_runlife, use_container_width=True)
 
         col3, col4 = st.columns(2)
@@ -2414,7 +2633,7 @@ if st.session_state['reporte_runes'] is not None:
                 # 2. El layout aplica los colores de fondo y fuente oscuros/brillantes
                 layout = get_plotly_layout()
                 fig_torta.update_layout(**layout)
-
+                st.session_state['fig_torta_fallas'] = fig_torta
                 st.plotly_chart(fig_torta, use_container_width=True)
             else:
                 st.info("No hay datos de fallas para mostrar.")
@@ -2448,6 +2667,7 @@ if st.session_state['reporte_runes'] is not None:
                     fig_campo.update_xaxes(showgrid=True, gridcolor=tema.COLOR_GRID_NEON)
                     fig_campo.update_yaxes(showgrid=True, gridcolor=tema.COLOR_GRID_NEON)
                     
+                    st.session_state['fig_fallas_activo'] = fig_campo
                     st.plotly_chart(fig_campo, use_container_width=True)
     else:
         st.info("No hay datos de fallas para mostrar.")
@@ -2677,25 +2897,84 @@ if st.session_state['reporte_runes'] is not None:
 
                 with col_chart_operativos:
                     df_plot = df_mensual_hist.copy()
-                    df_plot_melted = df_plot.melt(
-                        id_vars=['Mes'],
-                        value_vars=['Pozos Operativos', 'Pozos ON'],
-                        var_name='Indicador',
-                        value_name='Conteo'
-                    )
-                    fig = px.line(
-                        df_plot_melted,
-                        x='Mes',
-                        y='Conteo',
-                        color='Indicador',
-                        markers=True,
-                        title=styled_title('Pozos Operativos vs. Pozos Encendidos (ON)'),
-                        labels={'Mes': 'Mes', 'Conteo': 'Conteo de Pozos'},
-                        color_discrete_sequence=color_sequence
-                    )
+                    
+                    # Crear figura combinada con Objetos Gráficos para mayor flexibilidad (Ejes dobles)
+                    import plotly.graph_objects as go
+                    fig = go.Figure()
+
+                    # 1. Líneas: Pozos Operativos y Pozos ON (Eje Izquierdo)
+                    fig.add_trace(go.Scatter(
+                        x=df_plot['Mes'], 
+                        y=df_plot['Pozos Operativos'],
+                        name='Pozos Operativos',
+                        mode='lines+markers',
+                        line=dict(color='#0a84ff', width=3), # Azul Theme Primary
+                        marker=dict(size=6),
+                        yaxis='y1'
+                    ))
+                    fig.add_trace(go.Scatter(
+                        x=df_plot['Mes'], 
+                        y=df_plot['Pozos ON'],
+                        name='Pozos ON',
+                        mode='lines+markers',
+                        line=dict(color='#27E0F5', width=3), # Cyan (match grafico.py)
+                        marker=dict(size=6),
+                        yaxis='y1'
+                    ))
+
+                    # 2. Barras: Fallas Totales y Fallas ALS (Eje Derecho)
+                    fig.add_trace(go.Bar(
+                        x=df_plot['Mes'], 
+                        y=df_plot['Fallas Totales'],
+                        name='Fallas Totales',
+                        marker_color='#FF8C00', # Naranja (match grafico.py)
+                        opacity=0.6,
+                        yaxis='y2'
+                    ))
+                    fig.add_trace(go.Bar(
+                        x=df_plot['Mes'], 
+                        y=df_plot['Fallas ALS'],
+                        name='Fallas ALS',
+                        marker_color='#8A2BE2', # Violeta (match grafico.py)
+                        opacity=0.8,
+                        yaxis='y2'
+                    ))
+
+                    # --- Layout con Doble Eje Y ---
                     layout = get_plotly_layout()
-                    layout.update({'xaxis': {'categoryorder':'category ascending'}})
-                    layout.update({'title_font_color': COLOR_PRINCIPAL})
+                    
+                    # Título
+                    layout['title'] = styled_title('Operatividad vs. Fallas Mensuales')
+                    layout['title_font_color'] = COLOR_PRINCIPAL
+                    
+                    # Configuración Ejes
+                    layout['xaxis'] = dict(title='Mes', showgrid=False)
+                    
+                    # Eje Y1 (Izquierdo - Pozos)
+                    layout['yaxis'] = dict(
+                        title=dict(text='Conteo de Pozos', font=dict(color='#0a84ff')),
+                        tickfont=dict(color='#0a84ff'),
+                        side='left',
+                        showgrid=True,
+                        gridcolor='rgba(255,255,255,0.05)'
+                    )
+                    
+                    # Eje Y2 (Derecho - Fallas)
+                    layout['yaxis2'] = dict(
+                        title=dict(text='Cantidad de Fallas', font=dict(color='#FF8C00')),
+                        tickfont=dict(color='#FF8C00'),
+                        overlaying='y',
+                        side='right',
+                        showgrid=False,
+                        rangemode='tozero'
+                    )
+                    
+                    # Leyenda arriba
+                    layout['legend'] = dict(orientation='h', yanchor='bottom', y=1.05, xanchor='right', x=1)
+                    
+                    # Modo de barras
+                    layout['barmode'] = 'group' # Agrupadas para comparar
+                    
                     fig.update_layout(**layout)
                     st.plotly_chart(fig, use_container_width=True)
 
@@ -2722,37 +3001,6 @@ if st.session_state['reporte_runes'] is not None:
         </h3>
         """, unsafe_allow_html=True)
         st.dataframe(df_bd_filtered)
-        # --- Exportar Excel con tablas y gráficas usando descargar.py ---
-        from descargar import exportar_excel_con_graficas
-        tablas = {
-            'TRABAJO_FINAL': df_bd_filtered,
-            'RUNES_RESUMEN': reporte_runes_filtered,
-            'RUN_LIFE_HISTORICO': historico_run_life,
-            'FALLAS_MENSUALES': st.session_state['reporte_fallas']
-        }
-        if 'indice_resumen_df' in locals():
-            tablas['INDICE_FALLA_ANUAL'] = indice_resumen_df
-        if 'df_mensual_hist' in locals():
-            tablas['HISTORICO_INDICES'] = df_mensual_hist
-        # Gráficas: ejemplo con plotly, convertir a matplotlib
-        import matplotlib.pyplot as plt
-        graficas = {}
-        try:
-            # Si tienes figuras plotly, conviértelas a matplotlib
-            # Por ejemplo: fig_bar.write_image('temp.png') y luego plt.imread('temp.png')
-            # Aquí solo ejemplo vacío:
-            pass
-        except Exception as e:
-            st.warning(f"No se pudieron agregar gráficas: {{e}}")
-
-        if st.button(' Descargar Reporte Completo (.xlsx)', use_container_width=True):
-            excel_bytes = exportar_excel_con_graficas(tablas, graficas)
-            st.download_button(
-                label="Descargar Excel",
-                data=excel_bytes,
-                file_name="Reporte_Indicadores_ALS.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
     # ----------------- Gráfico Resumen Anual (añadido por grafico.py) -----------------
         try:
             # Import local para no romper el flujo si el archivo no existe
@@ -2767,13 +3015,9 @@ if st.session_state['reporte_runes'] is not None:
                 # Título estilizado para el gráfico
                 # (Usamos la f-string para inyectar COLOR_PRINCIPAL, que da el efecto ciberpunk)
                 st.markdown(f"<h3 style='margin-top:1em; color:{{COLOR_PRINCIPAL}};'> Gráfico Resumen</h3>", unsafe_allow_html=True)
-                
-                # Guardar en session_state para PDF
-                st.session_state['fig_resumen_anual'] = fig_resumen
-                
+
                 # Gráfico Dinámico: Plotly y ajuste de ancho asegurado
-                st.plotly_chart(fig_resumen, use_container_width=True)
-                
+                st.plotly_chart(fig_resumen, use_container_width=True)        
                 # ELIMINADO: No se muestra la tabla (df_resumen) para que el gráfico sea el único foco
                 # st.dataframe(df_resumen, hide_index=True) 
         except Exception as e:
@@ -2781,110 +3025,6 @@ if st.session_state['reporte_runes'] is not None:
             st.warning(f"No se pudo generar el gráfico resumen: {e}")
             st.text(traceback.format_exc())
 
-    # ==================================================================================
-    # BOTÓN DE EXPORTACIÓN A PDF - AL FINAL DE TODO
-    # ==================================================================================
-    st.markdown("---")
-    st.markdown("<div style='height: 2rem;'></div>", unsafe_allow_html=True)
-    
-    # Contenedor visual para el botón de descarga
-    st.markdown(f"""
-    <div style="background: linear-gradient(135deg, rgba(255, 0, 255, 0.15), rgba(0, 217, 255, 0.15)); 
-                border: 3px solid {COLOR_PRINCIPAL}; 
-                border-radius: 16px; 
-                padding: 30px; 
-                text-align: center;
-                box-shadow: 0 12px 40px rgba(255, 0, 255, 0.3);
-                animation: pulse 3s ease-in-out infinite;">
-        <h2 style="margin: 0 0 15px 0; color: {COLOR_PRINCIPAL}; font-size: 1.8rem; font-weight: 900;">
-            📥 GENERAR REPORTE PDF COMPLETO
-        </h2>
-        <p style="margin: 0; opacity: 0.9; font-size: 1rem; line-height: 1.6;">
-            Descarga un reporte profesional con todas las gráficas y datos<br/>
-            <strong>Los colores originales están preservados</strong> ✨
-        </p>
-    </div>
-    
-    <style>
-    @keyframes pulse {{
-        0%, 100% {{ box-shadow: 0 12px 40px rgba(255, 0, 255, 0.3); }}
-        50% {{ box-shadow: 0 12px 50px rgba(255, 0, 255, 0.5); }}
-    }}
-    </style>
-    """, unsafe_allow_html=True)
-    
-    col_pdf1, col_pdf2, col_pdf3 = st.columns([1, 2, 1])
-    with col_pdf2:
-        if st.button("🚀 GENERAR PDF PROFESIONAL", key="btn_generate_pdf_final", use_container_width=True, type="primary"):
-            with st.spinner("⏳ Generando reporte PDF... Por favor espera unos segundos"):
-                try:
-                    # Verificar imports necesarios
-                    import sys
-                    import importlib.util
-                    
-                    # Verificar reportlab
-                    if importlib.util.find_spec("reportlab") is None:
-                        raise ImportError("reportlab no está instalado")
-                    
-                    # Verificar kaleido
-                    if importlib.util.find_spec("kaleido") is None:
-                        raise ImportError("kaleido no está instalado")
-                    
-                    # Importar módulo de exportación
-                    import exportar_pdf
-                    from exportar_pdf import generar_reporte_completo_pdf
-                    
-                    # Recopilar KPIs principales
-                    kpis_dict = {
-                        'TMEF Global (días)': mtbf_global if 'mtbf_global' in locals() else 0,
-                        'Tiempo de Vida Total (días)': df_bd_filtered['RUN LIFE @ FALLA'].mean() if 'RUN LIFE @ FALLA' in df_bd_filtered.columns else 0,
-                        'Índice de Severidad': indice_resumen_df['Índice de Severidad'].mean() if 'indice_resumen_df' in locals() and 'Índice de Severidad' in indice_resumen_df.columns else 0,
-                        'Total de Corridas': len(df_bd_filtered),
-                        'Pozos Operativos': len(df_bd_filtered[(df_bd_filtered['FECHA_PULL'].isna()) & (df_bd_filtered['FECHA_FALLA'].isna())]),
-                        'Pozos Fallados (último año)': len(pozos_fallados_df) if 'pozos_fallados_df' in locals() else 0
-                    }
-                    
-                    # Generar PDF
-                    pdf_bytes = generar_reporte_completo_pdf(
-                        fecha_evaluacion=fecha_evaluacion,
-                        kpis_principales=kpis_dict,
-                        fig_historico=st.session_state.get('fig_historico_runlife'),
-                        fig_bopd_runlife=st.session_state.get('fig_bopd_runlife'),
-                        fig_indices_falla=st.session_state.get('fig_indices_falla'),
-                        fig_resumen_anual=st.session_state.get('fig_resumen_anual'),
-                        df_pozos_problema=pozos_problema if 'pozos_problema' in locals() else None,
-                        df_fallas_mensuales=st.session_state.get('reporte_fallas'),
-                        activo_seleccionado=selected_activo
-                    )
-                    
-                    # Botón de descarga
-                    fecha_str = fecha_evaluacion.strftime('%Y%m%d')
-                    filename = f"Reporte_ALS_{selected_activo}_{fecha_str}.pdf"
-                    
-                    st.download_button(
-                        label="📄 DESCARGAR PDF",
-                        data=pdf_bytes,
-                        file_name=filename,
-                        mime="application/pdf",
-                        use_container_width=True
-                    )
-                    
-                    st.success("✅ ¡Reporte PDF generado exitosamente!")
-                    st.balloons()
-                    
-                except ImportError as e:
-                    st.error(f"❌ Error de importación: {str(e)}")
-                    st.warning("🔧 Instala las librerías necesarias ejecutando:")
-                    st.code("pip install reportlab kaleido", language="bash")
-                    st.info("💡 Kaleido es necesario para convertir gráficas de Plotly a imágenes PNG.")
-                    
-                except Exception as e:
-                    st.error(f"❌ Error al generar PDF: {str(e)}")
-                    with st.expander("🔍 Ver detalles del error"):
-                        import traceback
-                        st.code(traceback.format_exc())
-                    st.info("💡 Verifica que todas las gráficas se hayan generado correctamente navegando por todas las secciones.")
-    
-    st.markdown("<div style='height: 3rem;'></div>", unsafe_allow_html=True)
+
 
 
