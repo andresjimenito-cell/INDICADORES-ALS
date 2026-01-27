@@ -4,6 +4,7 @@ Contiene funciones comunes para cálculos iniciales de datos.
 """
 
 import pandas as pd
+from run_life_efectivo import calcular_run_life_efectivo
 import numpy as np
 from datetime import timedelta
 
@@ -71,5 +72,12 @@ def perform_initial_calculations(df_forma9, df_bd, fecha_evaluacion):
     df_forma9_copy[['RUN', 'PROVEEDOR']] = df_forma9_copy[['RUN', 'PROVEEDOR']].fillna('NO DATA✍️')
 
     df_forma9_copy['NICK'] = df_forma9_copy['POZO'].astype(str) + '-' + df_forma9_copy['RUN'].astype(str)
+
+    # --- Integración Run Life Efectivo ---
+    try:
+        # Calculamos y actualizamos df_bd con la nueva columna RUN_LIFE_EFECTIVO
+        _, df_bd = calcular_run_life_efectivo(df_bd, df_forma9, fecha_evaluacion)
+    except Exception as e:
+        print(f"Error calculando Run Life Efectivo: {e}")
 
     return df_forma9_copy, df_bd

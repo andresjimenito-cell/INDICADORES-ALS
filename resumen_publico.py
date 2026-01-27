@@ -35,12 +35,17 @@ except Exception:
 # --- IMPORTACIONES RESTAURADAS ---
 try:
     from theme import get_colors
-    from grafico import generar_grafico_resumen
+    from grafico import generar_grafico_resumen, render_premium_echarts, generar_resumen_mensual
+    from grafico_run_life import render_premium_echarts_run_life, render_premium_echarts_pozos
     import mtbf as mtbf_mod
 except ImportError as e:
     st.error(f"Error importando módulos locales: {e}.")
     def get_colors(): return {'primary': '#2563eb', 'secondary': '#64748b', 'text': '#0f172a', 'text_faded': '#64748b', 'container_bg': '#ffffff'}
-    def generar_grafico_resumen(df_bd, df_f9, fecha): return go.Figure(), None
+    def generar_grafico_resumen(df_bd, df_f9, fecha): return None, None
+    def render_premium_echarts(df, t=""): pass
+    def render_premium_echarts_run_life(df, t=""): pass
+    def render_premium_echarts_pozos(df, t=""): pass
+    def generar_resumen_mensual(df1, df2, f): return pd.DataFrame()
     class mtbf_mod:
         @staticmethod
         def calcular_mtbf(df, f): return 0, None
@@ -75,468 +80,190 @@ DASHBOARD_CSS = f"""
     --color-dark: #0f172a;
     --color-light: #f8fafc;
     
-    /* 🌈 GRADIENTES ÉPICOS */
-    --gradient-fire: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 25%, #c44569 50%, #a73667 75%, #8b2760 100%);
-    --gradient-ocean: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-    --gradient-sunset: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-    --gradient-aurora: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-    --gradient-cosmic: linear-gradient(135deg, #5f2c82 0%, #49a09d 100%);
-    --gradient-neon: linear-gradient(135deg, #00f260 0%, #0575e6 100%);
-    
-    /* 📐 ESPACIADO Y FORMAS */
-    --radius-xl: 24px;
-    --radius-mega: 32px;
-    --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.5);
-    --shadow-intense: 0 20px 60px rgba(0, 0, 0, 0.4);
-    
-    /* ⚡ ANIMACIONES */
-    --transition-fast: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-smooth: 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-}}
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700;900&family=Inter:wght@300;400;600&family=Rajdhani:wght@500;700&display=swap');
 
-/* 🌟 ANIMACIONES KEYFRAMES */
-@keyframes float {{
-    0%, 100% {{ transform: translateY(0px); }}
-    50% {{ transform: translateY(-10px); }}
-}}
+    :root {{
+        --neon-cyan: #00f2ff;
+        --neon-magenta: #ff00ff;
+        --neon-green: #00ff9d;
+        --bg-deep: #060a1e;
+        --glass: rgba(255, 255, 255, 0.03);
+        --glass-border: rgba(255, 255, 255, 0.1);
+        --transition-hud: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }}
 
-@keyframes pulse-glow {{
-    0%, 100% {{ box-shadow: 0 0 20px rgba(99, 102, 241, 0.5), 0 0 40px rgba(139, 92, 246, 0.3); }}
-    50% {{ box-shadow: 0 0 40px rgba(99, 102, 241, 0.8), 0 0 80px rgba(139, 92, 246, 0.6); }}
-}}
+    .stApp {{
+        background-color: var(--bg-deep) !important;
+        background-image: 
+            radial-gradient(circle at 10% 20%, rgba(0, 242, 255, 0.05) 0%, transparent 40%),
+            radial-gradient(circle at 90% 80%, rgba(255, 0, 255, 0.05) 0%, transparent 40%) !important;
+        font-family: 'Inter', sans-serif !important;
+    }}
 
-@keyframes gradient-shift {{
-    0% {{ background-position: 0% 50%; }}
-    50% {{ background-position: 100% 50%; }}
-    100% {{ background-position: 0% 50%; }}
-}}
+    /* --- HUD SCANLINES --- */
+    .stApp::before {{
+        content: " ";
+        position: fixed;
+        top: 0; left: 0; bottom: 0; right: 0;
+        background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%);
+        z-index: 9999;
+        background-size: 100% 4px;
+        pointer-events: none;
+        opacity: 0.15;
+    }}
 
-@keyframes shimmer {{
-    0% {{ transform: translateX(-100%); }}
-    100% {{ transform: translateX(100%); }}
-}}
+    /* --- PREMIUM HEADER --- */
+    .dashboard-header {{
+        background: linear-gradient(135deg, rgba(6, 10, 30, 0.8), rgba(6, 10, 30, 0.4));
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: 24px;
+        padding: 1.5rem 2.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.4), inset 0 0 20px rgba(0, 242, 255, 0.05);
+        position: relative;
+        overflow: hidden;
+    }}
 
-@keyframes rotate-border {{
-    0% {{ transform: rotate(0deg); }}
-    100% {{ transform: rotate(360deg); }}
-}}
+    .dashboard-header::after {{
+        content: '';
+        position: absolute;
+        bottom: 0; left: 0; width: 100%; height: 2px;
+        background: linear-gradient(90deg, transparent, var(--neon-cyan), var(--neon-magenta), transparent);
+    }}
 
-/* 🎯 ESTILOS GLOBALES */
-.stApp {{
-    background: transparent;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-}}
+    .header-title {{
+        font-family: 'Outfit', sans-serif;
+        font-size: 2.8rem;
+        font-weight: 900;
+        color: #fff;
+        letter-spacing: -1px;
+        text-shadow: 0 0 20px rgba(0, 242, 255, 0.3);
+    }}
 
-.main .block-container {{
-    padding: 1.2rem 1.8rem;
-    max-width: 100%;
-}}
+    .header-date {{
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--neon-cyan);
+        text-transform: uppercase;
+        letter-spacing: 4px;
+        background: rgba(0, 242, 255, 0.1);
+        padding: 5px 15px;
+        border-radius: 8px;
+        border: 1px solid rgba(0, 242, 255, 0.2);
+    }}
 
-/* 🏭 HEADER INDUSTRIAL MODERNO */
-.dashboard-header {{
-    /* Fondo oscuro sólido, azul grisáceo técnico (Slate) */
-    background: #1e293b; 
-    
-    /* Sin animaciones locas */
-    
-    /* Espaciado más compacto y funcional */
-    padding: 1.5rem 2rem;
-    
-    /* Bordes menos redondeados, más técnicos */
-    border-radius: 8px;
-    margin-bottom: 2rem;
-    
-    /* Sombra sutil, solo para elevarlo del fondo */
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-    
-    /* Borde inferior de acento (ej. Azul seguridad o Amarillo precaución) */
-    border-bottom: 4px solid #3b82f6; 
-    
-    /* Texto (asegúrate de que el h1 dentro sea blanco) */
-    color: #f8fafc;
-}}
+    /* --- KPI CARDS HUD --- */
+    .kpi-card {{
+        background: rgba(10, 15, 30, 0.6);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 18px;
+        padding: 1.2rem;
+        transition: var(--transition-hud);
+        position: relative;
+        overflow: hidden;
+        text-align: center;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }}
 
-.dashboard-header::before {{
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-    animation: rotate-border 15s linear infinite;
-}}
+    .kpi-card:hover {{
+        transform: translateY(-5px);
+        border-color: var(--neon-cyan);
+        box-shadow: 0 10px 30px rgba(0, 242, 255, 0.15);
+    }}
 
-.dashboard-header:hover {{
-    transform: translateY(-8px) scale(1.01);
-    box-shadow: 
-        0 0 100px rgba(236, 0, 212, 0.8),
-        0 30px 100px rgba(0, 0, 0, 0.6),
-        inset 0 0 150px rgba(255, 255, 255, 0.15);
-}}
+    .kpi-card::before {{
+        content: '';
+        position: absolute;
+        top: 0; left: 0; width: 4px; height: 100%;
+        background: var(--neon-cyan);
+        opacity: 0.5;
+    }}
 
-.header-title {{
-    font-size: 3.5rem;
-    font-weight: 900;
-    background: linear-gradient(135deg, #fff 0%, #a78bfa 50%, #ec4899 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    text-shadow: 0 5px 20px rgba(255, 255, 255, 0.3);
-    letter-spacing: -1px;
-    position: relative;
-    z-index: 1;
-}}
+    .kpi-icon {{
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+        filter: drop-shadow(0 0 10px var(--neon-cyan));
+    }}
 
-.header-date {{
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    padding: 1rem 2.5rem;
-    border-radius: 50px;
-    font-weight: 800;
-    font-size: 1.2rem;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    color: white;
-    box-shadow: 
-        0 0 10px rgba(99, 241, 161, 0.5),
-        inset 0 0 20px rgba(255, 255, 255, 0.1);
-    position: relative;
-    z-index: 1;
-    transition: all var(--transition-fast);
-}}
+    .kpi-label {{
+        font-family: 'Outfit', sans-serif;
+        font-size: 0.65rem;
+        font-weight: 700;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+    }}
 
-.header-date:hover {{
-    transform: scale(1.05);
-    box-shadow: 0 0 50px rgba(236, 72, 153, 0.8);
-}}
+    .kpi-value {{
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.8rem;
+        font-weight: 900;
+        color: #fff;
+        margin-top: 0.2rem;
+    }}
 
-/* 💎 KPI CARDS EXPLOSIVOS */
-.kpi-card {{
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(5px);
-    border: 1.5px solid rgba(0, 255, 153, 0.2);
-    border-radius: var(--radius-xl);
-    padding: 0.6rem 0.7rem;
-    position: relative;
-    overflow: hidden;
-    
-    box-shadow: 
-        0 0 8px rgba(0, 255, 153, 0.1),
-        0 2px 10px rgba(0, 0, 0, 0.05);
-    
-    transition: all var(--transition-smooth);
-    animation: none;
-    min-height: 90px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-}}
+    /* --- NEON BUTTONS / STATUS CARDS --- */
+    .neon-card {{
+        background: rgba(10, 15, 30, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 15px;
+        padding: 1rem;
+        margin-bottom: 0.8rem;
+        transition: var(--transition-hud);
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }}
 
-.kpi-card::before {{
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(0, 255, 153, 0.1), transparent);
-    transition: left 0.5s;
-}}
+    .neon-card:hover {{
+        background: rgba(10, 15, 30, 0.7);
+        transform: scale(1.02);
+    }}
 
-.kpi-card:hover::before {{
-    left: 100%;
-}}
+    .neon-success {{ border-left: 4px solid var(--neon-green); box-shadow: inset 5px 0 15px rgba(0, 255, 157, 0.05); }}
+    .neon-danger {{ border-left: 4px solid #ff4b4b; box-shadow: inset 5px 0 15px rgba(255, 75, 75, 0.05); }}
+    .neon-info {{ border-left: 4px solid var(--neon-cyan); box-shadow: inset 5px 0 15px rgba(0, 242, 255, 0.05); }}
+    .neon-neutral {{ border-left: 4px solid #94a3b8; box-shadow: inset 5px 0 15px rgba(148, 163, 184, 0.05); }}
 
-.kpi-card:hover {{
-    transform: translateY(-5px) rotateZ(5deg) scale(1.02);
-    border-color: rgba(0, 255, 153, 0.4);
-    box-shadow: 
-        0 0 15px rgba(0, 255, 153, 0.2),
-        0 5px 15px rgba(0, 0, 0, 0.1);
-    animation: none;
-}}
+    .neon-label {{
+        font-family: 'Outfit', sans-serif;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }}
 
-.kpi-icon {{
-    font-size: 2rem;
-    line-height: 1;
-    margin-bottom: 0.6rem;
-    transition: all var(--transition-smooth);
-    display: inline-block;
-    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
-}}
+    .neon-value {{
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.4rem;
+        font-weight: 900;
+        color: #fff;
+    }}
 
-.kpi-card:hover .kpi-icon {{
-    transform: scale(1.15) rotate(-5deg);
-    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3));
-}}
+    /* Tablas y Containers */
+    .stContainer {{
+        background: rgba(10, 15, 30, 0.3) !important;
+        border-radius: 20px !important;
+        border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    }}
 
-.kpi-label {{
-    font-size: 0.65rem;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    background: linear-gradient(135deg, #00FF99, #00FF99);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    opacity: 0.8;
-}}
-
-.kpi-value {{
-    font-size: 2rem;
-    font-weight: 900;
-    background: linear-gradient(135deg, #00FF99, #00FF99);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    text-shadow: 
-        0 0 20px rgba(99, 102, 241, 0.8),
-        0 5px 15px rgba(0, 0, 0, 0.5);
-    line-height: 1.2;
-}}
-
-/* ⚡ BOTONES LATERALES NEÓN EXTREMO */
-.neon-card {{
-    background: rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(10px);
-    border-radius: var(--radius-xl);
-    padding: 1.2rem 1rem;
-    margin-bottom: 0.6rem;
-    position: relative;
-    border: 2px solid;
-    transition: all var(--transition-smooth);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    min-height: 120px;
-}}
-
-.neon-card::after {{
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    transition: width 0.6s, height 0.6s;
-    opacity: 0.3;
-}}
-
-.neon-card:hover::after {{
-    width: 300px;
-    height: 300px;
-}}
-
-/* Barra lateral animada */
-.neon-card::before {{
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 8px;
-    height: 100%;
-    transition: all var(--transition-fast);
-}}
-
-.neon-card:hover {{
-    transform: translateX(12px) scale(1.04);
-}}
-
-/* 🌈 VARIANTES DE COLOR EXPLOSIVAS */
-.neon-success {{
-    border-color: rgba(16, 185, 129, 0.4);
-}}
-.neon-success::before {{
-    background: var(--gradient-neon);
-}}
-.neon-success::after {{
-    background: radial-gradient(circle, #10b981, transparent);
-}}
-.neon-success:hover {{
-    box-shadow: 
-        0 0 50px rgba(16, 185, 129, 1),
-        inset 0 0 30px rgba(16, 185, 129, 0.3);
-    border-color: #10b981;
-}}
-
-.neon-danger {{
-    border-color: rgba(239, 68, 68, 0.4);
-}}
-.neon-danger::before {{
-    background: var(--gradient-fire);
-}}
-.neon-danger::after {{
-    background: radial-gradient(circle, #ef4444, transparent);
-}}
-.neon-danger:hover {{
-    box-shadow: 
-        0 0 50px rgba(239, 68, 68, 1),
-        inset 0 0 30px rgba(239, 68, 68, 0.3);
-    border-color: #ef4444;
-}}
-
-.neon-info {{
-    border-color: rgba(6, 182, 212, 0.4);
-}}
-.neon-info::before {{
-    background: var(--gradient-ocean);
-}}
-.neon-info::after {{
-    background: radial-gradient(circle, #06b6d4, transparent);
-}}
-.neon-info:hover {{
-    box-shadow: 
-        0 0 50px rgba(6, 182, 212, 1),
-        inset 0 0 30px rgba(6, 182, 212, 0.3);
-    border-color: #06b6d4;
-}}
-
-.neon-neutral {{
-    border-color: rgba(139, 92, 246, 0.4);
-}}
-.neon-neutral::before {{
-    background: var(--gradient-aurora);
-}}
-.neon-neutral::after {{
-    background: radial-gradient(circle, #8b5cf6, transparent);
-}}
-.neon-neutral:hover {{
-    box-shadow: 
-        0 0 50px rgba(139, 92, 246, 1),
-        inset 0 0 30px rgba(139, 92, 246, 0.3);
-    border-color: #8b5cf6;
-}}
-
-.neon-label {{
-    font-weight: 800;
-    font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.9);
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    margin-bottom: 0.4rem;
-}}
-
-.neon-label .emoji-icon {{
-    font-size: 1.5rem;
-    line-height: 1;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
-}}
-
-.neon-value {{
-    font-weight: 900;
-    font-size: 1.8rem;
-    background: linear-gradient(135deg, #a78bfa, #06b6d4);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    letter-spacing: 1px;
-    text-align: center;
-    margin-top: 0.2rem;
-    padding: 0;
-}}
-    color: white;
-    text-shadow: 0 0 20px currentColor;
-}}
-
-/* 📊 CONTENEDORES DE GRÁFICOS PREMIUM */
-div[data-testid="stVerticalBlockBorderWrapper"] {{
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(99, 102, 241, 0.2);
-    border-radius: var(--radius-mega);
-    padding: 1.5rem 1.3rem;
-    margin-bottom: 0.8rem;
-    position: relative;
-    overflow: hidden;
-    
-    box-shadow: 
-        0 0 10px rgba(99, 102, 241, 0.2),
-        0 10px 30px rgba(0, 0, 0, 0.1);
-    
-    transition: all var(--transition-smooth);
-}}
-
-div[data-testid="stVerticalBlockBorderWrapper"]::before {{
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: var(--radius-mega);
-    padding: 2px;
-    background: linear-gradient(135deg, #6366f1, #ec4899, #f97316, #06b6d4);
-    background-size: 300% 300%;
-    animation: gradient-shift 6s ease infinite;
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    opacity: 0;
-    transition: opacity var(--transition-fast);
-}}
-
-div[data-testid="stVerticalBlockBorderWrapper"]:hover::before {{
-    opacity: 1;
-}}
-
-div[data-testid="stVerticalBlockBorderWrapper"]:hover {{
-    transform: translateY(-5px);
-    box-shadow: 
-        0 0 80px rgba(236, 72, 153, 0.6),
-        0 20px 70px rgba(0, 0, 0, 0.4);
-}}
-
-h5 {{
-    font-size: 1.2rem !important;
-    font-weight: 900;
-    margin-bottom: 0.8rem !important;
-    padding-bottom: 0.5rem;
-    position: relative;
-    
-    background: linear-gradient(135deg, #fff, #a78bfa, #ec4899);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}}
-
-h5::after {{
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 120px;
-    height: 3px;
-    background: linear-gradient(90deg, #6366f1, #ec4899, #f97316);
-    border-radius: 4px;
-    box-shadow: 0 0 15px rgba(99, 102, 241, 0.8);
-}}
-
-/* 🎯 ESTILOS ESPECÍFICOS PARA EMOJIS */
-.emoji, [role="img"], .emoji-icon {{
-    font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif !important;
-    font-style: normal !important;
-    font-weight: normal !important;
-    line-height: 1 !important;
-    vertical-align: middle;
-    display: inline-block;
-}}
-
-/* Asegurar que los emojis NO sean afectados por gradientes de texto */
-* {{
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-}}
-
-/* Hack para emojis en elementos con background-clip */
-.kpi-icon, .neon-label {{
-    -webkit-text-fill-color: initial !important;
-    background-clip: border-box !important;
-    -webkit-background-clip: border-box !important;
-}}
+    h5 {{
+        font-family: 'Outfit', sans-serif !important;
+        color: var(--neon-cyan) !important;
+        text-transform: uppercase !important;
+        letter-spacing: 2px !important;
+        font-weight: 800 !important;
+        border-bottom: 1px solid rgba(0, 242, 255, 0.1);
+        padding-bottom: 0.5rem;
+    }}
 
 </style>
 """
@@ -641,28 +368,27 @@ def _calc_basic_kpis(df_bd, df_f9, fecha_eval):
     }
 
 def _render_top_kpi(icon, label, value, unit=""):
-    """Tarjeta superior simple y limpia."""
+    """Tarjeta superior Premium HUD."""
     return f"""
     <div class='kpi-card'>
-        <div style='display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%;'>
-            <div class='kpi-icon' style='margin-bottom: 0.6rem;'>{icon}</div>
-            <div style='text-align: center; width: 100%;'>
-                <span class='kpi-label' style='justify-content: center; font-size: 0.8rem;'>{label}</span>
-                <div class='kpi-value' style='margin-top: 0.4rem; font-size: 2rem;'>{value} <small style='font-size:0.6rem; opacity:0.6;'>{unit}</small></div>
-            </div>
-        </div>
+        <div class='kpi-icon'>{icon}</div>
+        <div class='kpi-label'>{label}</div>
+        <div class='kpi-value'>{value}<span style='font-size:0.7rem; color:var(--neon-cyan); margin-left:4px; opacity:0.8; font-weight:400;'>{unit}</span></div>
     </div>
     """
 
 def _render_neon_button(icon, label, value, style_class="neon-neutral"):
-    """Botón lateral compacto con efecto neón/glow."""
+    """Botón lateral estilo Consola de Comando."""
     return f"""
     <div class='neon-card {style_class}'>
-        <div style='display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;'>
-            <span style='font-size: 1.3rem; flex-shrink: 0;'>{icon}</span>
-            <span class='neon-label' style='margin: 0; margin-left: 0;'>{label}</span>
+        <div style='display: flex; align-items: center; justify-content: space-between;'>
+            <div style='display: flex; align-items: center; gap: 0.8rem;'>
+                <span style='font-size: 1.2rem; filter: drop-shadow(0 0 5px currentColor);'>{icon}</span>
+                <span class='neon-label'>{label}</span>
+            </div>
+            <div class='neon-value'>{value}</div>
         </div>
-        <span class='neon-value' style='margin-top: auto; padding-top: 0.6rem;'>{value}</span>
+        <div style="height:2px; background: rgba(255,255,255,0.03); width:100%; margin-top:5px;"></div>
     </div>
     """
 
@@ -1212,12 +938,24 @@ def show_resumen():
 
     hero_html = f"""
     <div class='dashboard-header'>
-        <div style='display:flex; align-items:center; justify-content:space-between;'>
-            <div style='display:flex; align-items:center; gap: 1.5rem;'>
-                {logo_html}
-                <div class='header-title'>INDICADORES ALS</div>
+        <div style='display:flex; align-items:center; justify-content:space-between; position:relative; z-index:10;'>
+            <div style='display:flex; align-items:center; gap: 2rem;'>
+                <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 0 30px rgba(0, 242, 255, 0.1);">
+                    {logo_html}
+                </div>
+                <div>
+                    <div style="font-family: 'Inter', sans-serif; font-size: 0.7rem; color: var(--neon-cyan); letter-spacing: 3px; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; opacity: 0.8;">
+                        Public Analytics Node
+                    </div>
+                    <div class='header-title'>INDICADORES <span style="color: var(--neon-cyan);">ALS</span></div>
+                </div>
             </div>
-            <div class='header-date'>{fecha_str}</div>
+            <div style="text-align: right;">
+                <div style="font-family: 'Inter', sans-serif; font-size: 0.6rem; color: #94a3b8; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px;">
+                    Fecha de Evaluación
+                </div>
+                <div class='header-date'>{fecha_str}</div>
+            </div>
         </div>
     </div>
     """
@@ -1630,6 +1368,11 @@ def show_resumen():
     if 'RUN LIFE' in df_bd_filtered.columns:
         v = pd.to_numeric(df_bd_filtered['RUN LIFE'], errors='coerce').dropna()
         if not v.empty: rl_avg = float(v.mean())
+
+    rl_eff_avg = 0.0
+    if 'RUN_LIFE_EFECTIVO' in df_bd_filtered.columns:
+        v_eff = pd.to_numeric(df_bd_filtered['RUN_LIFE_EFECTIVO'], errors='coerce').dropna()
+        if not v_eff.empty: rl_eff_avg = float(v_eff.mean())
     
     # Recalcular severidad con filtros (Total de fallas / Pozos con fallas) - Últimos 365 días
     indice_severidad = 0.0
@@ -1713,10 +1456,12 @@ def show_resumen():
     pct_extraccion = (kpis['extraidos'] / total_corridas * 100) if total_corridas > 0 else 0
     
     # Fila 1: 6 KPIs principales (MTBF, Run Life, Índice Falla ON, Índice Falla ALS, Extracción, Pozos ON)
-    kpi1, kpi2, kpi3, kpi4, kpi5, kpi6 = st.columns([1, 1, 1, 1, 1, 1])
+    # Fila 1: 7 KPIs principales (MTBF, Run Life, Run Life Efec, Índice Falla ON, Índice Falla ALS, Extracción, Pozos ON)
+    kpi1, kpi2, kpi_new, kpi3, kpi4, kpi5, kpi6 = st.columns([1, 1, 1, 1, 1, 1, 1])
     
     with kpi1: st.markdown(_render_top_kpi("⏱️", "MTBF Estimado", kpis['mtbf'], "días"), unsafe_allow_html=True)
     with kpi2: st.markdown(_render_top_kpi("📈", "Run Life Prom.", f"{rl_avg:.1f}", "días"), unsafe_allow_html=True)
+    with kpi_new: st.markdown(_render_top_kpi("✅", "Run Life Efec.", f"{rl_eff_avg:.1f}", "días"), unsafe_allow_html=True)
     with kpi3: st.markdown(_render_top_kpi("📉", "Índice Falla ON", if_on_str, ""), unsafe_allow_html=True)
     with kpi4: st.markdown(_render_top_kpi("🎯", "Índice Falla ALS", if_als_on_str, ""), unsafe_allow_html=True)
     with kpi5: st.markdown(_render_top_kpi("🔄", "Extracción %", f"{pct_extraccion:.1f}", "%"), unsafe_allow_html=True)
@@ -1733,12 +1478,31 @@ def show_resumen():
         anio_campana = datetime.now().year
         fecha_eval_ts = pd.Timestamp(datetime.now())
 
-    # Contenedor visual
+    # Contenedor visual Cabecera Premium
     st.markdown(f"""
-    <div style="background: linear-gradient(90deg, rgba(85, 255, 0, 0.05), transparent); padding: 8px 12px; border-left: 4px solid #55ff00; border-radius: 4px; margin-bottom: 1em;">
-        <h4 style='font-size:1.1rem; font-weight:700; margin:0; color:#55ff00; letter-spacing: 1px; text-transform: uppercase;'>
-             Estado de Campaña {anio_campana}
+    <div style="
+        background: linear-gradient(90deg, rgba(0, 242, 255, 0.1), transparent); 
+        padding: 12px 20px; 
+        border-left: 5px solid #00f2ff; 
+        border-radius: 8px; 
+        margin: 1.5em 0;
+        box-shadow: -10px 0 20px rgba(0, 242, 255, 0.1);
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    ">
+        <div style="
+            width: 10px; height: 10px; background: #00f2ff; border-radius: 50%;
+            box-shadow: 0 0 10px #00f2ff; animation: pulse 2s infinite;
+        "></div>
+        <h4 style='
+            font-size:1.2rem; font-weight:900; margin:0; 
+            color:#fff; letter-spacing: 3px; text-transform: uppercase;
+            font-family: "Outfit", sans-serif;
+        '>
+             Módulo de Campaña <span style="color:#00f2ff;">{anio_campana}</span>
         </h4>
+        <style> @keyframes pulse {{ 0% {{ opacity: 0.4; }} 50% {{ opacity: 1; }} 100% {{ opacity: 0.4; }} }} </style>
     </div>
     """, unsafe_allow_html=True)
 
@@ -1756,58 +1520,75 @@ def show_resumen():
 
         def _render_campaign_card(df_g, title, color_hex):
             if df_g.empty:
-                return f"""<div style="background:rgba(255,255,255,0.02); border:1px solid {color_hex}44; border-radius:10px; padding:12px; opacity:0.7;">
-                    <div style="color:{color_hex}; font-weight:bold;">{title}</div>
-                    <small>Sin datos</small>
+                return f"""<div style="background:rgba(255,255,255,0.02); border:1px solid {color_hex}44; border-radius:12px; padding:20px; text-align:center; opacity:0.6;">
+                    <div style="color:{color_hex}; font-weight:bold; letter-spacing:1px;">{title.upper()}</div>
+                    <div style="font-size:0.8rem; margin-top:5px; color:#888;">SIN REGISTROS ACTIVOS</div>
                 </div>"""
             
             total = df_g['POZO'].nunique()
-            # Conversión segura de fechas
             df_g['FECHA_FALLA_DT'] = pd.to_datetime(df_g['FECHA_FALLA'], errors='coerce')
             df_g['FECHA_PULL_DT'] = pd.to_datetime(df_g['FECHA_PULL'], errors='coerce')
             
             fallados = df_g[(df_g['FECHA_FALLA_DT'].notna()) & (df_g['FECHA_FALLA_DT'] <= fecha_eval_ts)]['POZO'].nunique()
-            
-            # Operativos logic
             operativos = df_g[
                 ((df_g['FECHA_PULL_DT'].isna()) | (df_g['FECHA_PULL_DT'] > fecha_eval_ts)) &
                 ((df_g['FECHA_FALLA_DT'].isna()) | (df_g['FECHA_FALLA_DT'] > fecha_eval_ts))
             ]['POZO'].nunique()
             
-            # Producción
             pozos_ids = df_g['POZO'].unique()
             df_f9_sub = df_f9_filtered[df_f9_filtered['POZO'].isin(pozos_ids)].copy()
             prod_val = 0.0
             if not df_f9_sub.empty:
-                # Usar FECHA_FORMA9
                 df_f9_sub['FECHA_FORMA9'] = pd.to_datetime(df_f9_sub['FECHA_FORMA9'], errors='coerce')
                 df_last = df_f9_sub.sort_values('FECHA_FORMA9').groupby('POZO').last()
-                # Buscar columna BOPD
                 c_bopd = next((c for c in df_last.columns if 'BOPD' in str(c).upper()), None)
                 if c_bopd:
                     prod_val = pd.to_numeric(df_last[c_bopd], errors='coerce').sum()
             
-            return f"""<div style="background:linear-gradient(135deg, rgba(255,255,255,0.03), rgba(0,0,0,0.2)); border:1px solid {color_hex}55; border-radius:12px; padding:15px; position:relative; overflow:hidden;">
- <div style="position:absolute; top:0; left:0; width:4px; height:100%; background:{color_hex};"></div>
- <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-  <span style="color:{color_hex}; font-weight:700; font-size:0.95rem; text-transform:uppercase;">{title}</span>
-  <span style="background:{color_hex}22; color:{color_hex}; padding:2px 8px; border-radius:10px; font-size:0.75rem; font-weight:bold;">{total} CORRIDAS</span>
- </div>
- <div style="display:flex; justify-content:space-between; text-align:center; font-family:'Rajdhani', sans-serif;">
-  <div>
-   <div style="font-size:1.2rem; font-weight:800; color:#00ff99;">{operativos}</div>
-   <div style="font-size:0.7rem; opacity:0.7;">OPERATIVOS</div>
-  </div>
-  <div>
-   <div style="font-size:1.2rem; font-weight:800; color:#ff4b4b;">{fallados}</div>
-   <div style="font-size:0.7rem; opacity:0.7;">FALLADOS</div>
-  </div>
-  <div style="border-left:1px solid rgba(255,255,255,0.1); padding-left:10px;">
-   <div style="font-size:1.2rem; font-weight:800; color:#E0FFFF;">{prod_val:,.0f}</div>
-   <div style="font-size:0.7rem; opacity:0.7;">PRODUCCION</div>
-  </div>
- </div>
-</div>"""
+            return f"""
+            <div style="
+                background: linear-gradient(145deg, rgba(15, 23, 42, 0.9), rgba(2, 6, 23, 1));
+                border: 1px solid {color_hex}44;
+                border-radius: 20px;
+                padding: 22px;
+                position: relative;
+                overflow: hidden;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+                transition: transform 0.3s;
+            ">
+                <div style="position:absolute; top:0; right:0; width:80px; height:80px; background:radial-gradient(circle at 100% 0%, {color_hex}33, transparent 70%);"></div>
+                
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px;">
+                    <div>
+                        <div style="color:{color_hex}; font-weight:900; font-size:1.1rem; letter-spacing:1px; font-family:'Outfit';">{title.upper()}</div>
+                        <div style="font-size:0.7rem; color:#64748b; font-weight:bold; margin-top:2px;">OPERACIÓN TÁCTICA</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-size:1.6rem; font-weight:900; color:#fff; line-height:1;">{total}</div>
+                        <div style="font-size:0.6rem; color:{color_hex}; font-weight:bold; letter-spacing:1px;">CORRIDAS</div>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; background:rgba(255,255,255,0.03); padding:15px; border-radius:15px; border:1px solid rgba(255,255,255,0.05);">
+                    <div style="text-align:center;">
+                        <div style="font-size:0.6rem; color:#94a3b8; margin-bottom:4px; font-weight:bold;">ACTIVOS</div>
+                        <div style="font-size:1.3rem; font-weight:900; color:#00ff9d;">{operativos}</div>
+                    </div>
+                    <div style="text-align:center; border-left:1px solid rgba(255,255,255,0.1); border-right:1px solid rgba(255,255,255,0.1);">
+                        <div style="font-size:0.6rem; color:#94a3b8; margin-bottom:4px; font-weight:bold;">FALLADOS</div>
+                        <div style="font-size:1.3rem; font-weight:900; color:#ff3e3e;">{fallados}</div>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-size:0.6rem; color:#94a3b8; margin-bottom:4px; font-weight:bold;">BOPD</div>
+                        <div style="font-size:1.3rem; font-weight:900; color:#00f2ff;">{prod_val:,.0f}</div>
+                    </div>
+                </div>
+                
+                <div style="margin-top:15px; height:4px; background:rgba(255,255,255,0.05); border-radius:2px; overflow:hidden;">
+                    <div style="width:{(operativos/total*100) if total>0 else 0}%; height:100%; background:linear-gradient(90deg, {color_hex}, #fff); box-shadow:0 0 10px {color_hex};"></div>
+                </div>
+            </div>
+            """
 
         with col_camp_1:
             st.markdown(_render_campaign_card(df_nuevos, "Pozos Nuevos", "#00cfff"), unsafe_allow_html=True)
@@ -1816,118 +1597,58 @@ def show_resumen():
 
     st.markdown("<div style='height: 2rem;'></div>", unsafe_allow_html=True)
 
-    # --- LAYOUT PRINCIPAL (0.8 - 0.2) - Desde Tendencia Histórica ---
+    # --- LAYOUT PRINCIPAL (0.8 - 0.2) ---
+    st.markdown("<div style='height: 1.5rem;'></div>", unsafe_allow_html=True)
     col_main_content, col_estado_main = st.columns([0.8, 0.2])
 
     with col_main_content:
-        # Fila 1: Gráfico histórico (0.4) y Mapa de KPIs (0.4)
-        col_historico, col_mapa = st.columns([0.5, 0.5])
-        
-        with col_historico:
-            # Gráfico histórico
-            with st.container(border=True):
-                st.markdown("##### 📉 Histórico", help="Últimos 12 meses")
-                try:
-                    fig1, _ = generar_grafico_resumen(df_bd_filtered, df_f9_filtered, fecha_eval)
-                    if fig1:
-                        fig1.update_layout(
-                            margin=dict(l=15,r=15,t=15,b=15),
-                            height=320,
-                            paper_bgcolor='rgba(0,0,0,0)',
-                            plot_bgcolor='rgba(0,0,0,0)',
-                            legend=dict(orientation="h", y=8.0, font=dict(size=8))
-                        )
-                        st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False})
+        # Fila 1: ECharts Dashboard (Top)
+        try:
+            df_monthly = generar_resumen_mensual(df_bd_filtered, df_f9_filtered, fecha_eval)
+            if not df_monthly.empty:
+                col_perf, col_rl_pz = st.columns([0.5, 0.5])
+                with col_perf:
+                    with st.container(border=True): render_premium_echarts(df_monthly, "Análisis de Performance")
+                with col_rl_pz:
+                    with st.container(border=True):
+                        sub1, sub2 = st.columns(2)
+                        with sub1: render_premium_echarts_run_life(df_monthly, "Tiempo de Vida")
+                        with sub2: render_premium_echarts_pozos(df_monthly, "Operatividad")
+        except: pass
 
-                        # Botón de descarga PNG con fondo claro y texto/leyenda oscuros
-                        try:
-                            from grafico import exportar_png_claro_bytes
-                            img_bytes = exportar_png_claro_bytes(fig1, width=1200, height=600, scale=2)
-                            # Nombre de archivo con fecha de evaluación
-                            try:
-                                fname_date = pd.to_datetime(fecha_eval).strftime('%Y%m%d')
-                            except Exception:
-                                fname_date = 'grafico'
-                            st.download_button(label='📥 Descargar PNG (fondo claro)', data=img_bytes, file_name=f"historico_{fname_date}.png", mime='image/png')
-                        except Exception:
-                            # Si falla la generación en bytes, no romper la UI
-                            pass
-                except Exception:
-                    st.error("Error en gráfico histórico")
-        
-        with col_mapa:
-            # Mapa conceptual de KPIs
+        st.markdown("<div style='height: 1rem;'></div>", unsafe_allow_html=True)
+
+        # Fila 2: Mapa y KPIs Secundarios
+        col_m, col_rest = st.columns([0.6, 0.4])
+        with col_m:
             with st.container(border=True):
-                st.markdown("##### 🗺️ KPIs", help="Mapa conceptual de indicadores")
+                st.markdown("##### 🗺️ Mapa Táctico")
                 try:
                     from kpis import mostrar_kpis
-                    indice_resumen_for_map = indice_resumen_df if 'indice_resumen_df' in dir() else None
-                    
-                    # Construir reporte_run_life similar a indicadores.generar_reporte_completo
-                    reporte_run_life = None
-                    try:
-                        if 'RUN LIFE' in df_bd_filtered.columns:
-                            tmp = df_bd_filtered.copy()
-                            tmp['FECHA_PULL_DATE'] = pd.to_datetime(tmp.get('FECHA_PULL', pd.NaT), errors='coerce')
-                            tmp['FECHA_FALLA_DATE'] = pd.to_datetime(tmp.get('FECHA_FALLA', pd.NaT), errors='coerce')
-                            rl_vals = pd.to_numeric(tmp[(tmp['FECHA_PULL_DATE'].notna()) | (tmp['FECHA_FALLA_DATE'].notna())]['RUN LIFE'], errors='coerce').dropna()
-                            if not rl_vals.empty:
-                                rl_mean = float(rl_vals.mean())
-                            else:
-                                rl_mean = float('nan')
-                            reporte_run_life = pd.DataFrame({
-                                'Categoría': ['Tiempo Op. (Apagados + Fallados)'],
-                                'Valor': [rl_mean]
-                            })
-                    except Exception:
-                        reporte_run_life = None
-
-                    mostrar_kpis(
-                        df_bd=df_bd_filtered,
-                        reporte_runes=None,
-                        reporte_run_life=reporte_run_life,
-                        indice_resumen_df=indice_resumen_for_map,
-                        mtbf_global=kpis['mtbf'],
-                        mtbf_als=None,
-                        df_forma9=df_f9_filtered,
-                        fecha_evaluacion=fecha_eval
-                    )
-                except Exception as e:
-                    st.info(f"Mapa no disponible")
-
-        st.markdown("<div style='height: 0.5rem;'></div>", unsafe_allow_html=True)
-
-        # Fila 2: Tres gráficos en fila - Severidad, BOPD vs RunLife, y Radar
-        col_sev, col_bopd, col_radar = st.columns([1, 1, 1])
-
-        with col_sev:
+                    reporte_run_life = pd.DataFrame({'Categoría': ['Tiempo de Vida Promedio (Fallados+Ext)'], 'Valor': [rl_avg]})
+                    mostrar_kpis(df_bd=df_bd_filtered, reporte_run_life=reporte_run_life, indice_resumen_df=indice_resumen_df if 'indice_resumen_df' in dir() else None, mtbf_global=kpis['mtbf'], df_forma9=df_f9_filtered, fecha_evaluacion=fecha_eval)
+                except: st.info("Mapa no disponible")
+        
+        with col_rest:
+            # Severidad
             with st.container(border=True):
-                st.markdown("##### ⚡ Índice de Severidad")
+                st.markdown("##### ⚡ Severidad")
                 try:
                     fig_sev = generar_grafico_severidad_acelerador(indice_severidad)
                     st.plotly_chart(fig_sev, use_container_width=True)
-                    
-                    # Botón/métrica del índice de severidad
-                    estado_sev = "🔴 ALTO" if indice_severidad > 1.5 else ("🟠 MEDIO-ALTO" if indice_severidad > 1.0 else "🟢 BAJO")
-                    st.markdown(f"<div style='text-align: center; font-weight: bold; color: white; font-size: 1.1rem;'>{estado_sev}</div>", unsafe_allow_html=True)
-                except Exception as e:
-                    st.error(f"Error en gráfico de severidad: {e}")
-
-        with col_bopd:
+                except: pass
+            # Radar
             with st.container(border=True):
-                st.markdown("##### 📌 BOPD vs Run Life")
-                try:
-                    render_bopd_vs_runlife(df_bd_filtered, df_f9_filtered, fecha_eval)
-                except Exception as e:
-                    st.error(f"Error en BOPD vs Run Life: {e}")
-
-        with col_radar:
-            with st.container(border=True):
-                st.markdown("##### 🕸️ Distribución de Estado")
+                st.markdown("##### 🕸️ Estado")
                 try:
                     fig2 = generar_grafico_radar(kpis)
                     st.plotly_chart(fig2, use_container_width=True)
-                except: st.error("Error en radar")
+                except: pass
+            # BOPD vs Run Life
+            with st.container(border=True):
+                st.markdown("##### 📌 BOPD vs Run Life")
+                try: render_bopd_vs_runlife(df_bd_filtered, df_f9_filtered, fecha_eval)
+                except: pass
 
     with col_estado_main:
         # --- ESTADO OPERACIONAL EN COLUMNA VERTICAL (Derecha 0.2) ---

@@ -71,16 +71,16 @@ def get_dashboard_css():
 }
 
 .main .block-container {
-    padding: 1.2rem 1.8rem;
+    padding: 0.5rem 1rem;
     max-width: 100%;
 }
 
 /* 🏭 HEADER INDUSTRIAL MODERNO */
 .dashboard-header {
     background: #1e293b; 
-    padding: 1.5rem 2rem;
+    padding: 1rem 1.5rem;
     border-radius: 8px;
-    margin-bottom: 2rem;
+    margin-bottom: 1rem;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
     border-bottom: 4px solid #3b82f6; 
     color: #f8fafc;
@@ -100,15 +100,15 @@ def get_dashboard_css():
 }
 
 .dashboard-header:hover {
-    transform: translateY(-8px) scale(1.01);
+    transform: translateY(-4px) scale(1.005);
     box-shadow: 
-        0 0 100px rgba(236, 0, 212, 0.8),
-        0 30px 100px rgba(0, 0, 0, 0.6),
-        inset 0 0 150px rgba(255, 255, 255, 0.15);
+        0 0 50px rgba(236, 0, 212, 0.4),
+        0 20px 50px rgba(0, 0, 0, 0.4),
+        inset 0 0 100px rgba(255, 255, 255, 0.1);
 }
 
 .header-title {
-    font-size: 3.5rem;
+    font-size: 2.5rem;
     font-weight: 900;
     background: linear-gradient(135deg, #C82B96 0%, #8B2F89 50%, #4E2A68 100%);  /* Gradiente EITI */
     -webkit-background-clip: text;
@@ -124,10 +124,10 @@ def get_dashboard_css():
     background: rgba(255, 255, 255, 0.15);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    padding: 1rem 2.5rem;
+    padding: 0.6rem 1.5rem;
     border-radius: 50px;
     font-weight: 800;
-    font-size: 1.2rem;
+    font-size: 1rem;
     border: 2px solid rgba(255, 255, 255, 0.3);
     color: white;
     box-shadow: 
@@ -149,14 +149,14 @@ def get_dashboard_css():
     backdrop-filter: blur(5px);
     border: 1.5px solid rgba(200, 43, 150, 0.3);   /* Magenta EITI */
     border-radius: var(--radius-xl);
-    padding: 0.6rem 0.7rem;
+    padding: 0.4rem 0.5rem;
     position: relative;
     overflow: hidden;
     box-shadow: 
-        0 0 8px rgba(200, 43, 150, 0.2),           /* Glow magenta EITI */
-        0 2px 10px rgba(0, 0, 0, 0.05);
+        0 0 6px rgba(200, 43, 150, 0.15),           /* Glow magenta EITI */
+        0 2px 8px rgba(0, 0, 0, 0.05);
     transition: all var(--transition-smooth);
-    min-height: 90px;
+    min-height: 70px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -180,29 +180,29 @@ def get_dashboard_css():
 }
 
 .kpi-card:hover {
-    transform: translateY(-5px) scale(1.02);
+    transform: translateY(-3px) scale(1.01);
     border-color: rgba(0, 255, 153, 0.4);
     box-shadow: 
-        0 0 15px rgba(0, 255, 153, 0.2),
-        0 5px 15px rgba(0, 0, 0, 0.1);
+        0 0 10px rgba(0, 255, 153, 0.15),
+        0 3px 10px rgba(0, 0, 0, 0.1);
 }
 
 .kpi-icon {
-    font-size: 2rem;
+    font-size: 1.5rem;
     line-height: 1;
-    margin-bottom: 0.6rem;
+    margin-bottom: 0.4rem;
     transition: all var(--transition-smooth);
     display: inline-block;
     filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
 }
 
 .kpi-card:hover .kpi-icon {
-    transform: scale(1.15) rotate(-5deg);
+    transform: scale(1.1) rotate(-3deg);
     filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3));
 }
 
 .kpi-label {
-    font-size: 0.65rem;
+    font-size: 0.6rem;
     font-weight: 700;
     letter-spacing: 0.5px;
     text-transform: uppercase;
@@ -214,13 +214,13 @@ def get_dashboard_css():
 }
 
 .kpi-value {
-    font-size: 2rem;
+    font-size: 1.6rem;
     font-weight: 900;
     background: linear-gradient(135deg, #C82B96, #4E2A68);  /* Gradiente EITI */
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    line-height: 1.2;
+    line-height: 1.1;
 }
 
 /* ⚡ BOTONES LATERALES NEÓN */

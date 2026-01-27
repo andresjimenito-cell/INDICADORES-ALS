@@ -2367,13 +2367,14 @@ if st.session_state['reporte_runes'] is not None:
         fecha_eval_ts = pd.to_datetime(fecha_evaluacion)
         anio_campana = fecha_eval_ts.year
     
+        # Contenedor visual Cabecera Premium
         st.markdown(f"""
-        <div style="background: linear-gradient(90deg, rgba(85, 255, 0, 0.1), transparent); padding: 10px; border-left: 5px solid #55ff00; border-radius: 5px; margin-top: 1.5em; margin-bottom: 1em;">
-            <h3 id="estado-campana" style='font-size:1.3rem; font-weight:800; margin:0; color:#55ff00; letter-spacing: -0.5px;'>
-                 ESTADO DE LA CAMPAÑA {anio_campana}
-            </h3>
-        </div>
-        """, unsafe_allow_html=True)
+<div style="background: linear-gradient(90deg, rgba(0, 242, 255, 0.1), transparent); padding: 12px 20px; border-left: 5px solid #00f2ff; border-radius: 8px; margin: 1.5em 0; box-shadow: -10px 0 20px rgba(0, 242, 255, 0.1); display: flex; align-items: center; gap: 15px;">
+<div style="width: 10px; height: 10px; background: #00f2ff; border-radius: 50%; box-shadow: 0 0 10px #00f2ff; animation: pulse 2s infinite;"></div>
+<h4 style='font-size:1.2rem; font-weight:900; margin:0; color:#fff; letter-spacing: 3px; text-transform: uppercase; font-family: "Outfit", sans-serif;'>ESTADO DE LA CAMPAÑA <span style="color:#00f2ff;">{anio_campana}</span></h4>
+<style> @keyframes pulse {{ 0% {{ opacity: 0.4; }} 50% {{ opacity: 1; }} 100% {{ opacity: 0.4; }} }} </style>
+</div>
+""", unsafe_allow_html=True)
         
         # 1. Filtrar BD para el año de campaña (FECHA_RUN en el año evaluado)
         df_campana = df_bd_filtered[df_bd_filtered['FECHA_RUN'].dt.year == anio_campana].copy()
@@ -2388,66 +2389,63 @@ if st.session_state['reporte_runes'] is not None:
             df_nuevos = df_campana[df_campana['RUN'] == 1].copy()
             df_intervenciones = df_campana[df_campana['RUN'] > 1].copy()
             
-            # Función auxiliar para calcular métricas de un grupo
             def calcular_metricas_grupo(df_grupo, nombre_grupo, color_borde):
                 if df_grupo.empty:
-                    return f"""<div style="flex:1; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:12px; padding:15px; position:relative; overflow:hidden;">
-    <div style="position:absolute; top:0; left:0; width:4px; height:100%; background:{color_borde};"></div>
-    <h4 style="margin:0; font-size:1rem; color:{COLOR_FUENTE}; opacity:0.8; text-transform:uppercase;">{nombre_grupo}</h4>
-    <div style="margin-top:10px; font-size:0.9rem; opacity:0.6;">Sin registros</div>
-    </div>"""
+                    return f"""<div style="flex:1; background:rgba(255,255,255,0.02); border:1px solid {color_borde}44; border-radius:12px; padding:20px; text-align:center; opacity:0.6;">
+<div style="color:{color_borde}; font-weight:bold; letter-spacing:1px;">{nombre_grupo.upper()}</div>
+<div style="font-size:0.8rem; margin-top:5px; color:#888;">SIN REGISTROS ACTIVOS</div>
+</div>"""
                 
                 # Métricas
                 total_pozos = df_grupo['POZO'].nunique()
-                
-                # Fallados: Tienen FECHA_FALLA <= fecha_evaluacion
                 fallados = df_grupo[df_grupo['FECHA_FALLA'].notna() & (df_grupo['FECHA_FALLA'] <= fecha_eval_ts)]['POZO'].nunique()
-                
-                # Operativos: NO tienen FECHA_PULL ni FECHA_FALLA (o son posteriores a eval) -> están activos
                 operativos = df_grupo[
                     ((df_grupo['FECHA_PULL'].isna()) | (df_grupo['FECHA_PULL'] > fecha_eval_ts)) &
                     ((df_grupo['FECHA_FALLA'].isna()) | (df_grupo['FECHA_FALLA'] > fecha_eval_ts))
                 ]['POZO'].nunique()
                 
-                # Filtrar Forma 9 para los pozos de este grupo
                 pozos_grupo = df_grupo['POZO'].unique()
                 df_f9_grupo = df_forma9_filtered[df_forma9_filtered['POZO'].isin(pozos_grupo)].copy()
                 
-                # Tomar el último registro de BOPD disponible para cada pozo en el rango de evaluación
+                produccion_total = 0.0
                 if not df_f9_grupo.empty:
-                    # Ordenar por fecha y tomar ultimo
                     df_last_prod = df_f9_grupo.sort_values('FECHA_FORMA9').groupby('POZO').last()
-                    # Buscar columna BOPD
                     col_bopd = next((c for c in df_last_prod.columns if 'BOPD' in str(c).upper()), None)
                     if col_bopd:
                         produccion_total = pd.to_numeric(df_last_prod[col_bopd], errors='coerce').sum()
-                    else:
-                        produccion_total = 0.0
-                else:
-                    produccion_total = 0.0
                     
-                # HTML Card sin indentación
-                return f"""<div style="flex:1; background:linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.05); border-radius:16px; padding:15px; position:relative; overflow:hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.2);">
-    <div style="position:absolute; top:0; left:0; width:6px; height:100%; background:{color_borde}; box-shadow: 2px 0 15px {color_borde};"></div>
-    <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:12px;">
-    <h4 style="margin:0; font-size:1rem; font-weight:700; color:{COLOR_FUENTE}; text-transform:uppercase; letter-spacing:1px;">{nombre_grupo}</h4>
-    <span style="background:{color_borde}33; color:{color_borde}; padding:2px 8px; border-radius:20px; font-size:0.75rem; font-weight:bold;">{total_pozos} Pozos</span>
-    </div>
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-    <div style="background:rgba(0,0,0,0.2); padding:8px; border-radius:8px; text-align:center;">
-    <div style="font-size:0.7rem; opacity:0.7; margin-bottom:2px;">Operativos</div>
-    <div style="font-size:1.2rem; font-weight:700; color:#00ff99;">{operativos}</div>
-    </div>
-    <div style="background:rgba(0,0,0,0.2); padding:8px; border-radius:8px; text-align:center;">
-    <div style="font-size:0.7rem; opacity:0.7; margin-bottom:2px;">Fallaron</div>
-    <div style="font-size:1.2rem; font-weight:700; color:#ff4b4b;">{fallados}</div>
-    </div>
-    </div>
-    <div style="margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:space-between;">
-    <span style="font-size:0.8rem; opacity:0.8;">Prod (BOPD):</span>
-    <span style="font-size:1.1rem; font-weight:700; color:{COLOR_FUENTE};">{produccion_total:,.1f}</span>
-    </div>
-    </div>"""
+                return f"""
+<div style="flex:1; background: linear-gradient(145deg, rgba(15, 23, 42, 0.9), rgba(2, 6, 23, 1)); border: 1px solid {color_borde}44; border-radius: 20px; padding: 22px; position: relative; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); min-width: 300px;">
+<div style="position:absolute; top:0; right:0; width:80px; height:80px; background:radial-gradient(circle at 100% 0%, {color_borde}33, transparent 70%);"></div>
+<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px;">
+<div>
+<div style="color:{color_borde}; font-weight:900; font-size:1.1rem; letter-spacing:1px; font-family:'Outfit';">{nombre_grupo.upper()}</div>
+<div style="font-size:0.7rem; color:#64748b; font-weight:bold; margin-top:2px;">OPERACIÓN TÁCTICA</div>
+</div>
+<div style="text-align:right;">
+<div style="font-size:1.6rem; font-weight:900; color:#fff; line-height:1;">{total_pozos}</div>
+<div style="font-size:0.6rem; color:{color_borde}; font-weight:bold; letter-spacing:1px;">CORRIDAS</div>
+</div>
+</div>
+<div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; background:rgba(255,255,255,0.03); padding:15px; border-radius:15px; border:1px solid rgba(255,255,255,0.05);">
+<div style="text-align:center;">
+<div style="font-size:0.6rem; color:#94a3b8; margin-bottom:4px; font-weight:bold;">ACTIVOS</div>
+<div style="font-size:1.3rem; font-weight:900; color:#00ff9d;">{operativos}</div>
+</div>
+<div style="text-align:center; border-left:1px solid rgba(255,255,255,0.1); border-right:1px solid rgba(255,255,255,0.1);">
+<div style="font-size:0.6rem; color:#94a3b8; margin-bottom:4px; font-weight:bold;">FALLADOS</div>
+<div style="font-size:1.3rem; font-weight:900; color:#ff3e3e;">{fallados}</div>
+</div>
+<div style="text-align:center;">
+<div style="font-size:0.6rem; color:#94a3b8; margin-bottom:4px; font-weight:bold;">BOPD</div>
+<div style="font-size:1.3rem; font-weight:900; color:#00f2ff;">{produccion_total:,.0f}</div>
+</div>
+</div>
+<div style="margin-top:15px; height:4px; background:rgba(255,255,255,0.05); border-radius:2px; overflow:hidden;">
+<div style="width:{(operativos/total_pozos*100) if total_pozos>0 else 0}%; height:100%; background:linear-gradient(90deg, {color_borde}, #fff); box-shadow:0 0 10px {color_borde};"></div>
+</div>
+</div>
+"""
     
             html_nuevos = calcular_metricas_grupo(df_nuevos, "Pozos Nuevos", "#00cfff") # Cian
             html_interv = calcular_metricas_grupo(df_intervenciones, "Workover / Servicios", "#ff00ff") # Magenta

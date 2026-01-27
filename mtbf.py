@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 import plotly.express as px
-from theme import get_colors, get_plotly_layout, styled_title
+from theme import get_colors, get_plotly_layout, styled_title, plotly_styled_title
 
 _colors = get_colors()
 COLOR_PRINCIPAL = _colors.get('primary', '#00ff99')
@@ -68,12 +68,13 @@ def calcular_mtbf(df_bd, fecha_evaluacion):
     return mtbf, df[['ITEM', 'RUN LIFE @ FALLA', 'R(ti/Ti-1)', 'R(Ti)', 'R(Ti)*dt']]
 
 def mostrar_mtbf(mtbf_global, mtbf_por_pozo, df_bd=None, fecha_evaluacion=None):
-    st.subheader('TMEF (Tiempo Medio Entre Fallas)')
+    # Título removido por solicitud de usuario
     st.markdown(f"""
-    <div style="display: flex; gap: 20px; align-items: center; margin-bottom: 20px;">
-        <div style="flex: 1; padding: 25px; background: linear-gradient(135deg, #0011D1, #00A2FF); border-radius: 15px; box-shadow: 0 10px 25px rgba(0, 17, 209, 0.4); text-align: center; color: white;">
-            <div style="font-size: 16px; text-transform: uppercase; letter-spacing: 2px; font-weight: 600; opacity: 0.9;">TMEF GLOBAL ESTIMADO</div>
-            <div style="font-size: 48px; font-weight: 900; margin-top: 5px; text-shadow: 0 2px 10px rgba(0,0,0,0.3);">{mtbf_global:.2f} <span style="font-size: 18px; font-weight: 500;">días</span></div>
+    <div style="display: flex; gap: 20px; align-items: center; margin-bottom: 2rem;">
+        <div style="flex: 1; padding: 2rem; background: linear-gradient(135deg, rgba(19, 91, 236, 0.2), rgba(10, 14, 39, 0.7)); border: 1px solid rgba(19, 91, 236, 0.4); border-radius: 1.5rem; backdrop-filter: blur(20px); box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3); text-align: center; color: white; position: relative; overflow: hidden;">
+            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: linear-gradient(to right, #135bec, #00f2ff, #135bec);"></div>
+            <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.3em; font-weight: 800; color: #00f2ff; margin-bottom: 0.5rem; opacity: 0.8;">TMEF GLOBAL ESTIMADO</div>
+            <div style="font-family: 'Outfit', sans-serif; font-size: 4rem; font-weight: 900; margin-top: 5px; text-shadow: 0 0 20px rgba(19, 91, 236, 0.5);">{mtbf_global:.2f} <span style="font-size: 1.25rem; font-weight: 500; color: #94a3b8;">días</span></div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -124,24 +125,64 @@ def historico_mtbf(df_bd, fecha_evaluacion):
     else:
         return pd.DataFrame(columns=['Mes', 'ACTIVO', 'TMEF Promedio'])
 
+def render_premium_echarts_mtbf(df_hist, titulo="TMEF HISTÓRICO POR CAMPO"):
+    import json
+    import streamlit.components.v1 as components
+    
+    if df_hist.empty:
+        return st.info("No hay datos históricos de TMEF para mostrar.")
+    
+    # Preparar datos
+    months = sorted([str(m) for m in df_hist['Mes'].dt.strftime('%Y-%m').unique()])
+    activos = sorted(df_hist['ACTIVO'].unique().tolist())
+    
+    series = []
+    color_seq = [
+        '#00f2ff', '#135bec', '#b200cc', '#00ff99', '#ffde31', '#ff4b4b', '#ffab40'
+    ]
+    
+    for i, act in enumerate(activos):
+        df_act = df_hist[df_hist['ACTIVO'] == act]
+        data_act = []
+        for m in months:
+            val = df_act[df_act['Mes'].dt.strftime('%Y-%m') == m]['TMEF Promedio'].values
+            data_act.append(round(float(val[0]), 2) if len(val) > 0 else 0)
+        
+        series.append({
+            "name": act,
+            "type": "bar",
+            "data": data_act,
+            "itemStyle": {"borderRadius": [4, 4, 0, 0]}
+        })
+
+    echarts_options = {
+        "backgroundColor": "transparent",
+        "title": {
+            "text": titulo,
+            "left": "center",
+            "textStyle": {"color": "#fff", "fontSize": 14, "fontFamily": "Outfit", "fontWeight": "900"}
+        },
+        "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
+        "legend": {"data": activos, "bottom": 0, "textStyle": {"color": "#ccc", "fontSize": 10}},
+        "grid": {"left": "3%", "right": "4%", "bottom": "15%", "top": "15%", "containLabel": True},
+        "xAxis": [{"type": "category", "data": months, "axisLabel": {"color": "#888", "fontSize": 10}}],
+        "yAxis": [{"type": "value", "name": "Días", "axisLabel": {"color": "#888"}, "splitLine": {"lineStyle": {"color": "rgba(255,255,255,0.05)"}}}],
+        "color": color_seq,
+        "series": series
+    }
+    
+    html_content = f"""
+    <div id="echarts-mtbf" style="width:100%; height:400px;"></div>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script>
+        (function() {{
+            var myChart = echarts.init(document.getElementById('echarts-mtbf'), 'dark');
+            myChart.setOption({json.dumps(echarts_options)});
+            window.addEventListener('resize', function() {{ myChart.resize(); }});
+        }})();
+    </script>
+    """
+    components.html(html_content, height=420)
+
 def graficar_historico_mtbf(df_hist):
-    if not df_hist.empty and 'ACTIVO' in df_hist.columns:
-        color_sequence = get_color_sequence()
-        fig = px.bar(
-            df_hist,
-            x='Mes',
-            y='TMEF Promedio',
-            color='ACTIVO',
-            barmode='group',
-        title=styled_title('TMEF promedio mensual por campo  (últimos 3 años)'),
-            labels={'Mes': 'Mes', 'TMEF Promedio': 'TMEF Promedio (días)', 'ACTIVO': 'ACTIVO'},
-            color_discrete_sequence=color_sequence
-        )
-        # Obtener layout desde theme (respetará si Streamlit gestiona el fondo)
-        layout = get_plotly_layout()
-        # asegurar orden de categorias y colores de ejes si vienen en layout
-        layout.update({'xaxis': {'categoryorder': 'category ascending'}, 'yaxis': {}})
-        fig.update_layout(**layout)
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info('No hay datos suficientes para mostrar el histórico de MTBF.')
+    render_premium_echarts_mtbf(df_hist)

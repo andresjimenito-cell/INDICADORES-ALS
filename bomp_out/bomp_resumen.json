@@ -1,0 +1,45 @@
+{
+  "AVISPA": {
+    "pumps_top": {
+      "SIN MODELO": {
+        "count": 1,
+        "min_bbl": null,
+        "max_bbl": null
+      },
+      "WG4000": {
+        "count": 1,
+        "min_bbl": 400,
+        "max_bbl": 400
+      },
+      "PLS M X SXD LS HS": {
+        "count": 1,
+        "min_bbl": null,
+        "max_bbl": null
+      },
+      "S4000N": {
+        "count": 1,
+        "min_bbl": 400,
+        "max_bbl": 400
+      }
+    },
+    "pumps_most_used": "SIN MODELO",
+    "motor_types": {
+      "PMM": 2,
+      "AMM": 1,
+      "AM": 1
+    },
+    "cable_awg": {
+      "2": 4
+    },
+    "cable_length_mean": 7641.0,
+    "ytool": {
+      "NO": 3,
+      "YES": 1
+    },
+    "vsd_kva": {
+      "750": 2,
+      "1200": 1,
+      "1121": 1
+    }
+  }
+}

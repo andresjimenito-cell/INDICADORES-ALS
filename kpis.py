@@ -6,8 +6,11 @@ import pandas as pd
 from theme import get_colors
 import mtbf as mtbf_mod
 
+import tema
+
 _colors = get_colors()
-COLOR_PRINCIPAL = _colors.get('primary', '#00ff99')
+# Usar Magenta Neon como color principal para KPIs
+COLOR_PRINCIPAL = getattr(tema, 'COLOR_MAGENTA_NEON', '#C82B96')
 _bg_raw = _colors.get('background', None)
 if isinstance(_bg_raw, str) and _bg_raw.strip().lower() in ('#ffffff', 'white'):
     COLOR_FONDO_OSCURO = None
@@ -42,10 +45,14 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
         except Exception:
             idx = 0
 
+        is_in_dialog = st.session_state.get('kpi_in_dialog', False)
+        # Usar key dinámica para evitar conflicto cuando se renderiza dentro del diálogo
+        widget_key = 'kpis_als_filter_dialog' if is_in_dialog else 'kpis_als_filter'
+        
         selected_als = st.selectbox(
             'Filtro por Sistema de Levantamiento (ALS):',
             als_options,
-            key='kpis_als_filter',
+            key=widget_key,
             index=idx,
             help='Selecciona un sistema ALS para refinar el análisis',
         )
@@ -56,79 +63,12 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
         else:
             df_bd_als = df_bd.copy()
 
-    # Configuración del mapa conceptual
-    dot = Digraph(comment='Conceptual Map', format='png')
-    # Solo establecer bgcolor si existe un color concreto, sino dejar por defecto
-    dot_attr_kwargs = {'rankdir':'LR', 'splines':'polyline', 'ranksep':'0.5', 'nodesep':'0.5'}
-    # Siempre establecer un bgcolor explícito: usar el color del tema si existe,
-    # de lo contrario usar 'transparent' para que el contenedor de Streamlit
-    # muestre su propio fondo.
-    dot_attr_kwargs['bgcolor'] = COLOR_FONDO_OSCURO if COLOR_FONDO_OSCURO else 'transparent'
-    dot.attr(**dot_attr_kwargs)
-
-    # Paleta de Nodos
-    kpi_node_colors = {
-    'KPIs': COLOR_PRINCIPAL, # Mantiene el color principal del tema (asumo que es claro/cian)
-    'RL': '#00F5FF',         # 1. Run Life - Verde Bosque Profundo
-    'MTBF': '#A1039D',       # 2. MTBF - Púrpura Oscuro / Berenjena
-    'IF': '#5EFF00',         # 3. Índice de Falla - Rojo Ladrillo / Óxido Oscuro (Alerta Sutil)
-    'RUNs': '#00A2FF',       # 4. Corridas - Azul Marino Sólido (Diferente a ON)
-    'ON': '#00A2FF',         # 5. Pozos ON - Dorado Opaco / Oliváceo
-    'OFF': '#00A2FF',        # 6. Pozos OFF - Gris Oscuro (Visible, no negro)
-    }
+    # === SOLUCIÓN: Premium KPI Hierarchy Map v5.0 (Vibrant & Interactive) ===
+    from run_life_efectivo import calcular_run_life_efectivo
+    import streamlit.components.v1 as components
     
-    # Estilo de nodos de Concepto
-    node_style_main = {
-        'shape': 'box', 
-        'style': 'filled,bold,rounded',
-        'fontname': 'Courier-Bold', 
-        'fontsize': '20',       
-        'fontcolor': COLOR_TEXTO_PRINCIPAL, 
-        'penwidth': '2',        
-        'color': COLOR_PRINCIPAL,
-    }
-
-    # === SOLUCIÓN: Definición de estilo para el nodo ROOT ===
-    root_style = node_style_main.copy()
-    root_style['fillcolor'] = COLOR_PRINCIPAL
-    root_style['fontcolor'] = COLOR_TEXTO_PRINCIPAL if COLOR_TEXTO_PRINCIPAL else "#000000"
-    root_style['penwidth'] = '3'
-    root_style['color'] = "#ffffff"
-
-    
-    # Estilo de nodos de Datos - Cyberpunk (más angosto)
-    node_style_data = {
-        'shape': 'box',
-        'style': 'filled,rounded',
-        'fontname': 'Courier',
-        'fontsize': '18',  # Reducido para nodos más angostos
-        'fontcolor': "#ffffff",
-        'fillcolor': COLOR_FONDO_CONTENEDOR,
-        'penwidth': '2',
-        'color': COLOR_PRINCIPAL,
-        'width': '1.2',   # Menor ancho
-        'margin': '0.03,0.2', # Menor margen
-    }
-    
-    # Nodos principales
-    # LÍNEA CORREGIDA: Usando el diccionario de estilo 'root_style'
-    dot.node('KPIs', label=' KPIS ', **root_style) 
-    
-    # Nodos de Nivel 1 (KPIs)
-    node_style_lvl1 = node_style_main.copy()
-    node_style_lvl1['shape'] = 'box'
-    node_style_lvl1['fontsize'] = '20'
-    node_style_lvl1['fontcolor'] = COLOR_TEXTO_PRINCIPAL
-    
-    dot.node('RUNs', label='CORRIDAS', fillcolor=kpi_node_colors['RUNs'], **node_style_lvl1)
-    dot.node('RL', label='TIEMPO VIDA', fillcolor=kpi_node_colors['RL'], **node_style_lvl1)
-    dot.node('MTBF', label='TMEF', fillcolor=kpi_node_colors['MTBF'], **node_style_lvl1)
-    dot.node('IF', label='INDICE FALLA', fillcolor=kpi_node_colors['IF'], **node_style_lvl1)
-    
-    # [ --- Lógica de Cálculo de Datos (Omitida por brevedad, pero debe estar aquí) --- ]
-    # Se asume que las variables *_label están definidas.
-    
-    # (Resto de la lógica de cálculo y definición de labels...)
+    # ----------------------------------------------------------------------------------
+    # Lógica de Cálculo de Datos (Mantenida y extendida)
     # ----------------------------------------------------------------------------------
     if fecha_evaluacion is None:
         fecha_evaluacion = datetime.datetime.now()
@@ -138,7 +78,7 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
         except Exception:
             fecha_evaluacion = datetime.datetime.now()
             
-    # Usar la función real de cálculo de MTBF
+    # MTBF
     try:
         mtbf_als_val, _ = mtbf_mod.calcular_mtbf(df_bd_als, fecha_evaluacion)
     except Exception:
@@ -205,7 +145,7 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
         rl_todos = 0
         rl_als = 0
         if reporte_run_life is not None and not reporte_run_life.empty:
-            val = reporte_run_life.loc[reporte_run_life['Categoría'] == 'Tiempo Op. (Apagados + Fallados)', 'Valor']
+            val = reporte_run_life.loc[reporte_run_life['Categoría'] == 'Tiempo de Vida Promedio (Fallados+Ext)', 'Valor']
             if not val.empty:
                 rl_todos = float(val.values[0])
         
@@ -224,6 +164,16 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
         on_label = "TOTAL: N/D\nALS: N/D"
         off_label = "TOTAL: N/D\nALS: N/D"
         rl_label = "TOTAL: N/D\nALS: N/D"
+
+    # Run Life Efectivo Calculation
+    try:
+        rle_total_val, _ = calcular_run_life_efectivo(df_bd, df_forma9, fecha_evaluacion)
+        _, df_bd_als_rle = calcular_run_life_efectivo(df_bd_als_calc, df_forma9, fecha_evaluacion)
+        # Recalcular RLE por ALS si no es TODOS
+        rle_als_val = df_bd_als_rle['RUN_LIFE_EFECTIVO'].mean() if 'RUN_LIFE_EFECTIVO' in df_bd_als_rle.columns else 0
+        rle_label = f"TOTAL: {rle_total_val:.2f} Días\n{selected_als}: {rle_als_val:.2f} Días"
+    except Exception:
+        rle_label = "TOTAL: N/D\nALS: N/D"
 
     mtbf_total_str = f"{mtbf_total_val:.2f}" if mtbf_total_val is not None else "N/D"
     mtbf_als_str = f"{mtbf_als_val:.2f}" if mtbf_als_val is not None else "N/D"
@@ -244,64 +194,264 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
     if_label = f"TOTAL ON: {if_on}\n{selected_als} ON: {if_als_on}"
     # ----------------------------------------------------------------------------------
 
+    # ----------------------------------------------------------------------------------
+    # Lógica de Botón Flotante para Fullscreen (Eliminado a petición del usuario)
+    # ----------------------------------------------------------------------------------
+    
+    # Flag para saber si estamos dentro del diálogo (mantener para compatibilidad interna)
+    is_in_dialog = st.session_state.get('kpi_in_dialog', False)
 
-    # === Construcción de Nodos y Conexiones (Mantenido) ===
-    dot.node('run_data', run_label, **node_style_data)
-    dot.node('rl_data', rl_label, **node_style_data)
-    dot.node('mtbf_data', mtbf_label, **node_style_data)
-    dot.node('if_data', if_label, **node_style_data)
+    # ----------------------------------------------------------------------------------
+    # Ajustes de Escala para Modo Compacto (Ahora 100% Ancho)
+    # ----------------------------------------------------------------------------------
+    # Aumentar scale_factor ya que ahora los KPIs ocupan 100% del ancho
+    scale_factor = 0.88 if not is_in_dialog else 1.0
+    iframe_height = 580 if not is_in_dialog else 850
     
-    node_style_lvl2 = node_style_lvl1.copy()
-    node_style_lvl2['shape'] = 'BOX'
-    node_style_lvl2['fontsize'] = '20'
-    
-    dot.node('fallado_node', 'FALLADOS', fillcolor=kpi_node_colors['IF'], **node_style_lvl2) 
-    dot.node('operativos_node', 'OPERATIVOS', fillcolor=kpi_node_colors['RUNs'], **node_style_lvl2)
-    
-    dot.edge('KPIs', 'RUNs', penwidth='3', color="#0011D1", arrowhead='none')
-    dot.edge('KPIs', 'RL', penwidth='3', color='#00F5FF', arrowhead='none')
-    dot.edge('KPIs', 'MTBF', penwidth='3', color='#A1039D', arrowhead='none')
-    dot.edge('KPIs', 'IF', penwidth='3', color='#5EFF00', arrowhead='none')
-    
-    dot.edge('RUNs', 'run_data',penwidth='3', color="#0011D1", arrowhead='normal') 
-    dot.edge('RL', 'rl_data',penwidth='3', color='#00F5FF', arrowhead='normal')
-    dot.edge('MTBF', 'mtbf_data',penwidth='3', color='#A1039D', arrowhead='normal')
-    dot.edge('IF', 'if_data', penwidth='3', color='#5EFF00', arrowhead='normal')
+    transform_style = f"transform: scale({scale_factor}) translateX(-50%) translateY(40px); transform-origin: top left; width: {100/scale_factor}%; position: absolute; left: 50%; top: 10px;"
+ 
+    # Preparar el HTML con los datos - Formato Stacked Premium
+    def br_hud(text):
+        parts = text.split("\n")
+        if len(parts) > 1:
+            # Color amarillo neón para la segunda línea (ALS) para que sea muy visible
+            return f'<span class="text-white font-black text-sm tracking-tight">{parts[0]}</span><br><span class="text-[#FFDE31] text-[10px] font-bold tracking-[0.1em] uppercase drop-shadow-[0_0_5px_rgba(255,222,49,0.5)]">{parts[1]}</span>'
+        return f'<span class="text-white font-black text-sm tracking-tight">{text}</span>'
+ 
+    html_content = f"""
+<!DOCTYPE html>
+<html class="dark">
+<head>
+    <meta charset="utf-8"/>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&family=Inter:wght@400;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@300&display=swap" rel="stylesheet"/>
+    <style>
+        :root {{ 
+            --neon: #00f2ff; 
+            --magento: #bc13fe; 
+            --emerald: #00ff9d; 
+            --amber: #FFDE31;
+            --bg-hud: #060a1e;
+        }}
+        body {{ 
+            background: transparent; 
+            font-family: 'Inter', sans-serif; 
+            height: 100vh; 
+            overflow: hidden; 
+            margin: 0;
+            user-select: none;
+        }}
+        
+        /* --- TECH BACKGROUND EFFECTS --- */
+        .grid-bg {{
+            background-image: linear-gradient(rgba(0, 242, 255, 0.05) 1px, transparent 1px), 
+                              linear-gradient(90deg, rgba(0, 242, 255, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+            mask-image: radial-gradient(circle at center, black, transparent 80%);
+            animation: grid-move 20s infinite linear;
+        }}
+        @keyframes grid-move {{ 
+            from {{ background-position: 0 0; }} 
+            to {{ background-position: 40px 40px; }} 
+        }}
 
-    dot.edge('run_data', 'fallado_node', penwidth='3', color=kpi_node_colors['IF'], arrowhead='normal')
-    dot.edge('run_data', 'operativos_node', penwidth='3', color=kpi_node_colors['RUNs'], arrowhead='normal')
+        .scanlines {{
+            position: fixed; inset: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%);
+            background-size: 100% 4px;
+            pointer-events: none; z-index: 100; opacity: 0.3;
+        }}
 
-    node_style_data_sub = node_style_data.copy()
-    # Evitar forzar negro absoluto; usar el color de contenedor del tema o transparencia
-    node_style_data_sub['fillcolor'] = COLOR_FONDO_CONTENEDOR if COLOR_FONDO_CONTENEDOR else 'transparent'
-    node_style_data_sub['width'] = '1.2'  # Menor ancho
-    node_style_data_sub['fontsize'] = '14' # Más pequeño aún
-    node_style_data_sub['margin'] = '0.05,0.2' # Menor margen
-    
-    dot.node('fallado_data', fallado_label, **node_style_data_sub)
-    dot.node('operativos_data', operativos_label, **node_style_data_sub)
-    
-    dot.edge('fallado_node', 'fallado_data', penwidth='3', color=kpi_node_colors['IF'], arrowhead='vee')
-    dot.edge('operativos_node', 'operativos_data', penwidth='3', color=kpi_node_colors['RUNs'], arrowhead='vee')
+        /* --- CARDS & INTERACTIVITY --- */
+        .hud-card {{
+            background: rgba(10, 15, 30, 0.7);
+            backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 14px 20px;
+            transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+            position: relative;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            display: flex; align-items: center; gap: 18px;
+            overflow: hidden;
+        }}
+        .hud-card::after {{
+            content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: radial-gradient(circle at center, var(--neon), transparent 70%);
+            opacity: 0; transition: opacity 0.5s; pointer-events: none; z-index: -1;
+        }}
+        .hud-card:hover {{
+            transform: translateY(-8px) scale(1.05);
+            border-color: var(--neon);
+            box-shadow: 0 0 50px rgba(0, 242, 255, 0.25);
+            background: rgba(10, 15, 30, 0.9);
+        }}
+        .hud-card:hover::after {{ opacity: 0.05; }}
+        
+        .hud-card::before {{
+            content: ''; position: absolute; left: 0; top: 20%; height: 60%; width: 3px;
+            background: var(--neon); border-radius: 0 4px 4px 0;
+            box-shadow: 0 0 10px var(--neon);
+        }}
+        
+        /* --- DATA FLOW ANIMATIONS --- */
+        .conn-path {{ 
+            stroke-dasharray: 15, 15; 
+            animation: flow 5s linear infinite; 
+            stroke-width: 2;
+            opacity: 0.3;
+            filter: drop-shadow(0 0 5px currentColor);
+        }}
+        @keyframes flow {{ to {{ stroke-dashoffset: -60; }} }}
 
-    node_style_lvl3 = node_style_lvl2.copy()
-    node_style_lvl3['shape'] = 'ellipse'
-    
-    dot.node('on_node', 'ENCENDIDOS', fillcolor=kpi_node_colors['ON'], **node_style_lvl3) 
-    dot.node('off_node', 'APAGADOS', fillcolor=kpi_node_colors['OFF'], **node_style_lvl3) 
-    
-    dot.edge('operativos_data', 'on_node', penwidth='3', color=kpi_node_colors['ON'], arrowhead='normal')
-    dot.edge('operativos_data', 'off_node', penwidth='3', color=kpi_node_colors['OFF'], arrowhead='normal')
+        .glow-icon {{ filter: drop-shadow(0 0 12px currentColor); }}
+        
+        /* --- FLOATING TECH ORBS --- */
+        .orb {{
+            position: absolute; width: 500px; height: 500px; border-radius: 50%;
+            filter: blur(120px); opacity: 0.12; z-index: -2;
+        }}
+        .orb-pulse {{ animation: orbit-float 30s infinite ease-in-out; }}
+        @keyframes orbit-float {{
+            0%, 100% {{ transform: translate(0, 0) scale(1); opacity: 0.1; }}
+            50% {{ transform: translate(100px, 50px) scale(1.2); opacity: 0.2; }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="scanlines"></div>
+    <div class="grid-bg fixed inset-0"></div>
+    <div class="orb orb-pulse bg-[#C82B96] -top-20 -left-20"></div>
+    <div class="orb orb-pulse bg-[#00f2ff] -bottom-20 -right-20" style="animation-delay: -15s;"></div>
 
-    dot.node('on_data', on_label, **node_style_data_sub)
-    dot.node('off_data', off_label, **node_style_data_sub)
-    
-    dot.edge('on_node', 'on_data', penwidth='3', color=kpi_node_colors['ON'], arrowhead='vee')
-    dot.edge('off_node', 'off_data', penwidth='3', color=kpi_node_colors['OFF'], arrowhead='vee')
+    <div class="flex items-center justify-center h-full relative z-10" style="{transform_style}">
+        
+        <!-- SVG Connections -->
+        <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 1500 650">
+            <g fill="none">
+                <!-- Data Paths Left (Conectan a X=560 para alinear con left-[18%]) -->
+                <path class="conn-path" d="M 750 325 C 650 325, 600 120, 560 120" stroke="#00f2ff"></path>
+                <path class="conn-path" d="M 750 325 C 650 325, 600 220, 560 220" stroke="#00ff9d"></path>
+                <path class="conn-path" d="M 750 325 C 650 325, 600 325, 560 325" stroke="#ff0055"></path>
+                <path class="conn-path" d="M 750 325 C 650 325, 600 430, 560 430" stroke="#FFDE31"></path>
+                <path class="conn-path" d="M 750 325 C 650 325, 600 530, 560 530" stroke="#94a3b8"></path>
+                
+                <!-- Data Paths Right (Conectan a X=940 para alinear con right-[18%]) -->
+                <path class="conn-path" d="M 750 325 C 850 325, 900 150, 940 150" stroke="#bc13fe"></path>
+                <path class="conn-path" d="M 750 325 C 850 325, 900 250, 940 250" stroke="#bc13fe"></path>
+                <path class="conn-path" d="M 750 325 C 850 325, 900 350, 940 350" stroke="#00ff9d"></path>
+                <path class="conn-path" d="M 750 325 C 850 325, 900 450, 940 450" stroke="#ff0055"></path>
+            </g>
+        </svg>
 
-    # Mostrar en Streamlit
-    st.graphviz_chart(dot)
+        <!-- Central Nerve System Unit -->
+        <div class="relative group z-50">
+            <div class="w-40 h-40 rounded-full bg-[#0a0f1e] border-2 border-[#00f2ff]/40 flex flex-col items-center justify-center shadow-[0_0_80px_rgba(0,242,255,0.3)] group-hover:scale-110 group-hover:border-[#00f2ff] transition-all duration-700 cursor-help">
+                <div class="absolute inset-0 rounded-full bg-[radial-gradient(circle,#00f2ff20,transparent_70%)] animate-pulse"></div>
+                <!-- Tech ring -->
+                <div class="absolute inset-0 border-[1px] border-dashed border-[#00f2ff]/20 rounded-full animate-[spin_20s_linear_infinite]"></div>
+                <span class="material-symbols-outlined text-[#00f2ff] text-6xl mb-1 glow-icon">dashboard_customize</span>
+                <span class="text-[12px] font-black tracking-[5px] text-[#00f2ff] uppercase drop-shadow-[0_0_8px_#00f2ff]">KPIs</span>
+            </div>
+        </div>
 
+        <!-- Left Column: Command Units (Ajustado a 18%) -->
+        <div class="absolute left-[18%] flex flex-col gap-6 items-end">
+            <div class="hud-card w-72 text-right" style="--neon: #00f2ff;">
+                <div class="flex-1">
+                    <div class="text-[10px] font-black text-[#94a3b8] tracking-[3px] uppercase mb-1">Corridas</div>
+                    {br_hud(run_label)}
+                </div>
+                <div class="w-12 h-12 rounded-lg bg-[#00f2ff]/10 flex items-center justify-center border border-[#00f2ff]/30">
+                    <span class="material-symbols-outlined text-[#00f2ff] text-3xl glow-icon">terminal</span>
+                </div>
+            </div>
+            <div class="hud-card w-72 text-right" style="--neon: #00ff9d;">
+                <div class="flex-1">
+                    <div class="text-[10px] font-black text-[#94a3b8] tracking-[3px] uppercase mb-1">Operativos</div>
+                    {br_hud(operativos_label)}
+                </div>
+                <div class="w-12 h-12 rounded-lg bg-[#00ff9d]/10 flex items-center justify-center border border-[#00ff9d]/30">
+                    <span class="material-symbols-outlined text-[#00ff9d] text-3xl glow-icon">analytics</span>
+                </div>
+            </div>
+            <div class="hud-card w-72 text-right" style="--neon: #ff0055;">
+                <div class="flex-1">
+                    <div class="text-[10px] font-black text-[#94a3b8] tracking-[3px] uppercase mb-1">Fallados</div>
+                    {br_hud(fallado_label)}
+                </div>
+                <div class="w-12 h-12 rounded-lg bg-[#ff0055]/10 flex items-center justify-center border border-[#ff0055]/30">
+                    <span class="material-symbols-outlined text-[#ff0055] text-3xl glow-icon">emergency_home</span>
+                </div>
+            </div>
+            <div class="hud-card w-72 text-right" style="--neon: #FFDE31;">
+                <div class="flex-1">
+                    <div class="text-[10px] font-black text-[#94a3b8] tracking-[3px] uppercase mb-1">Activos</div>
+                    {br_hud(on_label)}
+                </div>
+                <div class="w-12 h-12 rounded-lg bg-[#FFDE31]/10 flex items-center justify-center border border-[#FFDE31]/30">
+                    <span class="material-symbols-outlined text-[#FFDE31] text-3xl glow-icon">energy_program_saving</span>
+                </div>
+            </div>
+            <div class="hud-card w-72 text-right" style="--neon: #94a3b8;">
+                <div class="flex-1">
+                    <div class="text-[10px] font-black text-[#94a3b8] tracking-[3px] uppercase mb-1">Apagados</div>
+                    {br_hud(off_label)}
+                </div>
+                <div class="w-12 h-12 rounded-lg bg-[#94a3b8]/10 flex items-center justify-center border border-[#94a3b8]/30">
+                    <span class="material-symbols-outlined text-slate-400 text-3xl glow-icon">power_off</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Performance Outbound (Ajustado a 18%) -->
+        <div class="absolute right-[18%] flex flex-col gap-6 items-start">
+            <div class="hud-card w-72" style="--neon: #bc13fe;">
+                <div class="w-12 h-12 rounded-lg bg-[#bc13fe]/10 flex items-center justify-center border border-[#bc13fe]/30">
+                    <span class="material-symbols-outlined text-[#bc13fe] text-3xl glow-icon">hourglass_top</span>
+                </div>
+                <div class="flex-1">
+                    <div class="text-[10px] font-black text-[#94a3b8] tracking-[3px] uppercase mb-1">Run Life</div>
+                    {br_hud(rl_label)}
+                </div>
+            </div>
+            <div class="hud-card w-72" style="--neon: #bc13fe;">
+                <div class="w-12 h-12 rounded-lg bg-[#bc13fe]/10 flex items-center justify-center border border-[#bc13fe]/30">
+                    <span class="material-symbols-outlined text-[#bc13fe] text-3xl glow-icon">monitoring</span>
+                </div>
+                <div class="flex-1">
+                    <div class="text-[10px] font-black text-[#94a3b8] tracking-[3px] uppercase mb-1">TMEF / MTBF</div>
+                    {br_hud(mtbf_label)}
+                </div>
+            </div>
+            <div class="hud-card w-72" style="--neon: #00ff9d;">
+                <div class="w-12 h-12 rounded-lg bg-[#00ff9d]/10 flex items-center justify-center border border-[#00ff9d]/30">
+                    <span class="material-symbols-outlined text-[#00ff9d] text-3xl glow-icon">health_metrics</span>
+                </div>
+                <div class="flex-1">
+                    <div class="text-[10px] font-black text-[#94a3b8] tracking-[3px] uppercase mb-1">Run Life Efectivo</div>
+                    {br_hud(rle_label)}
+                </div>
+            </div>
+            <div class="hud-card w-72" style="--neon: #ff0055;">
+                <div class="w-12 h-12 rounded-lg bg-[#ff0055]/10 flex items-center justify-center border border-[#ff0055]/30">
+                    <span class="material-symbols-outlined text-[#ff0055] text-3xl glow-icon">query_stats</span>
+                </div>
+                <div class="flex-1">
+                    <div class="text-[10px] font-black text-[#94a3b8] tracking-[3px] uppercase mb-1">Indice de Falla</div>
+                    {br_hud(if_label)}
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+"""
+    components.html(html_content, height=iframe_height, scrolling=False)
+
+
+from graphviz import Digraph # Import Digraph
 
 def build_kpis_graph(df_bd, df_forma9=None, reporte_run_life=None, indice_resumen_df=None, selected_als='TODOS', fecha_evaluacion=None):
     """Construye y devuelve un objeto graphviz.Digraph con los nodos y etiquetas de KPIs.
@@ -367,7 +517,7 @@ def build_kpis_graph(df_bd, df_forma9=None, reporte_run_life=None, indice_resume
     # Run Life promedio
     rl_todos = None
     if reporte_run_life is not None and not reporte_run_life.empty:
-        val = reporte_run_life.loc[reporte_run_life['Categoría'] == 'Tiempo Op. (Apagados + Fallados)', 'Valor']
+        val = reporte_run_life.loc[reporte_run_life['Categoría'] == 'Tiempo de Vida Promedio (Fallados+Ext)', 'Valor']
         if not val.empty:
             try:
                 rl_todos = float(val.values[0])
