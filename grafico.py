@@ -5,14 +5,98 @@ import plotly.express as px
 import plotly.io as pio
 import copy
 from datetime import datetime
-from theme import get_colors, get_plotly_layout
+from theme import get_colors, get_plotly_layout, plotly_styled_title as theme_plotly_styled_title
 import plotly.graph_objects as _go
 import streamlit as st
+
+def inject_plotly_dynamic_styles():
+    """
+    Inyecta estilos CSS dinámicos para que los gráficos de Plotly se adapten
+    automáticamente al modo oscuro/claro de Streamlit.
+    """
+    st.markdown("""
+    <style>
+    /* ========================================
+       ESTILOS DINÁMICOS PARA GRÁFICAS (Plotly)
+       Ejes, Leyenda y Texto: Blanco en Dark / Negro en Light
+    ======================================== */
+
+    /* 1. CONFIGURACIÓN DE FONDOS */
+    [data-testid="stPlotlyChart"], .plotly-graph-div, .js-plotly-plot {
+        background-color: transparent !important;
+    }
+
+    /* 2. MODO OSCURO (DARK MODE) */
+    /* Ejes, Leyenda, Títulos y Ticks en BLANCO */
+    [data-theme="dark"] .plotly text,
+    [data-theme="dark"] .plotly tspan,
+    [data-theme="dark"] .plotly .xtick text,
+    [data-theme="dark"] .plotly .ytick text,
+    [data-theme="dark"] .plotly .xtitle,
+    [data-theme="dark"] .plotly .ytitle,
+    div[data-portal-id][data-theme="dark"] .plotly text,
+    div[data-portal-id][data-theme="dark"] .plotly tspan,
+    div[data-portal-id][data-theme="dark"] .plotly .xtick text,
+    div[data-portal-id][data-theme="dark"] .plotly .ytick text {
+        fill: #ffffff !important;
+        color: #ffffff !important;
+    }
+
+    [data-theme="dark"] .plotly .bg, 
+    [data-theme="dark"] .plotly .plotbg, 
+    [data-theme="dark"] .plotly .bgrect {
+        fill: #0A0E27 !important;
+    }
+
+    /* 3. MODO CLARO (LIGHT MODE) */
+    /* Ejes, Leyenda, Títulos y Ticks en NEGRO */
+    [data-theme="light"] .plotly text,
+    [data-theme="light"] .plotly tspan,
+    [data-theme="light"] .plotly .xtick text,
+    [data-theme="light"] .plotly .ytick text,
+    [data-theme="light"] .plotly .xtitle,
+    [data-theme="light"] .plotly .ytitle,
+    div[data-portal-id][data-theme="light"] .plotly text,
+    div[data-portal-id][data-theme="light"] .plotly tspan,
+    div[data-portal-id][data-theme="light"] .plotly .xtick text,
+    div[data-portal-id][data-theme="light"] .plotly .ytick text {
+        fill: #000000 !important;
+        color: #000000 !important;
+    }
+
+    [data-theme="light"] .plotly .bg, 
+    [data-theme="light"] .plotly .plotbg, 
+    [data-theme="light"] .plotly .bgrect {
+        fill: #ffffff !important;
+    }
+
+    /* 4. TEXTO DE LEYENDA CON ILUMINACIÓN BLANCA ULTRA-INTENSA */
+    .plotly .legendtext {
+        fill: #000000 !important;
+        color: #000000 !important;
+        /* Resplandor masivo acumulado para brillo extremo */
+        filter: drop-shadow(0 0 2px #fff) 
+                drop-shadow(0 0 3px #fff) 
+                drop-shadow(0 0 5px #fff) 
+    }
+
+    /* 5. COLOR DE LAS LÍNEAS DE LOS EJES (OPCIONAL) */
+    /* Para que las líneas de la cuadrícula no sean demasiado fuertes */
+    [data-theme="dark"] .plotly .gridlayer path { stroke: rgba(255,255,255,0.4) !important; }
+    [data-theme="light"] .plotly .gridlayer path { stroke: rgba(0,0,0,0.4) !important; }
+    </style>
+    """, unsafe_allow_html=True)
 
 # --- Configuración de Tema (usar API del módulo theme) ---
 _colors = get_colors()
 get_color_sequence = _colors.get('color_sequence', lambda: ['#00ff99', '#00cfff', '#FFDE31', '#5AFFDA'])
 get_plotly_layout = get_plotly_layout
+
+def plotly_styled_title(text: str) -> str:
+    try:
+        return theme_plotly_styled_title(text)
+    except Exception:
+        return f"<b>{text.upper()}</b>"
 
 from indice_falla import calcular_indice_falla_anual # Asegúrate de que esta función realmente existe y es necesaria
 
@@ -21,6 +105,7 @@ from indice_falla import calcular_indice_falla_anual # Asegúrate de que esta fu
 # Dejamos esta función como estaba, sin la lógica de cálculo de índices internos
 # para asegurar que la única fuente de índices sea la función calcular_indice_falla_anual ya corregida.
 
+@st.cache_data(show_spinner="Generando resumen mensual...")
 def generar_resumen_mensual(df_bd, df_forma9, fecha_evaluacion):
     """
     Genera un DataFrame mensual con métricas combinadas:
@@ -73,7 +158,15 @@ def generar_resumen_mensual(df_bd, df_forma9, fecha_evaluacion):
     runlife_rows = []
     
     # Importar la función oficial de cálculo de MTBF
+    # Importar la función oficial de cálculo de MTBF y Run Life Efectivo
+    # Asegurar que el path incluye el directorio actual para imports locales
+    import sys
+    import os
+    if os.getcwd() not in sys.path:
+        sys.path.append(os.getcwd())
+
     from mtbf import calcular_mtbf
+    from run_life_efectivo import calcular_run_life_efectivo
 
     runlife_rows = []
     
@@ -114,19 +207,67 @@ def generar_resumen_mensual(df_bd, df_forma9, fecha_evaluacion):
         
         runlife_promedio = (sum_rl / count_ended) if count_ended > 0 else 0.0
 
+        # --- CÁLCULO DE RUN LIFE GENERAL (Activos + Fallados) ---
+        all_started_runs = df_bd[df_bd['FECHA_RUN_DT'] <= mes_fin].copy()
+        if not all_started_runs.empty:
+            all_started_runs['End_Snapshot'] = mes_fin
+            # Máscara de los que YA habían fallado o tenido pull a esta fecha de corte
+            mask_ended_snap = (
+                ((all_started_runs['FECHA_FALLA_DT'].notna()) & (all_started_runs['FECHA_FALLA_DT'] <= mes_fin)) |
+                ((all_started_runs['FECHA_PULL_DT'].notna()) & (all_started_runs['FECHA_PULL_DT'] <= mes_fin))
+            )
+            # Para los terminados, usar su fecha real de fin
+            all_started_runs.loc[mask_ended_snap, 'End_Snapshot'] = np.where(
+                all_started_runs.loc[mask_ended_snap, 'FECHA_FALLA_DT'].notna(),
+                all_started_runs.loc[mask_ended_snap, 'FECHA_FALLA_DT'],
+                all_started_runs.loc[mask_ended_snap, 'FECHA_PULL_DT']
+            )
+            all_started_runs['RL_Gen_Days'] = (all_started_runs['End_Snapshot'] - all_started_runs['FECHA_RUN_DT']).dt.days
+            runlife_general = all_started_runs['RL_Gen_Days'].mean()
+        else:
+            runlife_general = 0.0
+
         # --- CÁLCULO DE TMEF (Coherente con INDICADORES.py) ---
-        # Usamos la función oficial calcular_mtbf pasando el dataframe completo y la fecha de corte.
-        # La función interno filtra por FECHA_RUN <= mes_fin y usa los valores estáticos de RUN LIFE / INDICADOR
-        # tal como lo hace el indicador global.
         try:
             tmef_calc, _ = calcular_mtbf(df_bd, mes_fin)
         except Exception:
             tmef_calc = 0.0
+            
+        # --- CÁLCULO DE RUN LIFE EFECTIVO (Histórico) ---
+        rl_efectivo_fallados = 0.0
+        try:
+            # 1. Filtrar por fecha de inicio
+            current_runs = df_bd[df_bd['FECHA_RUN_DT'] <= mes_fin].copy()
+            
+            if not current_runs.empty:
+                # 2. Asegurar columnas limpias de fecha en el DF que pasamos
+                current_runs['FECHA_RUN'] = current_runs['FECHA_RUN_DT']
+                current_runs['FECHA_FALLA'] = current_runs['FECHA_FALLA_DT']
+                current_runs['FECHA_PULL'] = current_runs['FECHA_PULL_DT']
+                
+                # 3. ENMASCARAR EVENTOS FUTUROS (Time Travel)
+                current_runs.loc[current_runs['FECHA_FALLA'] > mes_fin, 'FECHA_FALLA'] = pd.NaT
+                current_runs.loc[current_runs['FECHA_PULL'] > mes_fin, 'FECHA_PULL'] = pd.NaT
+                
+                # 4. Calcular usando la función oficial
+                rl_efectivo_calc, df_rle_hist = calcular_run_life_efectivo(current_runs, df_f9, mes_fin)
+                
+                # 5. Filtrar solo extraídos/fallados para la métrica específica
+                mask_ended_rle = (df_rle_hist['FECHA_FALLA'].notna()) | (df_rle_hist['FECHA_PULL'].notna())
+                rl_efectivo_fallados = df_rle_hist[mask_ended_rle]['RUN_LIFE_EFECTIVO'].mean() if not df_rle_hist[mask_ended_rle].empty else 0.0
+            else:
+                rl_efectivo_calc = 0.0
+        except Exception as e:
+            rl_efectivo_calc = 0.0
+            rl_efectivo_fallados = 0.0
 
         runlife_rows.append({
             'Mes_dt': mes_inicio,
             'RunLife_Promedio': runlife_promedio,
-            'TMEF_Promedio': tmef_calc
+            'RunLife_General': runlife_general,
+            'TMEF_Promedio': tmef_calc,
+            'RunLife_Efectivo': rl_efectivo_calc,
+            'RunLife_Efectivo_Fallados': rl_efectivo_fallados
         })
 
     df_runlife = pd.DataFrame(runlife_rows)
@@ -158,503 +299,496 @@ def generar_resumen_mensual(df_bd, df_forma9, fecha_evaluacion):
     df_final = df_final[df_final['Indice_Falla_ON'].notna()]
     
     # Seleccionar y ordenar las columnas finales
-    final_cols = ['Mes', 'Pozos_Operativos', 'Pozos_ON', 'Pozos_OFF', 'RunLife_Promedio', 'TMEF_Promedio', 'Indice_Falla_ON', 'Indice_Falla_ON_ALS']
+    final_cols = [
+        'Mes', 'Pozos_Operativos', 'Pozos_ON', 'Pozos_OFF', 
+        'RunLife_Promedio', 'RunLife_General', 'TMEF_Promedio', 
+        'RunLife_Efectivo', 'RunLife_Efectivo_Fallados', 
+        'Indice_Falla_ON', 'Indice_Falla_ON_ALS'
+    ]
     return df_final[final_cols].sort_values('Mes').reset_index(drop=True)
 
 
 def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico Resumen"):
     """
-    Genera figura mensual con efecto neón/brillo en las LÍNEAS.
+    Genera figura mensual con estética Cyberpunk/HUD Futuro.
+    Mantiene la lógica intacta, solo se modifica la visualización.
     """
     df_monthly = generar_resumen_mensual(df_bd, df_forma9, fecha_evaluacion)
     if df_monthly.empty:
         return None, df_monthly
 
-    # Normalizar índices defensivamente: asegurar que las columnas de índice estén en ratio 0..1
+    # Normalizar índices defensivamente (Lógica intacta)
     for col in ['Indice_Falla_ON', 'Indice_Falla_ON_ALS']:
         if col in df_monthly.columns:
-            # Convertir a numérico de forma segura
             df_monthly[col] = pd.to_numeric(df_monthly[col], errors='coerce')
-            # Si el valor máximo sigue siendo alto (> 1), es un porcentaje no dividido, lo dividimos.
             max_val = df_monthly[col].max(skipna=True)
             if pd.notna(max_val) and (max_val > 1 and max_val <= 100):
                 df_monthly[col] = df_monthly[col] / 100.0
-            
-            # Clip por seguridad (mantenemos el rango amplio del original por si hay outliers)
             df_monthly[col] = df_monthly[col].clip(lower=0.0, upper=10.0)
             df_monthly[col].fillna(0, inplace=True)
 
+    # --- PALETA CROMÁTICA ADAPTABLE ---
+    # Inyectar estilos dinámicos de Plotly
+    inject_plotly_dynamic_styles()
+    
+    # Colores HUD más vibrantes
+    CYAN_NEON = '#00D9FF'      # Celeste vibrante
+    GREEN_ELECTRIC = '#B200CC' # Verde neón
+    MAGENTA_ALERTA = '#ff0055' # Magenta alerta
+    AMARILLO_NEON = '#FFAB40' # Amarillo/Naranja neón
+    GRID_COLOR = 'rgba(128,128,128,0.15)' # Gris sutil para ambos temas
+    FONT_TECH = 'Consolas, "Courier New", monospace'
 
-    # Colores base para las líneas
-    COLOR_RUNLIFE = '#0A4D57'
-    COLOR_TMEF = '#A1039D'
-    COLOR_IF_ON = '#F52738' 
-    COLOR_IF_ALS = '#360A57' 
+    # Asignación de colores
+    COLOR_POZOS_ON = CYAN_NEON
+    COLOR_POZOS_OFF = '#141943'
+    COLOR_RUNLIFE = GREEN_ELECTRIC
+    COLOR_RUNLIFE_GEN = '#a6ff00'
+    COLOR_RLE = "#FFF700"
+    COLOR_RLE_FALLA = '#00CCFF'
+    COLOR_TMEF = '#E6E6E6'
+    COLOR_IF_ON = MAGENTA_ALERTA
+    COLOR_IF_ALS = AMARILLO_NEON
 
     fig = go.Figure()
 
-    # --- Trazas ---
+    # --- TRAZAS (ESTILO HUD ESPAÑOL) ---
 
-    # 1. Barras (Pozos ON/OFF) - Eje Y1
-    fig.add_trace(go.Bar(x=df_monthly['Mes'], y=df_monthly['Pozos_ON'], name='Pozos ON', marker_color='#27E0F5', offsetgroup=1))
-    fig.add_trace(go.Bar(x=df_monthly['Mes'], y=df_monthly['Pozos_OFF'], name='Pozos OFF', marker_color='#2757F5', offsetgroup=1, base=df_monthly['Pozos_ON'])) # STACKED BAR (OFF sobre ON)
+    # 1. Barras (Pozos ON/OFF)
+    fig.add_trace(go.Bar(
+        x=df_monthly['Mes'], 
+        y=df_monthly['Pozos_ON'], 
+        name='POZOS ACTIVOS', 
+        marker=dict(color=COLOR_POZOS_ON, line=dict(color=COLOR_POZOS_ON, width=1), opacity=1),
+        offsetgroup=0.5,
+        hovertemplate='<b>[ESTADO: ACTIVOS]</b><br>CANTIDAD: %{y}<extra></extra>'
+    ))
+    fig.add_trace(go.Bar(
+        x=df_monthly['Mes'], 
+        y=df_monthly['Pozos_OFF'], 
+        name='POZOS INACTIVOS', 
+        marker=dict(color=COLOR_POZOS_OFF, line=dict(width=1), opacity=1),
+        offsetgroup=0.5, 
+        base=df_monthly['Pozos_ON'],
+        hovertemplate='<b>[ESTADO: INACTIVOS]</b><br>CANTIDAD: %{y}<extra></extra>'
+    )) 
 
-    # 2. Línea (Run Life Promedio) - Eje Y1 
+    # 2. Líneas de Tiempo de Vida (RV)
     fig.add_trace(go.Scatter(
         x=df_monthly['Mes'], 
         y=df_monthly['RunLife_Promedio'], 
-        name='Tiempo Vida Promedio (días/pozo)', 
+        name='TIEMPO DE VIDA', 
         mode='lines+markers',
-        marker_symbol='diamond', 
-        marker_color=COLOR_RUNLIFE, 
-        line=dict(width=4, dash='solid', color=COLOR_RUNLIFE),
-        marker=dict(size=4), 
-        yaxis='y1'
+        marker=dict(symbol='circle', size=8, color=COLOR_RUNLIFE), 
+        line=dict(width=3, color=COLOR_RUNLIFE),
+        yaxis='y1',
+        hovertemplate='<b>[TIEMPO DE VIDA ]</b><br>DÍAS: %{y:.2f}<extra></extra>'
     ))
 
-    # 3. Línea (TMEF Promedio) - Eje Y1
+    if 'RunLife_General' in df_monthly.columns:
+        fig.add_trace(go.Scatter(
+            x=df_monthly['Mes'], 
+            y=df_monthly['RunLife_General'], 
+            name='TIEMPO DE VIDA TOTAL', 
+            mode='lines+markers',
+            marker=dict(symbol='circle-open', size=8, color=COLOR_RUNLIFE_GEN), 
+            line=dict(width=3, color=COLOR_RUNLIFE_GEN),
+            yaxis='y1',
+            hovertemplate='<b>[TIEMPO DE VIDA TOTAL]</b><br>DÍAS: %{y:.2f}<extra></extra>'
+        ))
+
+    if 'RunLife_Efectivo' in df_monthly.columns:
+        fig.add_trace(go.Scatter(
+            x=df_monthly['Mes'], 
+            y=df_monthly['RunLife_Efectivo'], 
+            name='TIEMPO DE VIDA EFECTIVO TOTAL', 
+            mode='lines+markers',
+            marker=dict(symbol='circle', size=8, color=COLOR_RLE), 
+            line=dict(width=3, dash='dot', color=COLOR_RLE),
+            yaxis='y1',
+            hovertemplate='<b>[TIEMPO DE VIDA EFECTIVO TOTAL]</b><br>DÍAS: %{y:.2f}<extra></extra>'
+        ))
+
+    if 'RunLife_Efectivo_Fallados' in df_monthly.columns:
+        fig.add_trace(go.Scatter(
+            x=df_monthly['Mes'], 
+            y=df_monthly['RunLife_Efectivo_Fallados'], 
+            name='TIEMPO DE VIDA EFECTIVO', 
+            mode='lines+markers',
+            marker=dict(symbol='circle-open', size=8, color="#00549A"), 
+            line=dict(width=3, dash='dot', color="#8FA73B"),
+            yaxis='y1',
+            hovertemplate='<b>[TIEMPO DE VIDA EFECTIVO]</b><br>DÍAS: %{y:.2f}<extra></extra>'
+        ))
+
+    # 3. TMEF
     fig.add_trace(go.Scatter(
         x=df_monthly['Mes'], 
         y=df_monthly['TMEF_Promedio'], 
-        name='TMEF Promedio (días)', 
+        name='TMEF PROM', 
         mode='lines+markers',
-        marker_symbol='circle', 
-        marker_color=COLOR_TMEF, 
-        line=dict(width=4, dash='dot', color=COLOR_TMEF),
-        marker=dict(size=4), 
+        marker=dict(symbol='circle', size=7, color=COLOR_TMEF), 
+        line=dict(width=2, dash='dot', color=COLOR_TMEF),
         yaxis='y1',
-        visible='legendonly'
+        visible='legendonly',
+        hovertemplate='<b>[TMEF]</b><br>DÍAS: %{y:.2f}<extra></extra>'
     ))
 
-    # 4. Índices de Falla (Rolling) - Eje Y2 
+    # 4. Índices de Falla
     fig.add_trace(go.Scatter(
         x=df_monthly['Mes'], 
         y=df_monthly['Indice_Falla_ON'], 
-        name='Índice de Falla ON (Rolling 12M)', # Título para reflejar el rolling
+        name='ÍNDICE FALLA (ON)', 
         mode='lines+markers', 
-        marker_symbol='diamond', 
-        marker_color=COLOR_IF_ON, 
-        line=dict(width=4, dash='solid', color=COLOR_IF_ON),
-        marker=dict(size=4),
+        marker=dict(symbol='diamond', size=8, color=COLOR_IF_ON), 
+        line=dict(width=4, color=COLOR_IF_ON),
         yaxis='y2',
-        hovertemplate='%{x}<br>Índice ON: %{y:.2%}<extra></extra>'
+        hovertemplate='<b>[IF_ON]</b><br>ÍNDICE: %{y:.2%}<extra></extra>'
     ))
     fig.add_trace(go.Scatter(
         x=df_monthly['Mes'], 
         y=df_monthly['Indice_Falla_ON_ALS'], 
-        name='Índice de Falla ON ALS (Rolling 12M)', # Título para reflejar el rolling
+        name='ÍNDICE FALLA ALS (ON)', 
         mode='lines+markers', 
-        marker_symbol='diamond', 
-        marker_color=COLOR_IF_ALS, 
-        line=dict(width=4, dash='solid', color=COLOR_IF_ALS),
-        marker=dict(size=4),
+        marker=dict(symbol='diamond-open', size=8, color=COLOR_IF_ALS), 
+        line=dict(width=4, color=COLOR_IF_ALS),
         yaxis='y2',
-        hovertemplate='%{x}<br>Índice ON ALS: %{y:.2%}<extra></extra>'
+        hovertemplate='<b>[IF_ALS_ON]</b><br>ÍNDICE: %{y:.2%}<extra></extra>'
     ))
 
-    # --- Layout ---
+    # --- LAYOUT (HUD SIMÉTRICO) ---
 
-    # Calcular rango superior para eje derecho (Y2)
     max_indice = max(
         float(np.nanmax(df_monthly['Indice_Falla_ON'].replace([np.inf, -np.inf], np.nan).fillna(0))) if 'Indice_Falla_ON' in df_monthly.columns else 0,
         float(np.nanmax(df_monthly['Indice_Falla_ON_ALS'].replace([np.inf, -np.inf], np.nan).fillna(0))) if 'Indice_Falla_ON_ALS' in df_monthly.columns else 0
     )
-    # Rango de Y2: usar un margen alrededor del máximo
-    upper_y2 = max(0.01, max_indice * 1.2)
+    upper_y2 = max(0.01, max_indice * 1.01)
 
-    # Rango del eje X (forzar inicio en 2019)
-    # Iniciar siempre desde 2019-01-01; terminar en el último mes con datos
     if not df_monthly.empty:
         x_start = pd.to_datetime('2019-01-01')
         x_end = df_monthly['Mes'].max()
     else:
         x_start = pd.to_datetime('2019-01-01')
         x_end = pd.to_datetime(fecha_evaluacion)
-    x_range = [x_start, x_end]
 
-    # Aplicar el layout base del tema
-    layout_base = get_plotly_layout()
-    
-    # Configuración de ejes específicos
-    yaxis1_config = dict(
-        title='# Pozos / Tiempo Vida / TMEF (días)', 
-        side='left', 
-        color=layout_base['yaxis']['color']
-    )
-    yaxis2_config = dict(
-        title='Índices de Falla (Ratio Rolling 12M)', # Título ajustado
-        overlaying='y', 
-        side='right', 
-        showgrid=False, 
-        rangemode='tozero', 
-        range=[0, upper_y2],
-        color='#A6FF00', 
-        tickformat='.2%' 
-    )
-    xaxis_config = dict(
-        title='Mes', 
-        tickformat='%Y-%m',
-        range=x_range,
-        type='date', 
-        color=layout_base['xaxis']['color']
-    )
-    
-    # Combinar y actualizar el layout
-    fig.update_layout(
-        title=titulo,
+    from theme import get_plotly_layout
+    layout = get_plotly_layout()
+    layout['title'] = plotly_styled_title(titulo)
+    layout.update(dict(
+        showlegend=True,
         barmode='stack',
-        xaxis=xaxis_config,
-        yaxis=yaxis1_config,
-        yaxis2=yaxis2_config,
-        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1, font=dict(color='white')),
-        margin=dict(t=100, b=50, l=50, r=50)
-    )
-    
-    # Aplicar el resto del tema (colores de fondo, fuente, etc.)
-    # Solo pasar las claves presentes y no-None para respetar cuando
-    # `theme.get_plotly_layout()` deja el fondo a Streamlit (background=None).
-    layout_updates = {k: v for k, v in layout_base.items() if v is not None}
-    fig.update_layout(**layout_updates)
+        legend=dict(
+            orientation='h',
+            yanchor='bottom',
+            y=1.05,
+            xanchor='center',
+            x=0.5,
+            bgcolor='rgba(10, 14, 39, 0.8)',
+            bordercolor='#00f2ff',
+            borderwidth=1
+        ),
+        xaxis=dict(
+            title=dict(text='<b>TIEMPO</b>', font=dict(size=14, family='Outfit')),
+            tickformat='%Y-%m',
+            range=[x_start, x_end],
+            gridcolor='rgba(255,255,255,0.05)',
+            linecolor='#135bec'
+        ),
+        yaxis=dict(
+            title=dict(text='<b>POZOS / DÍAS VIDA / TMEF</b>', font=dict(size=14, family='Outfit')),
+            gridcolor='rgba(255,255,255,0.05)',
+            linecolor='#135bec'
+        ),
+        yaxis2=dict(
+            title=dict(text='<b>ÍNDICE DE FALLA</b>', font=dict(size=14, family='Outfit')),
+            overlaying='y',
+            side='right',
+            range=[0, upper_y2],
+            tickformat='.2%',
+            showgrid=False,
+            linecolor='#00f2ff'
+        ),
+        margin=dict(t=100, b=80, l=90, r=90)
+    ))
 
-    # Asegurar que la leyenda tenga texto blanco (reaplicar por si el tema la sobreescribe)
-    fig.update_layout(legend=dict(font=dict(color='white')))
-    
+    fig.update_layout(**layout)
+    # Decoración HUD
+    fig.add_shape(type='line', x0=0, y0=1.02, x1=1, y1=1.02, xref='paper', yref='paper', line=dict(color='#00f2ff', width=2))
+
     return fig, df_monthly
 
 
-def exportar_png_claro(fig, filename, width=1200, height=700, scale=2):
+def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
     """
-    Exporta la figura Plotly a PNG con fondo claro y texto/leyenda oscuros.
-
-    Parámetros:
-    - fig: objeto Plotly (go.Figure)
-    - filename: ruta de salida (incluye .png)
-    - width, height: dimensiones en píxeles
-    - scale: escala para resolución (dpi equivalente)
-    Devuelve la ruta del archivo generado.
+    Renderiza un gráfico premium estilo HUD utilizando ECharts (HTML/JS).
+    Proporciona una visualización mucho más fluida, moderna e interactiva que Plotly.
     """
-    # Hacer una copia para no mutar la figura original usada en la UI
-    fig_copy = copy.deepcopy(fig)
+    import json
+    import streamlit.components.v1 as components
 
-    # Forzar tema claro y texto oscuro
-    fig_copy.update_layout(
-        template='plotly_white',
-        paper_bgcolor='white',
-        plot_bgcolor='white',
-        font=dict(color='black'),
-        legend=dict(font=dict(color='black'), bgcolor='rgba(255,255,255,0.9)', bordercolor='rgba(0,0,0,0.08)')
-    )
+    if df_monthly is None or df_monthly.empty:
+        return st.info("No hay datos mensuales para este filtro.")
 
-    # Asegurar ejes, títulos y ticks en color oscuro
-    fig_copy.update_xaxes(color='black', title_font=dict(color='black'), tickfont=dict(color='black'))
-    fig_copy.update_yaxes(color='black', title_font=dict(color='black'), tickfont=dict(color='black'))
-    try:
-        if fig_copy.layout.yaxis2 is not None:
-            fig_copy.layout.yaxis2.color = 'black'
-    except Exception:
-        pass
+    # Preparar datos para JSON
+    # Convertir fechas a string para evitar errores de serialización Timestamp
+    categories = [str(m) for m in df_monthly['Mes'].dt.strftime('%b %Y')]
 
-    # Forzar título principal y subtítulos en negro
-    try:
-        if fig_copy.layout.title is not None:
-            fig_copy.layout.title.font = dict(color='black')
-    except Exception:
-        pass
+    
+    # Colores del tema
+    COLOR_PRIMARY = "#135bec" # Azul
+    COLOR_ACCENT = "#00f2ff"  # Cyan
+    COLOR_SUCCESS = "#b200cc" # Violeta/Magenta (Tiempo Vida)
+    COLOR_DANGER = "#ff0055"  # Rojo/Magenta (Indice Falla)
+    COLOR_WARNING = "#ffab40" # Naranja (Indice Falla ALS)
 
-    # Actualizar trazas para asegurar hoverlabels y textos en negro
-    try:
-        fig_copy.update_traces(hoverlabel=dict(font=dict(color='black'), bgcolor='white'))
-    except Exception:
-        pass
-
-    for tr in fig_copy.data:
-        try:
-            # Forzar texto de serie/etiquetas dentro de la traza
-            tr.update(textfont=dict(color='black'))
-        except Exception:
-            pass
-        try:
-            # Forzar hoverlabel por traza también
-            tr.update(hoverlabel=dict(font=dict(color='black'), bgcolor='white'))
-        except Exception:
-            pass
-        try:
-            # Si la traza tiene marcador con borde, oscurecer el borde para contraste
-            if hasattr(tr, 'marker') and tr.marker is not None and hasattr(tr.marker, 'line'):
-                tr.marker.line.color = 'black'
-        except Exception:
-            pass
-
-    # Forzar color en anotaciones, sliders, botones y colorbars si existen
-    try:
-        anns = list(fig_copy.layout.annotations) if hasattr(fig_copy.layout, 'annotations') and fig_copy.layout.annotations is not None else []
-        for ann in anns:
-            try:
-                ann.font.color = 'black'
-            except Exception:
-                try:
-                    ann['font'] = dict(color='black')
-                except Exception:
-                    pass
-    except Exception:
-        pass
-
-    try:
-        # Actualizar leyenda nuevamente por si el tema la sobreescribió
-        fig_copy.update_layout(legend=dict(font=dict(color='black'), bgcolor='rgba(255,255,255,0.9)', bordercolor='rgba(0,0,0,0.08)'))
-    except Exception:
-        pass
-
-    # Forzar cualquier color de texto remanente en el layout y ejes a negro (más agresivo)
-    try:
-        fig_json = fig_copy.to_plotly_json()
-        layout = fig_json.get('layout', {})
-
-        def _force_black_colors(obj):
-            if isinstance(obj, dict):
-                # If this dict describes a font, force its color
-                if 'font' in obj and isinstance(obj['font'], dict):
-                    obj['font']['color'] = 'black'
-                # Common direct color keys
-                for key in list(obj.keys()):
-                    v = obj[key]
-                    if key.lower().endswith('color') and isinstance(v, str):
-                        obj[key] = 'black'
-                    elif key in ('color',) and isinstance(v, str):
-                        obj[key] = 'black'
-                    elif isinstance(v, (dict, list)):
-                        _force_black_colors(v)
-            elif isinstance(obj, list):
-                for item in obj:
-                    _force_black_colors(item)
-
-        _force_black_colors(layout)
-        # Ensure background is white and no template overrides
-        layout['paper_bgcolor'] = 'white'
-        layout['plot_bgcolor'] = 'white'
-        layout['template'] = None
-
-        # Forzar explícitamente propiedades de leyenda (múltiples ubicaciones)
-        if 'legend' not in layout or not isinstance(layout.get('legend'), dict):
-            layout['legend'] = {}
-        layout['legend']['font'] = {'color': 'black', 'family': layout.get('font', {}).get('family', None), 'size': layout.get('font', {}).get('size', None)}
-        # título de leyenda si existe
-        if 'title' in layout['legend'] and isinstance(layout['legend']['title'], dict):
-            layout['legend']['title'].setdefault('font', {})
-            layout['legend']['title']['font']['color'] = 'black'
-
-        # También forzar en layout principal
-        if 'font' not in layout:
-            layout['font'] = {}
-        layout['font']['color'] = 'black'
-
-        fig_fixed = _go.Figure(fig_json)
-        # Asegurar que el objeto final tiene legend.font.color en la API de Python
-        try:
-            fig_fixed.layout.legend.font.color = 'black'
-            if hasattr(fig_fixed.layout.legend, 'title') and fig_fixed.layout.legend.title is not None:
-                fig_fixed.layout.legend.title.font.color = 'black'
-        except Exception:
-            pass
-
-        fig_copy = fig_fixed
-    except Exception:
-        pass
-
-    # Escribir PNG usando kaleido (pio) si está disponible
-    try:
-        pio.write_image(fig_copy, filename, format='png', width=width, height=height, scale=scale)
-    except Exception:
-        # Fallback a método del propio objeto
-        fig_copy.write_image(filename, width=width, height=height, scale=scale)
-
-    return filename
+    import pandas as pd
+    pozos_on = df_monthly['Pozos_ON'].tolist()
+    pozos_off = df_monthly['Pozos_OFF'].tolist()
+    rl_prom = [round(float(x), 2) for x in df_monthly['RunLife_Promedio'].tolist()]
+    rl_gen = [round(float(x), 2) for x in df_monthly['RunLife_General'].tolist()]
+    tmef = [round(float(x), 2) for x in df_monthly['TMEF_Promedio'].tolist()]
+    rle = [round(float(x), 2) for x in df_monthly['RunLife_Efectivo'].tolist()]
+    rle_fallados = [round(float(x), 2) for x in df_monthly.get('RunLife_Efectivo_Fallados', [0]*len(df_monthly)).tolist()]
+    # Asegurar que los índices existen antes de redondear
+    if_on = [round(float(x) * 100, 2) if pd.notna(x) else 0 for x in df_monthly['Indice_Falla_ON'].tolist()] if 'Indice_Falla_ON' in df_monthly.columns else []
+    if_als = [round(float(x) * 100, 2) if pd.notna(x) else 0 for x in df_monthly['Indice_Falla_ON_ALS'].tolist()] if 'Indice_Falla_ON_ALS' in df_monthly.columns else []
 
 
-def exportar_png_claro_bytes(fig, width=1200, height=700, scale=2):
+    echarts_options = {
+        "backgroundColor": "transparent",
+        "title": {
+            "text": titulo.upper(),
+            "left": "center",
+            "top": 0,
+            "textStyle": {
+                "color": "#fff",
+                "fontSize": 18,
+                "fontFamily": "Outfit, sans-serif",
+                "fontWeight": "900",
+                "letterSpacing": 1
+            }
+        },
+        "tooltip": {
+            "trigger": "axis",
+            "backgroundColor": "rgba(6, 10, 30, 0.9)",
+            "borderColor": COLOR_ACCENT,
+            "borderWidth": 1,
+            "textStyle": {"color": "#fff", "fontSize": 12},
+            "axisPointer": {"type": "cross", "label": {"backgroundColor": "#6a7985"}}
+        },
+        "legend": {
+            "data": ["Pozos ON", "Pozos OFF", "T. Vida Prom", "T. Vida Total", "T. Vida Efectivo", "T. V. Efec. Fallados", "TMEF", "Ind. Falla ON", "Ind. Falla ALS"],
+            "bottom": 0,
+            "textStyle": {"color": "#ccc", "fontSize": 10},
+            "icon": "circle",
+            "itemGap": 15
+        },
+        "grid": {
+            "left": "3%",
+            "right": "4%",
+            "bottom": "12%",
+            "top": "18%",
+            "containLabel": True
+        },
+        "xAxis": [
+            {
+                "type": "category",
+                "boundaryGap": True,
+                "data": categories,
+                "axisLine": {"lineStyle": {"color": "rgba(255,255,255,0.1)"}},
+                "axisLabel": {"color": "#888", "fontSize": 10}
+            }
+        ],
+        "yAxis": [
+            {
+                "type": "value",
+                "name": "POZOS / DÍAS",
+                "position": "left",
+                "splitLine": {"lineStyle": {"color": "rgba(255,255,255,0.05)"}},
+                "axisLine": {"show": True, "lineStyle": {"color": COLOR_PRIMARY}},
+                "axisLabel": {"color": "#888"}
+            },
+            {
+                "type": "value",
+                "name": "INDICE %",
+                "position": "right",
+                "splitLine": {"show": False},
+                "axisLine": {"show": True, "lineStyle": {"color": COLOR_DANGER}},
+                "axisLabel": {"color": "#888", "formatter": "{value} %"}
+            }
+        ],
+        "series": [
+            {
+                "name": "Pozos ON",
+                "type": "bar",
+                "stack": "Total",
+                "barWidth": "60%",
+                "itemStyle": {
+                    "color": {
+                        "type": "linear", "x": 0, "y": 0, "x2": 0, "y2": 1,
+                        "colorStops": [{"offset": 0, "color": COLOR_ACCENT}, {"offset": 1, "color": "rgba(0, 242, 255, 0.1)"}]
+                    },
+                    "borderRadius": [4, 4, 0, 0]
+                },
+                "data": pozos_on
+            },
+            {
+                "name": "Pozos OFF",
+                "type": "bar",
+                "stack": "Total",
+                "itemStyle": {
+                    "color": "#ff4d4d", 
+                    "opacity": 0.4,
+                    "decal": {
+                        "symbol": "rect",
+                        "size": 1,
+                        "dashArrayX": [1, 0],
+                        "dashArrayY": [2, 2],
+                        "rotation": 0.785
+                    }
+                },
+                "data": pozos_off
+            },
+            {
+                "name": "T. Vida Prom",
+                "type": "line",
+                "smooth": True,
+                "symbol": "circle",
+                "symbolSize": 8,
+                "lineStyle": {"width": 3, "color": COLOR_SUCCESS},
+                "itemStyle": {"color": COLOR_SUCCESS},
+                "data": rl_prom
+            },
+            {
+                "name": "T. Vida Total",
+                "type": "line",
+                "smooth": True,
+                "lineStyle": {"width": 2, "type": "dashed", "color": "#a6ff00"},
+                "itemStyle": {"color": "#a6ff00"},
+                "data": rl_gen
+            },
+            {
+                "name": "T. Vida Efectivo",
+                "type": "line",
+                "smooth": True,
+                "lineStyle": {"width": 2, "type": "dotted", "color": "#FFF700"},
+                "itemStyle": {"color": "#FFF700"},
+                "data": rle
+            },
+            {
+                "name": "T. V. Efec. Fallados",
+                "type": "line",
+                "smooth": True,
+                "lineStyle": {"width": 2, "type": "dotted", "color": "#00CCFF"},
+                "itemStyle": {"color": "#00CCFF"},
+                "data": rle_fallados
+            },
+            {
+                "name": "TMEF",
+                "type": "line",
+                "smooth": True,
+                "lineStyle": {"width": 1, "type": "dashed", "color": "#ccc"},
+                "itemStyle": {"color": "#ccc"},
+                "data": tmef
+            },
+            {
+                "name": "Ind. Falla ON",
+                "type": "line",
+                "yAxisIndex": 1,
+                "smooth": True,
+                "symbol": "diamond",
+                "symbolSize": 10,
+                "lineStyle": {"width": 4, "color": COLOR_DANGER, "shadowBlur": 10, "shadowColor": COLOR_DANGER},
+                "itemStyle": {"color": COLOR_DANGER},
+                "areaStyle": {
+                    "color": {
+                        "type": "linear", "x": 0, "y": 0, "x2": 0, "y2": 1,
+                        "colorStops": [{"offset": 0, "color": "rgba(255, 0, 85, 0.2)"}, {"offset": 1, "color": "transparent"}]
+                    }
+                },
+                "data": if_on
+            },
+            {
+                "name": "Ind. Falla ALS",
+                "type": "line",
+                "yAxisIndex": 1,
+                "smooth": True,
+                "symbol": "diamond",
+                "symbolSize": 8,
+                "lineStyle": {"width": 3, "color": COLOR_WARNING},
+                "itemStyle": {"color": COLOR_WARNING},
+                "data": if_als
+            }
+        ]
+    }
+
+    chart_height = 500
+    container_height = chart_height + 20
+
+    html_template = f"""
+    <div id="chart-container" style="position: relative; width:100%; height:{chart_height}px; background: #060a1e; border-radius: 15px; overflow: hidden;">
+        <div id="echarts-main" style="width:100%; height:100%;"></div>
+        <button id="zoom-btn" style="
+            position: absolute; 
+            top: 10px; 
+            right: 10px; 
+            z-index: 1000; 
+            background: rgba(200, 43, 150, 0.2); 
+            border: 1px solid rgba(200, 43, 150, 0.4); 
+            color: #ff00ff; 
+            padding: 4px 10px; 
+            border-radius: 20px; 
+            cursor: pointer; 
+            font-size: 11px; 
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            text-transform: uppercase;
+            backdrop-filter: blur(5px);
+            transition: all 0.3s;
+        ">⛶ Ampliar</button>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script>
+        (function() {{
+            var container = document.getElementById('chart-container');
+            var chartDom = document.getElementById('echarts-main');
+            var zoomBtn = document.getElementById('zoom-btn');
+            var myChart = echarts.init(chartDom, 'dark');
+            var option = {json.dumps(echarts_options)};
+            
+            myChart.setOption(option);
+            
+            window.addEventListener('resize', function() {{
+                myChart.resize();
+            }});
+
+            zoomBtn.addEventListener('click', function() {{
+                if (!document.fullscreenElement) {{
+                    container.requestFullscreen().catch(err => {{
+                        alert(`Error intentando activar pantalla completa: ${{err.message}}`);
+                    }});
+                    container.style.height = '100vh';
+                    zoomBtn.innerHTML = '✕ Cerrar';
+                }} else {{
+                    document.exitFullscreen();
+                    container.style.height = '{chart_height}px';
+                    zoomBtn.innerHTML = '⛶ Ampliar';
+                }}
+            }});
+
+            document.addEventListener('fullscreenchange', exitHandler);
+            function exitHandler() {{
+                if (!document.fullscreenElement) {{
+                    container.style.height = '{chart_height}px';
+                    zoomBtn.innerHTML = '⛶ Ampliar';
+                    myChart.resize();
+                }} else {{
+                    myChart.resize();
+                }}
+            }}
+        }})();
+    </script>
     """
-    Devuelve los bytes PNG de la figura con fondo claro y texto en negro.
-    Útil para usar con Streamlit `st.download_button(data=..., file_name=..., mime='image/png')`.
-    """
-    fig_copy = copy.deepcopy(fig)
-
-    # Aplicar los mismos ajustes que en exportar_png_claro
-    fig_copy.update_layout(
-        template='plotly_white',
-        paper_bgcolor='white',
-        plot_bgcolor='white',
-        font=dict(color='black'),
-        legend=dict(font=dict(color='black'), bgcolor='rgba(255,255,255,0.9)', bordercolor='rgba(0,0,0,0.08)')
-    )
-    fig_copy.update_xaxes(color='black', title_font=dict(color='black'), tickfont=dict(color='black'))
-    fig_copy.update_yaxes(color='black', title_font=dict(color='black'), tickfont=dict(color='black'))
-    try:
-        if fig_copy.layout.yaxis2 is not None:
-            fig_copy.layout.yaxis2.color = 'black'
-    except Exception:
-        pass
-    try:
-        if fig_copy.layout.title is not None:
-            fig_copy.layout.title.font = dict(color='black')
-    except Exception:
-        pass
-    try:
-        fig_copy.update_traces(hoverlabel=dict(font=dict(color='black'), bgcolor='white'))
-    except Exception:
-        pass
-
-    for tr in fig_copy.data:
-        try:
-            tr.update(textfont=dict(color='black'))
-        except Exception:
-            pass
-        try:
-            tr.update(hoverlabel=dict(font=dict(color='black'), bgcolor='white'))
-        except Exception:
-            pass
-        try:
-            if hasattr(tr, 'marker') and tr.marker is not None and hasattr(tr.marker, 'line'):
-                tr.marker.line.color = 'black'
-        except Exception:
-            pass
-
-    try:
-        anns = list(fig_copy.layout.annotations) if hasattr(fig_copy.layout, 'annotations') and fig_copy.layout.annotations is not None else []
-        for ann in anns:
-            try:
-                ann.font.color = 'black'
-            except Exception:
-                try:
-                    ann['font'] = dict(color='black')
-                except Exception:
-                    pass
-    except Exception:
-        pass
-
-    # Forzar layout text negro agresivamente (recursively)
-    try:
-        fig_json = fig_copy.to_plotly_json()
-        layout = fig_json.get('layout', {})
-
-        def _force_black_colors(obj):
-            if isinstance(obj, dict):
-                if 'font' in obj and isinstance(obj['font'], dict):
-                    obj['font']['color'] = 'black'
-                for key in list(obj.keys()):
-                    v = obj[key]
-                    if key.lower().endswith('color') and isinstance(v, str):
-                        obj[key] = 'black'
-                    elif key in ('color',) and isinstance(v, str):
-                        obj[key] = 'black'
-                    elif isinstance(v, (dict, list)):
-                        _force_black_colors(v)
-            elif isinstance(obj, list):
-                for item in obj:
-                    _force_black_colors(item)
-
-        _force_black_colors(layout)
-        layout['paper_bgcolor'] = 'white'
-        layout['plot_bgcolor'] = 'white'
-        layout['template'] = None
-        fig_fixed = _go.Figure(fig_json)
-        fig_copy = fig_fixed
-    except Exception:
-        pass
-
-    try:
-        img_bytes = pio.to_image(fig_copy, format='png', width=width, height=height, scale=scale)
-    except Exception:
-        try:
-            img_bytes = fig_copy.to_image(format='png', width=width, height=height, scale=scale)
-        except Exception as e:
-            raise
-
-
-def aplicar_tema_claro(fig):
-    """
-    Aplica tema claro a una figura Plotly: fondo blanco, texto/leyenda/ejes negros.
-    Devuelve una copia de la figura con los cambios aplicados.
-    """
-    fig_copy = copy.deepcopy(fig)
     
-    # Fondo blanco
-    fig_copy.update_layout(
-        template='plotly_white',
-        paper_bgcolor='white',
-        plot_bgcolor='white',
-        font=dict(color='black')
-    )
-    
-    # Leyenda oscura
-    fig_copy.update_layout(
-        legend=dict(
-            font=dict(color='black'),
-            bgcolor='rgba(255,255,255,0.9)',
-            bordercolor='rgba(0,0,0,0.1)'
-        )
-    )
-    
-    # Ejes oscuros
-    fig_copy.update_xaxes(color='black', title_font=dict(color='black'), tickfont=dict(color='black'))
-    fig_copy.update_yaxes(color='black', title_font=dict(color='black'), tickfont=dict(color='black'))
-    
-    # Forzar todos los colores de texto a negro recursivamente
-    try:
-        fig_json = fig_copy.to_plotly_json()
-        layout = fig_json.get('layout', {})
-        
-        def _force_black(obj):
-            if isinstance(obj, dict):
-                if 'font' in obj and isinstance(obj['font'], dict):
-                    obj['font']['color'] = 'black'
-                for key in list(obj.keys()):
-                    v = obj[key]
-                    if key.lower().endswith('color') and isinstance(v, str):
-                        obj[key] = 'black'
-                    elif isinstance(v, (dict, list)):
-                        _force_black(v)
-            elif isinstance(obj, list):
-                for item in obj:
-                    _force_black(item)
-        
-        _force_black(layout)
-        layout['paper_bgcolor'] = 'white'
-        layout['plot_bgcolor'] = 'white'
-        
-        fig_copy = _go.Figure(fig_json)
-        try:
-            fig_copy.layout.legend.font.color = 'black'
-        except Exception:
-            pass
-    except Exception:
-        pass
-    
-    return fig_copy
-
-
-def mostrar_grafica_con_boton_tema(fig, titulo="Gráfico"):
-    """
-    Muestra una gráfica en Streamlit con un botón para cambiar entre tema oscuro y claro.
-    """
-    if 'tema_grafico' not in st.session_state:
-        st.session_state['tema_grafico'] = 'oscuro'
-    
-    # Botones para cambiar tema
-    col1, col2 = st.columns([0.1, 0.9])
-    with col1:
-        if st.button('🌗', help='Cambiar tema'):
-            st.session_state['tema_grafico'] = 'claro' if st.session_state['tema_grafico'] == 'oscuro' else 'oscuro'
-            st.rerun()
-    
-    with col2:
-        st.write(f"Tema: {st.session_state['tema_grafico'].upper()}")
-    
-    # Aplicar tema según selección
-    if st.session_state['tema_grafico'] == 'claro':
-        fig_final = aplicar_tema_claro(fig)
-    else:
-        fig_final = fig
-    
-    st.plotly_chart(fig_final, use_container_width=True)
-
-    return img_bytes
+    components.html(html_template, height=container_height)
