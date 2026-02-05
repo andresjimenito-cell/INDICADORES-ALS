@@ -235,7 +235,7 @@ import pickle
 from pathlib import Path
 from run_life_efectivo import calcular_run_life_efectivo
 
-@st.cache_data(show_spinner="Descargando archivo desde la nube...", persist="disk", ttl=3600)
+@st.cache_data(show_spinner="Descargando archivo desde la nube...", ttl=600)
 def cached_onedrive_download(url, dest_filename):
     """
     Descarga un archivo desde OneDrive/SharePoint y lo guarda localmente.
@@ -1758,7 +1758,7 @@ st.sidebar.markdown("""
 <div class='sidebar-metadata'>
     <p>Módulo de Indicadores <strong>v1.2</strong></p>
     <p>Desarrollado por <strong>AJM</strong></p>
-    <p style='font-size:0.7rem; opacity:0.6; margin-top:0.5rem;'>Frontera Energy © 2025</p>
+    <p style='font-size:0.7rem; opacity:0.6; margin-top:0.5rem;'>Frontera Energy © 2026</p>
 </div>
 """, unsafe_allow_html=True)
 
