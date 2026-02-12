@@ -831,9 +831,9 @@ def perform_initial_calculations(df_forma9, df_bd, fecha_evaluacion):
     try:
         # Calculamos y actualizamos df_bd con la nueva columna RUN_LIFE_EFECTIVO
         run_life_efectivo_promedio, df_bd = calcular_run_life_efectivo(df_bd, df_forma9, fecha_evaluacion)
-        print(f"\n✅ Run Life Efectivo calculado exitosamente: {run_life_efectivo_promedio:.2f} días")
+        print(f"\n[OK] Run Life Efectivo calculado exitosamente: {run_life_efectivo_promedio:.2f} dias")
     except Exception as e:
-        print(f"❌ Error calculando Run Life Efectivo: {e}")
+        print(f"[ERROR] Error calculando Run Life Efectivo: {e}")
         import traceback
         traceback.print_exc()
 
@@ -873,34 +873,34 @@ def generar_reporte_completo(df_bd, df_forma9, fecha_evaluacion):
         except Exception:
             fecha_evaluacion = None
 
-    fecha_evaluacion = pd.to_datetime(fecha_evaluacion)
+    fecha_evaluacion = pd.to_datetime(fecha_evaluacion).normalize()
     
     df_bd['FECHA_PULL_DATE'] = pd.to_datetime(df_bd['FECHA_PULL'], errors='coerce')
     df_bd['FECHA_FALLA_DATE'] = pd.to_datetime(df_bd['FECHA_FALLA'], errors='coerce')
     df_bd['FECHA_RUN_DATE'] = pd.to_datetime(df_bd['FECHA_RUN'], errors='coerce')
 
-    df_bd_eval = df_bd[df_bd['FECHA_RUN_DATE'].dt.date <= fecha_evaluacion.date()].copy()
+    df_bd_eval = df_bd[df_bd['FECHA_RUN_DATE'].dt.normalize() <= fecha_evaluacion].copy()
     
-    extraidos_count = df_bd_eval[df_bd_eval['FECHA_PULL_DATE'].dt.date <= fecha_evaluacion.date()].shape[0]
+    extraidos_count = df_bd_eval[df_bd_eval['FECHA_PULL_DATE'].dt.normalize() <= fecha_evaluacion].shape[0]
 
     running_count = df_bd_eval[
-        (df_bd_eval['FECHA_RUN_DATE'].dt.date <= fecha_evaluacion.date()) &
-        (df_bd_eval['FECHA_PULL_DATE'].isna() | (df_bd_eval['FECHA_PULL_DATE'].dt.date > fecha_evaluacion.date()))
+        (df_bd_eval['FECHA_RUN_DATE'].dt.normalize() <= fecha_evaluacion) &
+        (df_bd_eval['FECHA_PULL_DATE'].isna() | (df_bd_eval['FECHA_PULL_DATE'].dt.normalize() > fecha_evaluacion))
     ].shape[0]
 
     fallados_count = df_bd_eval[
-        (df_bd_eval['FECHA_FALLA_DATE'].dt.date <= fecha_evaluacion.date()) &
-        (df_bd_eval['FECHA_PULL_DATE'].isna() | (df_bd_eval['FECHA_PULL_DATE'].dt.date > fecha_evaluacion.date()))
+        (df_bd_eval['FECHA_FALLA_DATE'].dt.normalize() <= fecha_evaluacion) &
+        (df_bd_eval['FECHA_PULL_DATE'].isna() | (df_bd_eval['FECHA_PULL_DATE'].dt.normalize() > fecha_evaluacion))
     ].shape[0]
 
     pozos_operativos = df_bd_eval[
-        (df_bd_eval['FECHA_FALLA_DATE'].isna() | (df_bd_eval['FECHA_FALLA_DATE'].dt.date > fecha_evaluacion.date())) & 
-        (df_bd_eval['FECHA_PULL_DATE'].isna() | (df_bd_eval['FECHA_PULL_DATE'].dt.date > fecha_evaluacion.date()))
+        (df_bd_eval['FECHA_FALLA_DATE'].isna() | (df_bd_eval['FECHA_FALLA_DATE'].dt.normalize() > fecha_evaluacion)) & 
+        (df_bd_eval['FECHA_PULL_DATE'].isna() | (df_bd_eval['FECHA_PULL_DATE'].dt.normalize() > fecha_evaluacion))
     ].shape[0]
 
     df_forma9_eval = df_forma9[
-        (df_forma9['FECHA_FORMA9'].dt.date >= (fecha_evaluacion.date() - timedelta(days=30))) &
-        (df_forma9['FECHA_FORMA9'].dt.date <= fecha_evaluacion.date())
+        (df_forma9['FECHA_FORMA9'].dt.normalize() >= (fecha_evaluacion - pd.Timedelta(days=30))) &
+        (df_forma9['FECHA_FORMA9'].dt.normalize() <= fecha_evaluacion)
     ]
     pozos_on = df_forma9_eval[df_forma9_eval['DIAS TRABAJADOS'] > 0]['POZO'].nunique()
 
@@ -921,8 +921,8 @@ def generar_reporte_completo(df_bd, df_forma9, fecha_evaluacion):
 
     # Calculo Correcto de Run Life Promedio (Solo eventos YA ocurridos a la fecha de corte)
     mask_ended_eval = (
-        ((df_bd_eval['FECHA_PULL_DATE'].notna()) & (df_bd_eval['FECHA_PULL_DATE'].dt.date <= fecha_evaluacion.date())) |
-        ((df_bd_eval['FECHA_FALLA_DATE'].notna()) & (df_bd_eval['FECHA_FALLA_DATE'].dt.date <= fecha_evaluacion.date()))
+        ((df_bd_eval['FECHA_PULL_DATE'].notna()) & (df_bd_eval['FECHA_PULL_DATE'].dt.normalize() <= fecha_evaluacion)) |
+        ((df_bd_eval['FECHA_FALLA_DATE'].notna()) & (df_bd_eval['FECHA_FALLA_DATE'].dt.normalize() <= fecha_evaluacion))
     )
     run_life_apagados_fallados = df_bd_eval[mask_ended_eval]['RUN LIFE'].mean()
     run_life_general = df_bd_eval['RUN LIFE'].mean()
@@ -950,7 +950,7 @@ def generar_reporte_completo(df_bd, df_forma9, fecha_evaluacion):
             })
         ], ignore_index=True)
     except Exception as e:
-        print(f"⚠️ No se pudo agregar Run Life Efectivo al reporte: {e}")
+        print(f"[WARNING] No se pudo agregar Run Life Efectivo al reporte: {e}")
     
     return reporte_runes, reporte_run_life, verificaciones
 
@@ -2064,6 +2064,7 @@ if st.session_state['reporte_runes'] is not None:
         als_options = _unique_options('ALS')
         proveedor_options = _unique_options('PROVEEDOR')
 
+
         # Asegurar que la selección actual permanezca en la lista de opciones
         def _ensure(options, key_name):
             cur = st.session_state.get(key_name, 'TODOS')
@@ -2079,6 +2080,9 @@ if st.session_state['reporte_runes'] is not None:
         campo_options = _ensure(campo_options, 'general_campo_filter')
         als_options = _ensure(als_options, 'general_als_filter')
         proveedor_options = _ensure(proveedor_options, 'general_proveedor_filter')
+
+        nick_options = _unique_options('NICK')
+        nick_options = _ensure(nick_options, 'general_nick_filter')
 
         # Callback simple para marcar cambio (Streamlit rerun aplica los filtros inmediatamente)
         def _mark_change(key=None):
@@ -2106,6 +2110,10 @@ if st.session_state['reporte_runes'] is not None:
         st.markdown('<div style="margin-top:-15px; margin-bottom:10px; height:1px; background:rgba(0,242,255,0.05);"></div>', unsafe_allow_html=True)
         
         _select_with_index("🏭 Filtrar por Proveedor", proveedor_options, 'general_proveedor_filter')
+
+        st.markdown('<div style="margin-top:-15px; margin-bottom:10px; height:1px; background:rgba(0,242,255,0.05);"></div>', unsafe_allow_html=True)
+
+        _select_with_index("🆔 Filtrar por Nick", nick_options, 'general_nick_filter')
         st.write("") # Espacio final
 
     # Los valores seleccionados en los filtros se leen desde session_state (sidebar) y
@@ -2116,6 +2124,8 @@ if st.session_state['reporte_runes'] is not None:
     selected_campo = st.session_state.get('general_campo_filter', 'TODOS')
     selected_als = st.session_state.get('general_als_filter', 'TODOS')
     selected_proveedor = st.session_state.get('general_proveedor_filter', 'TODOS')
+
+    selected_nick = st.session_state.get('general_nick_filter', 'TODOS')
 
     df_bd_filtered = st.session_state['df_bd_calculated'].copy()
     df_forma9_filtered = st.session_state['df_forma9_calculated'].copy()
@@ -2131,6 +2141,9 @@ if st.session_state['reporte_runes'] is not None:
         df_bd_filtered = df_bd_filtered[df_bd_filtered['ALS'] == selected_als]
     if selected_proveedor != 'TODOS' and 'PROVEEDOR' in df_bd_filtered.columns:
         df_bd_filtered = df_bd_filtered[df_bd_filtered['PROVEEDOR'] == selected_proveedor]
+
+    if selected_nick != 'TODOS' and 'NICK' in df_bd_filtered.columns:
+        df_bd_filtered = df_bd_filtered[df_bd_filtered['NICK'] == selected_nick]
     pozos_in_filtered_bd = df_bd_filtered['POZO'].unique()
     df_forma9_filtered = df_forma9_filtered[df_forma9_filtered['POZO'].isin(pozos_in_filtered_bd)]
 
@@ -2663,6 +2676,40 @@ if st.session_state['reporte_runes'] is not None:
                 with col_bopd_table:
                     st.markdown('<div style="margin-top:20px;"></div>', unsafe_allow_html=True)
                     st.markdown('##### 📋 Detalle por Rango')
+                    
+                    # Preparar datos para descarga en Excel
+                    df_export_bopd = agg.copy()
+                    df_export_bopd.rename(columns={
+                        'RunLifeBucket': 'Rango de Tiempo de Vida',
+                        'BOPD_sum': 'Producción Total (BOPD)',
+                        'Pozos': 'Cantidad de Pozos'
+                    }, inplace=True)
+                    
+                    # Crear botón de descarga
+                    from io import BytesIO
+                    output_bopd = BytesIO()
+                    with pd.ExcelWriter(output_bopd, engine='openpyxl') as writer:
+                        df_export_bopd.to_excel(writer, index=False, sheet_name='BOPD vs Tiempo de Vida')
+                        # Agregar también los datos detallados por pozo
+                        if not merged.empty:
+                            merged_export = merged[['POZO', 'BOPD', 'RUN LIFE', 'RunLifeBucket']].copy()
+                            merged_export.rename(columns={
+                                'POZO': 'Pozo',
+                                'BOPD': 'Producción (BOPD)',
+                                'RUN LIFE': 'Tiempo de Vida (días)',
+                                'RunLifeBucket': 'Rango de Tiempo de Vida'
+                            }, inplace=True)
+                            merged_export.to_excel(writer, index=False, sheet_name='Detalle por Pozo')
+                    excel_data_bopd = output_bopd.getvalue()
+                    
+                    st.download_button(
+                        label="📥 Descargar datos en Excel",
+                        data=excel_data_bopd,
+                        file_name="produccion_bopd_vs_tiempo_vida.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key="download_bopd_excel"
+                    )
+                    
                     st.dataframe(
                         agg.rename(columns={'RunLifeBucket': 'Rango', 'BOPD_sum': 'BOPD', 'Pozos': '# Pozos'}), 
                         hide_index=True,
@@ -2690,47 +2737,85 @@ if st.session_state['reporte_runes'] is not None:
                     # Definir colors_list basado en el color_map
                     colors_list = [color_map.get(b, '#cccccc') for b in buckets]
                     
-                    # Crear datos estructurados con colores individuales
+                    # Crear datos estructurados con colores individuales y gradientes
                     echarts_data = []
                     for i, val in enumerate(bopd_values):
+                        base_color = colors_list[i]
                         echarts_data.append({
                             "value": val,
-                            "itemStyle": {"color": colors_list[i]}
+                            "itemStyle": {
+                                "color": {
+                                    "type": "linear",
+                                    "x": 0, "y": 0, "x2": 0, "y2": 1,
+                                    "colorStops": [
+                                        {"offset": 0, "color": base_color},
+                                        {"offset": 1, "color": f"{base_color}66"}  # Transparencia al final
+                                    ]
+                                },
+                                "borderRadius": [10, 10, 0, 0],
+                                "shadowBlur": 10,
+                                "shadowColor": f"{base_color}88"
+                            }
                         })
 
                     echarts_options_bopd = {
                         "backgroundColor": "transparent",
+                        "title": {
+                            "text": "PRODUCCIÓN vs TIEMPO DE VIDA",
+                            "left": "center",
+                            "top": 5,
+                            "textStyle": {
+                                "color": "#00cfff",
+                                "fontSize": 14,
+                                "fontFamily": "Outfit, sans-serif",
+                                "fontWeight": "900"
+                            }
+                        },
                         "tooltip": {
                             "trigger": "axis",
                             "axisPointer": {"type": "shadow"},
-                            "formatter": "function(params) { var pozos = " + json.dumps(pozos_values) + "; return 'Rango: ' + params[0].name + '<br/>BOPD: ' + params[0].value + '<br/>Pozos: ' + pozos[params[0].dataIndex] + ' Pzs'; }"
+                            "backgroundColor": "rgba(6, 10, 30, 0.95)",
+                            "borderColor": "#00cfff",
+                            "borderWidth": 2,
+                            "textStyle": {"color": "#fff", "fontSize": 12},
+                            "formatter": "function(params) { var pozos = " + json.dumps(pozos_values) + "; return '<b style=\"color:#00cfff\">Rango:</b> ' + params[0].name + '<br/><b style=\"color:#00ff9f\">BOPD:</b> ' + params[0].value.toFixed(1) + '<br/><b style=\"color:#ffab40\">Pozos:</b> ' + pozos[params[0].dataIndex] + ' Pzs'; }"
                         },
-                        "grid": {"left": "20", "right": "20", "bottom": "10", "top": "10", "containLabel": True},
+                        "grid": {"left": "15", "right": "15", "bottom": "15", "top": "50", "containLabel": True},
                         "xAxis": {
                             "type": "category",
                             "data": buckets,
-                            "axisLabel": {"color": "#fff", "fontSize": 11},
-                            "axisLine": {"show": False},
+                            "axisLabel": {
+                                "color": "#fff", 
+                                "fontSize": 11,
+                                "fontWeight": "bold"
+                            },
+                            "axisLine": {"lineStyle": {"color": "rgba(0, 207, 255, 0.3)", "width": 2}},
                             "axisTick": {"show": False}
                         },
                         "yAxis": {
                             "type": "value",
+                            "name": "BOPD",
+                            "nameTextStyle": {
+                                "color": "#00cfff",
+                                "fontSize": 12,
+                                "fontWeight": "bold"
+                            },
                             "splitLine": {"lineStyle": {"color": "rgba(255,255,255,0.05)"}},
-                            "axisLabel": {"show": False},
-                            "axisLine": {"show": False}
+                            "axisLabel": {"color": "#888", "fontSize": 10},
+                            "axisLine": {"lineStyle": {"color": "rgba(0, 207, 255, 0.3)", "width": 2}}
                         },
                         "series": [
                             {
                                 "data": echarts_data,
                                 "type": "bar",
-                                "itemStyle": {
-                                    "borderRadius": [8, 8, 0, 0]
-                                },
+                                "barWidth": "60%",
                                 "label": {
                                     "show": True,
                                     "position": "top",
                                     "color": "#fff",
-                                    "formatter": "function(params) { var pozos = " + json.dumps(pozos_values) + "; return pozos[params.dataIndex] + ' Pzs'; }"
+                                    "fontSize": 11,
+                                    "fontWeight": "bold",
+                                    "formatter": "function(params) { var pozos = " + json.dumps(pozos_values) + "; var bopd = " + json.dumps(bopd_values) + "; return bopd[params.dataIndex].toFixed(0) + ' BOPD\\n' + pozos[params.dataIndex] + ' Pzs'; }"
                                 }
                             }
                         ]
@@ -2738,13 +2823,19 @@ if st.session_state['reporte_runes'] is not None:
                     
                     # Reemplazar placeholders de funciones
                     js_options = json.dumps(echarts_options_bopd)
-                    js_options = js_options.replace('"function(params) { var pozos = ' + json.dumps(pozos_values) + '; return pozos[params.dataIndex] + \' Pzs\'; }"',
-                                                   f"function(params) {{ var pozos = {json.dumps(pozos_values)}; return pozos[params.dataIndex] + ' Pzs'; }}")
-                    js_options = js_options.replace('"function(params) { var pozos = ' + json.dumps(pozos_values) + '; return \'Rango: \' + params[0].name + \'<br/>BOPD: \' + params[0].value + \'<br/>Pozos: \' + pozos[params[0].dataIndex] + \' Pzs\'; }"',
-                                                   f"function(params) {{ var pozos = {json.dumps(pozos_values)}; return 'Rango: ' + params[0].name + '<br/>BOPD: ' + params[0].value + '<br/>Pozos: ' + pozos[params[0].dataIndex] + ' Pzs'; }}")
+                    # Formatter del label
+                    js_options = js_options.replace(
+                        '"function(params) { var pozos = ' + json.dumps(pozos_values) + '; var bopd = ' + json.dumps(bopd_values) + '; return bopd[params.dataIndex].toFixed(0) + \' BOPD\\\\n\' + pozos[params.dataIndex] + \' Pzs\'; }"',
+                        f"function(params) {{ var pozos = {json.dumps(pozos_values)}; var bopd = {json.dumps(bopd_values)}; return bopd[params.dataIndex].toFixed(0) + ' BOPD\\n' + pozos[params.dataIndex] + ' Pzs'; }}"
+                    )
+                    # Formatter del tooltip
+                    js_options = js_options.replace(
+                        '"function(params) { var pozos = ' + json.dumps(pozos_values) + '; return \'<b style=\\\"color:#00cfff\\\">Rango:</b> \' + params[0].name + \'<br/><b style=\\\"color:#00ff9f\\\">BOPD:</b> \' + params[0].value.toFixed(1) + \'<br/><b style=\\\"color:#ffab40\\\">Pozos:</b> \' + pozos[params[0].dataIndex] + \' Pzs\'; }"',
+                        f"function(params) {{ var pozos = {json.dumps(pozos_values)}; return '<b style=\"color:#00cfff\">Rango:</b> ' + params[0].name + '<br/><b style=\"color:#00ff9f\">BOPD:</b> ' + params[0].value.toFixed(1) + '<br/><b style=\"color:#ffab40\">Pozos:</b> ' + pozos[params[0].dataIndex] + ' Pzs'; }}"
+                    )
 
                     html_bopd = f"""
-                    <div id="echarts-bopd" style="width:100%; height:320px;"></div>
+                    <div id="echarts-bopd" style="width:100%; height:360px; background: linear-gradient(135deg, rgba(0, 207, 255, 0.05), rgba(0, 15, 30, 0.1)); border-radius: 15px; padding: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);"></div>
                     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
                     <script>
                         (function() {{
@@ -2754,7 +2845,7 @@ if st.session_state['reporte_runes'] is not None:
                         }})();
                     </script>
                     """
-                    components.html(html_bopd, height=340)
+                    components.html(html_bopd, height=380)
         else:
             st.info('No hay datos de RUN o de FORMA9 disponibles para el filtro actual.')
 
@@ -2819,7 +2910,7 @@ if st.session_state['reporte_runes'] is not None:
             if historico_run_life is not None and 'ACTIVO' in historico_run_life.columns:
                 # Gráfico ECharts Premium: Histórico Tiempo de Vida
                 # Convertir meses a string corto YYYY-MM-DD para consistencia
-                historico_run_life['Mes_Str'] = historico_run_life['Mes'].dt.strftime('%Y-%m-%d')
+                historico_run_life['Mes_Str'] = pd.to_datetime(historico_run_life['Mes'], errors='coerce').dt.strftime('%Y-%m-%d')
                 months = sorted(historico_run_life['Mes_Str'].unique().tolist())
                 activos = sorted(historico_run_life['ACTIVO'].unique().tolist())
                 color_seq = get_color_sequence()

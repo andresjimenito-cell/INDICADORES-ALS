@@ -88,10 +88,10 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
     except Exception:
         mtbf_total_val = None
 
-    fecha_eval_date = pd.to_datetime(fecha_evaluacion).date()
-    df_bd['FECHA_RUN_DATE'] = pd.to_datetime(df_bd['FECHA_RUN'], errors='coerce').dt.date
-    df_bd['FECHA_PULL_DATE'] = pd.to_datetime(df_bd['FECHA_PULL'], errors='coerce').dt.date
-    df_bd['FECHA_FALLA_DATE'] = pd.to_datetime(df_bd['FECHA_FALLA'], errors='coerce').dt.date
+    fecha_eval_date = pd.to_datetime(fecha_evaluacion).normalize()
+    df_bd['FECHA_RUN_DATE'] = pd.to_datetime(df_bd['FECHA_RUN'], errors='coerce').dt.normalize()
+    df_bd['FECHA_PULL_DATE'] = pd.to_datetime(df_bd['FECHA_PULL'], errors='coerce').dt.normalize()
+    df_bd['FECHA_FALLA_DATE'] = pd.to_datetime(df_bd['FECHA_FALLA'], errors='coerce').dt.normalize()
 
     def filtrar_als(df, als):
         if als and als != 'TODOS' and 'ALS' in df.columns:
@@ -124,8 +124,8 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
             df_forma9 = df_forma9.rename(columns={'SISTEMA ALS': 'ALS'})
         
         df_forma9_eval = df_forma9[
-            (df_forma9['FECHA_FORMA9'].dt.date >= (fecha_eval_date - pd.Timedelta(days=30))) &
-            (df_forma9['FECHA_FORMA9'].dt.date <= fecha_eval_date)
+            (df_forma9['FECHA_FORMA9'].dt.normalize() >= (fecha_eval_date - pd.Timedelta(days=30))) &
+            (df_forma9['FECHA_FORMA9'].dt.normalize() <= fecha_eval_date)
         ]
         
         if selected_als != 'TODOS' and 'ALS' in df_forma9_eval.columns:
@@ -155,7 +155,7 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
             df_bd_als_rl['FECHA_PULL_DATE'] = pd.to_datetime(df_bd_als_rl['FECHA_PULL'], errors='coerce')
             df_bd_als_rl['FECHA_FALLA_DATE'] = pd.to_datetime(df_bd_als_rl['FECHA_FALLA'], errors='coerce')
             df_bd_als_rl['FECHA_RUN_DATE'] = pd.to_datetime(df_bd_als_rl['FECHA_RUN'], errors='coerce')
-            df_bd_als_eval = df_bd_als_rl[df_bd_als_rl['FECHA_RUN_DATE'].dt.date <= fecha_eval.date()].copy()
+            df_bd_als_eval = df_bd_als_rl[df_bd_als_rl['FECHA_RUN_DATE'].dt.normalize() <= fecha_eval.normalize()].copy()
             run_life_als = df_bd_als_eval[(df_bd_als_eval['FECHA_PULL_DATE'].notna()) | (df_bd_als_eval['FECHA_FALLA_DATE'].notna())]['RUN LIFE'].mean()
             if pd.notna(run_life_als):
                 rl_als = float(run_life_als)
@@ -475,12 +475,12 @@ def build_kpis_graph(df_bd, df_forma9=None, reporte_run_life=None, indice_resume
         except Exception:
             fecha_evaluacion = datetime.datetime.now()
 
-    fecha_eval_date = pd.to_datetime(fecha_evaluacion).date()
+    fecha_eval_date = pd.to_datetime(fecha_evaluacion).normalize()
 
     # Crear columnas fecha coerced
     for col in ['FECHA_RUN', 'FECHA_PULL', 'FECHA_FALLA']:
         if col in df_bd.columns:
-            df_bd[col + '_DATE'] = pd.to_datetime(df_bd[col], errors='coerce').dt.date
+            df_bd[col + '_DATE'] = pd.to_datetime(df_bd[col], errors='coerce').dt.normalize()
         else:
             df_bd[col + '_DATE'] = pd.NaT
 
@@ -509,7 +509,7 @@ def build_kpis_graph(df_bd, df_forma9=None, reporte_run_life=None, indice_resume
         pozo_col = next((c for c in df_forma9.columns if 'POZO' in c), None)
         if fecha_col and dias_col and pozo_col:
             df_forma9[fecha_col] = pd.to_datetime(df_forma9[fecha_col], errors='coerce')
-            df_forma9_eval = df_forma9[(df_forma9[fecha_col].dt.date >= (fecha_eval_date - pd.Timedelta(days=30))) & (df_forma9[fecha_col].dt.date <= fecha_eval_date)]
+            df_forma9_eval = df_forma9[(df_forma9[fecha_col].dt.normalize() >= (fecha_eval_date - pd.Timedelta(days=30))) & (df_forma9[fecha_col].dt.normalize() <= fecha_eval_date)]
             pozos_on_todos = int(df_forma9_eval[df_forma9_eval[dias_col] > 0][pozo_col].nunique())
 
     pozos_off_todos = max(0, operativos_todos - pozos_on_todos)

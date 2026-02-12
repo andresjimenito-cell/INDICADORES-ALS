@@ -19,7 +19,7 @@ def calcular_indice_falla_anual(df_bd, df_forma9, fecha_evaluacion):
     incluyendo el cálculo de 12 meses rodante (rolling) para la gráfica, 
     y el resumen final.
     """
-    end_date = pd.to_datetime(fecha_evaluacion).date()
+    end_date = pd.to_datetime(fecha_evaluacion).normalize()
     start_date = end_date - timedelta(days=365 * 12)
     
     # Asegurar que las columnas de fecha son datetime
@@ -33,34 +33,35 @@ def calcular_indice_falla_anual(df_bd, df_forma9, fecha_evaluacion):
     current_month_date = start_date.replace(day=1)
     
     while current_month_date <= end_date:
-        fecha_fin_mes = (pd.to_datetime(current_month_date) + pd.offsets.MonthEnd(0)).date()
+        fecha_fin_mes = (pd.to_datetime(current_month_date) + pd.offsets.MonthEnd(0)).normalize()
+        current_month_ts = pd.to_datetime(current_month_date).normalize()
         
         # Filtrar df_bd hasta el final del mes para calcular activos y fallas
         df_bd_mes = df_bd[
-            (df_bd['FECHA_RUN'].dt.date <= fecha_fin_mes)
+            (df_bd['FECHA_RUN'].dt.normalize() <= fecha_fin_mes)
         ].copy()
         
         # Filtrar df_forma9 para el mes actual
         df_forma9_mes = df_forma9[
-            (df_forma9['FECHA_FORMA9'].dt.date >= current_month_date) &
-            (df_forma9['FECHA_FORMA9'].dt.date <= fecha_fin_mes)
+            (df_forma9['FECHA_FORMA9'].dt.normalize() >= current_month_ts) &
+            (df_forma9['FECHA_FORMA9'].dt.normalize() <= fecha_fin_mes)
         ].copy()
         
         pozos_operativos_mes = df_bd_mes[
-            (df_bd_mes['FECHA_FALLA'].isna() | (df_bd_mes['FECHA_FALLA'].dt.date > fecha_fin_mes)) & 
-            (df_bd_mes['FECHA_PULL'].isna() | (df_bd_mes['FECHA_PULL'].dt.date > fecha_fin_mes))
+            (df_bd_mes['FECHA_FALLA'].isna() | (df_bd_mes['FECHA_FALLA'].dt.normalize() > fecha_fin_mes)) & 
+            (df_bd_mes['FECHA_PULL'].isna() | (df_bd_mes['FECHA_PULL'].dt.normalize() > fecha_fin_mes))
         ]['POZO'].nunique()
 
         pozos_on = df_forma9_mes[df_forma9_mes['DIAS TRABAJADOS'] > 0]['POZO'].nunique()
 
         fallas_totales_mes = df_bd_mes[
-            (df_bd_mes['FECHA_FALLA'].dt.date >= current_month_date) & 
-            (df_bd_mes['FECHA_FALLA'].dt.date <= fecha_fin_mes)
+            (df_bd_mes['FECHA_FALLA'].dt.normalize() >= current_month_ts) & 
+            (df_bd_mes['FECHA_FALLA'].dt.normalize() <= fecha_fin_mes)
         ].shape[0]
         
         fallas_als_mes = df_bd_mes[
-            (df_bd_mes['FECHA_FALLA'].dt.date >= current_month_date) & 
-            (df_bd_mes['FECHA_FALLA'].dt.date <= fecha_fin_mes) &
+            (df_bd_mes['FECHA_FALLA'].dt.normalize() >= current_month_ts) & 
+            (df_bd_mes['FECHA_FALLA'].dt.normalize() <= fecha_fin_mes) &
             (df_bd_mes['INDICADOR_MTBF'] == 1)
         ].shape[0]
         
@@ -72,7 +73,7 @@ def calcular_indice_falla_anual(df_bd, df_forma9, fecha_evaluacion):
             'Pozos ON': pozos_on
         })
 
-        current_month_date = (pd.to_datetime(current_month_date) + pd.offsets.MonthBegin(1)).date()
+        current_month_date = (pd.to_datetime(current_month_date) + pd.offsets.MonthBegin(1)).normalize()
 
     df_mensual = pd.DataFrame(monthly_data)
     df_mensual.sort_values(by='Mes', ascending=True, inplace=True)

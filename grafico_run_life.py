@@ -293,9 +293,45 @@ def render_premium_echarts_run_life(df_monthly, titulo="TIEMPO DE VIDA DASHBOARD
     """
     import json
     import streamlit.components.v1 as components
+    from io import BytesIO
 
     if df_monthly is None or df_monthly.empty:
         return st.info("No hay datos mensuales para este filtro.")
+
+    # Preparar datos para descarga en Excel
+    df_export = df_monthly[['Mes', 'RunLife_Promedio']].copy()
+    if 'RunLife_General' in df_monthly.columns:
+        df_export['RunLife_General'] = df_monthly['RunLife_General']
+    if 'TMEF_Promedio' in df_monthly.columns:
+        df_export['TMEF_Promedio'] = df_monthly['TMEF_Promedio']
+    if 'RunLife_Efectivo' in df_monthly.columns:
+        df_export['RunLife_Efectivo'] = df_monthly['RunLife_Efectivo']
+    if 'RunLife_Efectivo_Fallados' in df_monthly.columns:
+        df_export['RunLife_Efectivo_Fallados'] = df_monthly['RunLife_Efectivo_Fallados']
+    
+    # Renombrar columnas para mejor legibilidad
+    df_export.rename(columns={
+        'Mes': 'Mes',
+        'RunLife_Promedio': 'Tiempo de Vida Promedio (días)',
+        'RunLife_General': 'Tiempo de Vida Total (días)',
+        'TMEF_Promedio': 'TMEF Promedio (días)',
+        'RunLife_Efectivo': 'Tiempo de Vida Efectivo Total (días)',
+        'RunLife_Efectivo_Fallados': 'Tiempo de Vida Efectivo Fallados (días)'
+    }, inplace=True)
+    
+    # Crear botón de descarga
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df_export.to_excel(writer, index=False, sheet_name='Tiempo de Vida y TEMF')
+    excel_data = output.getvalue()
+    
+    st.download_button(
+        label="📥 Descargar datos en Excel",
+        data=excel_data,
+        file_name="tiempo_vida_temf.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        key="download_run_life_excel"
+    )
 
     # Asegurar conversión a string para JSON
     categories = [str(m) for m in df_monthly['Mes'].dt.strftime('%b %Y')]
@@ -417,9 +453,46 @@ def render_premium_echarts_pozos(df_monthly, titulo="OPERATIVIDAD DASHBOARD"):
     """
     import json
     import streamlit.components.v1 as components
+    from io import BytesIO
 
     if df_monthly is None or df_monthly.empty:
         return st.info("No hay datos mensuales para este filtro.")
+
+    # Preparar datos para descarga en Excel
+    df_export = df_monthly[['Mes', 'Pozos_ON', 'Pozos_OFF']].copy()
+    if 'Indice_Falla_ON' in df_monthly.columns:
+        df_export['Indice_Falla_ON'] = df_monthly['Indice_Falla_ON']
+    if 'Indice_Falla_ON_ALS' in df_monthly.columns:
+        df_export['Indice_Falla_ON_ALS'] = df_monthly['Indice_Falla_ON_ALS']
+    
+    # Renombrar columnas para mejor legibilidad
+    df_export.rename(columns={
+        'Mes': 'Mes',
+        'Pozos_ON': 'Pozos Activos',
+        'Pozos_OFF': 'Pozos Inactivos',
+        'Indice_Falla_ON': 'Índice de Falla ON (%)',
+        'Indice_Falla_ON_ALS': 'Índice de Falla ALS ON (%)'
+    }, inplace=True)
+    
+    # Convertir índices a porcentaje para mejor legibilidad
+    if 'Índice de Falla ON (%)' in df_export.columns:
+        df_export['Índice de Falla ON (%)'] = df_export['Índice de Falla ON (%)'] * 100
+    if 'Índice de Falla ALS ON (%)' in df_export.columns:
+        df_export['Índice de Falla ALS ON (%)'] = df_export['Índice de Falla ALS ON (%)'] * 100
+    
+    # Crear botón de descarga
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df_export.to_excel(writer, index=False, sheet_name='Pozos e Índices')
+    excel_data = output.getvalue()
+    
+    st.download_button(
+        label="📥 Descargar datos en Excel",
+        data=excel_data,
+        file_name="pozos_indices.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        key="download_pozos_indices_excel"
+    )
 
     # Asegurar conversión a string para JSON
     categories = [str(m) for m in df_monthly['Mes'].dt.strftime('%b %Y')]

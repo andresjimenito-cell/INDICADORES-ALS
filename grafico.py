@@ -525,9 +525,48 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
     """
     import json
     import streamlit.components.v1 as components
+    from io import BytesIO
 
     if df_monthly is None or df_monthly.empty:
         return st.info("No hay datos mensuales para este filtro.")
+
+    # Preparar datos para descarga en Excel
+    df_export = df_monthly.copy()
+    
+    # Renombrar columnas para mejor legibilidad
+    df_export.rename(columns={
+        'Mes': 'Mes',
+        'Pozos_Operativos': 'Pozos Operativos',
+        'Pozos_ON': 'Pozos Activos',
+        'Pozos_OFF': 'Pozos Inactivos',
+        'RunLife_Promedio': 'Tiempo de Vida Promedio (días)',
+        'RunLife_General': 'Tiempo de Vida Total (días)',
+        'TMEF_Promedio': 'TMEF Promedio (días)',
+        'RunLife_Efectivo': 'Tiempo de Vida Efectivo Total (días)',
+        'RunLife_Efectivo_Fallados': 'Tiempo de Vida Efectivo Fallados (días)',
+        'Indice_Falla_ON': 'Índice de Falla ON (%)',
+        'Indice_Falla_ON_ALS': 'Índice de Falla ALS ON (%)'
+    }, inplace=True)
+    
+    # Convertir índices a porcentaje para mejor legibilidad
+    if 'Índice de Falla ON (%)' in df_export.columns:
+        df_export['Índice de Falla ON (%)'] = df_export['Índice de Falla ON (%)'] * 100
+    if 'Índice de Falla ALS ON (%)' in df_export.columns:
+        df_export['Índice de Falla ALS ON (%)'] = df_export['Índice de Falla ALS ON (%)'] * 100
+    
+    # Crear botón de descarga
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df_export.to_excel(writer, index=False, sheet_name='Resumen Performance')
+    excel_data = output.getvalue()
+    
+    st.download_button(
+        label="📥 Descargar datos completos en Excel",
+        data=excel_data,
+        file_name="resumen_performance_completo.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        key="download_performance_excel"
+    )
 
     # Preparar datos para JSON
     # Convertir fechas a string para evitar errores de serialización Timestamp
@@ -541,7 +580,6 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
     COLOR_DANGER = "#ff0055"  # Rojo/Magenta (Indice Falla)
     COLOR_WARNING = "#ffab40" # Naranja (Indice Falla ALS)
 
-    import pandas as pd
     pozos_on = df_monthly['Pozos_ON'].tolist()
     pozos_off = df_monthly['Pozos_OFF'].tolist()
     rl_prom = [round(float(x), 2) for x in df_monthly['RunLife_Promedio'].tolist()]
