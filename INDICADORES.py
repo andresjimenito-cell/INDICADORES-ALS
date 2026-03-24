@@ -2,6 +2,44 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import io
+import requests
+import json
+import streamlit.components.v1 as components
+import tempfile
+import os
+import re
+import html
+import importlib
+import base64
+import pickle
+import unicodedata
+from datetime import datetime, timedelta
+from pathlib import Path
+
+# Importaciones locales
+import tema
+from mtbf import calcular_mtbf, mostrar_mtbf
+from kpis import mostrar_kpis
+from indice_falla import calcular_indice_falla_anual
+from run_life_efectivo import calcular_run_life_efectivo
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+from theme import (
+    get_colors, 
+    get_plotly_layout as theme_get_plotly_layout, 
+    styled_title as theme_styled_title, 
+    plotly_styled_title as theme_plotly_styled_title
+)
+
+# === NUEVAS VARIABLES DE COLOR ===
+COLOR_MAGENTA_NEON = tema.COLOR_MAGENTA_NEON
+COLOR_AZUL_CIBER = tema.COLOR_AZUL_CIBER
+COLOR_FONDO_OSCURO = tema.COLOR_FONDO_OSCURO
+COLOR_FUENTE = tema.COLOR_FUENTE
+COLOR_GLOW_SUAVE = tema.COLOR_GLOW_SUAVE
+COLOR_PRINCIPAL = COLOR_MAGENTA_NEON
 
 # CONFIGURACIÓN DE PÁGINA ANCHO TOTAL (WIDE MODE)
 st.set_page_config(
@@ -13,54 +51,54 @@ st.set_page_config(
 # Función para importar estilos desde dashboard_css.py Y agregar estilos de tablas
 def inject_custom_css():
     """Inyecta CSS básico sin modificar el sidebar por defecto de Streamlit."""
-    st.markdown("""
+    st.markdown(f"""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700;900&family=Inter:wght@300;400;600&display=swap');
 
         /* --- CONFIGURACIÓN BÁSICA SIN MODIFICAR SIDEBAR --- */
-        [data-testid="stAppViewContainer"] {
+        [data-testid="stAppViewContainer"] {{
             padding: 0 !important;
             margin: 0 !important;
-        }
+        }}
 
         /* Contenedor principal - sin márgenes especiales */
-        [data-testid="stMainBlockContainer"] {
+        [data-testid="stMainBlockContainer"] {{
             padding: 1rem !important;
             box-sizing: border-box !important;
-        }
+        }}
 
         /* MOSTRAR todos los elementos de Streamlit */
-        [data-testid="stToolbar"] {
+        [data-testid="stToolbar"] {{
             display: block !important;
             visibility: visible !important;
-        }
+        }}
 
-        [data-testid="stHeader"] {
+        [data-testid="stHeader"] {{
             display: block !important;
             visibility: visible !important;
-        }
+        }}
 
         /* --- Global & Background --- */
-        .stApp {
+        .stApp {{
             background-color: #0a0e27 !important;
             background-image: 
                 radial-gradient(circle at 10% 20%, rgba(19, 91, 236, 0.05) 0%, transparent 40%),
                 radial-gradient(circle at 90% 80%, rgba(0, 242, 255, 0.05) 0%, transparent 40%) !important;
             font-family: 'Inter', sans-serif !important;
-        }
+        }}
 
     /* --- Sidebar Premium HUD Design --- */
-        [data-testid="stSidebar"] {
+        [data-testid="stSidebar"] {{
             background-color: #060a1e !important;
             background-image: 
                 radial-gradient(circle at 0% 0%, rgba(0, 242, 255, 0.08) 0%, transparent 50%),
                 linear-gradient(180deg, #060a1e 0%, #030612 100%) !important;
             border-right: 1px solid rgba(0, 242, 255, 0.2) !important;
             box-shadow: 10px 0 30px rgba(0,0,0,0.5) !important;
-        }
+        }}
 
         /* HUD Scanline Effect - Sutil */
-        [data-testid="stSidebar"]::before {
+        [data-testid="stSidebar"]::before {{
             content: " ";
             position: absolute;
             top: 0; left: 0; bottom: 0; right: 0;
@@ -69,21 +107,21 @@ def inject_custom_css():
             background-size: 100% 4px;
             pointer-events: none;
             opacity: 0.2;
-        }
+        }}
 
-        [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
+        [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {{
             gap: 1.2rem !important;
             padding: 2rem 1rem !important;
-        }
+        }}
 
         /* Sidebar Text & Labels */
-        [data-testid="stSidebar"] .stMarkdown p {
+        [data-testid="stSidebar"] .stMarkdown p {{
             font-family: 'Inter', sans-serif !important;
             color: #94a3b8 !important;
             font-size: 0.9rem !important;
-        }
+        }}
 
-        [data-testid="stSidebar"] label {
+        [data-testid="stSidebar"] label {{
             font-family: 'Outfit', sans-serif !important;
             color: #00f2ff !important;
             text-transform: uppercase !important;
@@ -92,32 +130,32 @@ def inject_custom_css():
             font-size: 0.7rem !important;
             margin-bottom: 0.5rem !important;
             text-shadow: 0 0 5px rgba(0, 242, 255, 0.2) !important;
-        }
+        }}
 
         /* --- Custom Inputs Styling (HUD Style) --- */
         [data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"],
-        [data-testid="stSidebar"] .stMultiSelect div[data-baseweb="select"] {
+        [data-testid="stSidebar"] .stMultiSelect div[data-baseweb="select"] {{
             background-color: rgba(10, 15, 30, 0.7) !important;
             border: 1px solid rgba(0, 242, 255, 0.2) !important;
             border-radius: 12px !important;
             backdrop-filter: blur(10px) !important;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        }
+        }}
 
-        [data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"]:hover {
+        [data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"]:hover {{
             border-color: #00f2ff !important;
             background-color: rgba(10, 15, 30, 0.9) !important;
             box-shadow: 0 0 20px rgba(0, 242, 255, 0.15) !important;
             transform: translateY(-1px);
-        }
+        }}
 
-        [data-testid="stSidebar"] .stSelectbox div[aria-selected="true"] {
+        [data-testid="stSidebar"] .stSelectbox div[aria-selected="true"] {{
             color: #fff !important;
             font-weight: 600 !important;
-        }
+        }}
 
         /* Títulos en Sidebar */
-        [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
+        [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {{
             font-family: 'Outfit', sans-serif !important;
             color: #ff00ff !important;
             text-transform: uppercase !important;
@@ -129,20 +167,20 @@ def inject_custom_css():
             text-shadow: 0 0 15px rgba(255, 0, 255, 0.3) !important;
             border-bottom: 1px solid rgba(255, 0, 255, 0.2);
             padding-bottom: 0.5rem;
-        }
+        }}
 
         /* Sidebar Scrollbar */
-        [data-testid="stSidebar"] ::-webkit-scrollbar {
+        [data-testid="stSidebar"] ::-webkit-scrollbar {{
             width: 4px;
-        }
-        [data-testid="stSidebar"] ::-webkit-scrollbar-thumb {
+        }}
+        [data-testid="stSidebar"] ::-webkit-scrollbar-thumb {{
             background: rgba(0, 242, 255, 0.2);
             border-radius: 10px;
-        }
+        }}
  
-        /* --- Estilo para Botones de Zoom (Más elegantes y pequeños) --- */
+        /* --- Estilo para Botones de Zoom --- */
         button[kind="secondary"].st-emotion-cache-19rxjzo, 
-        button[key*="btn_zoom"] {
+        button[key*="btn_zoom"] {{
             height: 28px !important;
             min-height: 28px !important;
             padding: 0 12px !important;
@@ -157,40 +195,38 @@ def inject_custom_css():
             width: auto !important;
             margin: 0 auto !important;
             display: block !important;
-        }
+        }}
 
-        button[key*="btn_zoom"]:hover {
+        button[key*="btn_zoom"]:hover {{
             background: rgba(200, 43, 150, 0.3) !important;
             border-color: #ff00ff !important;
             box-shadow: 0 0 15px rgba(200, 43, 150, 0.4) !important;
             transform: translateY(-1px);
-        }
+        }}
  
         /* --- Global Enhancements --- */
-        .stPlotlyChart {
+        .stPlotlyChart {{
             background: transparent !important;
             border-radius: 15px !important;
             box-shadow: 0 10px 30px rgba(0,0,0,0.4) !important;
-        }
+        }}
         
         /* Mantener footer oculto pero mostrar menú principal */
-        footer {visibility: hidden !important;}
+        footer {{visibility: hidden !important;}}
         
     </style>
     """, unsafe_allow_html=True)
 
-
-
-# ...existing code...
 def mostrar_seccion_mtbf(df_bd_filtered, fecha_evaluacion):
-    # ...no mostrar ids aquí, solo en el flujo principal...
+    """Calcula y muestra la sección de MTBF."""
     try:
         mtbf_global, mtbf_por_pozo = calcular_mtbf(df_bd_filtered, fecha_evaluacion)
         mostrar_mtbf(mtbf_global, mtbf_por_pozo, df_bd=df_bd_filtered, fecha_evaluacion=fecha_evaluacion)
     except Exception as e:
         st.warning(f"No se pudo calcular el MTBF: {e}")
+
 def clasificar_razon_ia(razon):
-    import unicodedata
+    """Clasifica la razón de pull usando palabras clave."""
     if not isinstance(razon, str):
         return 'Desconocida'
     # Normalizar acentos y pasar a minúsculas
@@ -198,8 +234,9 @@ def clasificar_razon_ia(razon):
     # Palabras clave ampliadas
     palabras_mecanica = ['mecanic', 'eje', 'rotura', 'desgaste', 'rodamient', 'sello', 'acople', 'engranaje', 'mecanico', 'mecanica']
     palabras_electrica = ['electri','bomba', 'cable', 'aislamiento', 'motor', 'corto', 'bobina', 'fase', 'desbalanceado', 'electrica', 'electrico', 'variador', 'tablero','aterrizado', 'control','ALS']
-    palabras_tuberia = ['Tubería','casing', 'varilla','tubing', 'liner', 'fuga', 'pinchazo', 'conexion', 'tubo', 'perforacion']
-    palabras_yacimiento = ['yacimiento','ABANDONO','agua','REDISEÑO','RECAÑONEO','WS','WO', 'solidos', 'arena', 'incrustacion', 'parafina', 'asfalteno', 'presion', 'flujo', 'formacion', 'economico','produccion']
+    palabras_tuberia = ['tuberia', 'casing', 'varilla','tubing', 'liner', 'fuga', 'pinchazo', 'conexion', 'tubo', 'perforacion']
+    palabras_yacimiento = ['yacimiento','abandono','agua','rediseño','recañoneo','ws','wo', 'solidos', 'arena', 'incrustacion', 'parafina', 'asfalteno', 'presion', 'flujo', 'formacion', 'economico','produccion']
+    
     if any(word in razon_norm for word in palabras_mecanica):
         return 'Mecánica'
     if any(word in razon_norm for word in palabras_electrica):
@@ -209,31 +246,6 @@ def clasificar_razon_ia(razon):
     if any(word in razon_norm for word in palabras_yacimiento):
         return 'Yacimiento'
     return 'Otra'
-import streamlit as st
-import pandas as pd
-import numpy as np
-import io
-from mtbf import calcular_mtbf, mostrar_mtbf
-from kpis import mostrar_kpis
-from indice_falla import calcular_indice_falla_anual
-from datetime import datetime, timedelta
-import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-from theme import get_colors, get_plotly_layout as theme_get_plotly_layout, styled_title as theme_styled_title, plotly_styled_title as theme_plotly_styled_title
-import requests
-import json
-import streamlit.components.v1 as components
-import tempfile
-import os
-import re
-import html
-import importlib
-import tema
-import base64
-import pickle
-from pathlib import Path
-from run_life_efectivo import calcular_run_life_efectivo
 
 @st.cache_data(show_spinner="Descargando archivo desde la nube...", ttl=600)
 def cached_onedrive_download(url, dest_filename):
@@ -940,8 +952,6 @@ def generar_reporte_completo(df_bd, df_forma9, fecha_evaluacion):
         # Necesitamos que df_rle_result mantenga el índice o podamos filtrar por la misma máscara
         # mask_ended_eval aplica a df_bd_eval, que es la entrada de calcular_run_life_efectivo
         rle_fallados_val = df_rle_result[mask_ended_eval]['RUN_LIFE_EFECTIVO'].mean() if not df_rle_result[mask_ended_eval].empty else 0.0
-
-        # Agregar al reporte
         reporte_run_life = pd.concat([
             reporte_run_life,
             pd.DataFrame({
@@ -1019,45 +1029,6 @@ def generar_historico_run_life(df_bd_calculated, fecha_evaluacion):
         return pd.DataFrame(columns=['Mes', 'ACTIVO', 'Tiempo Op. Promedio'])
 
 
-def highlight_problema(s):
-    """
-    Función para estilizar las filas con más de una falla.
-    """
-    is_problema = s['Cantidad de Fallas'] > 1
-    if is_problema:
-        # Personaliza aquí el color de fondo y texto
-        # Calcular contraste para asegurar legibilidad: elegir blanco o negro
-        def _hex_to_rgb(h):
-            h = h.lstrip('#')
-            return tuple(int(h[i:i+2], 16) for i in (0, 2, 4)) if len(h) == 6 else (0, 0, 0)
-
-        def _luminance(rgb):
-            r, g, b = [c/255.0 for c in rgb]
-            for i, v in enumerate((r, g, b)):
-                if v <= 0.03928:
-                    v = v/12.92
-                else:
-                    v = ((v+0.055)/1.055) ** 2.4
-                if i == 0:
-                    r = v
-                elif i == 1:
-                    g = v
-                else:
-                    b = v
-            return 0.2126*r + 0.7152*g + 0.0722*b
-
-        try:
-            rgb = _hex_to_rgb(COLOR_PRINCIPAL)
-            lum = _luminance(rgb)
-            # Si luminancia alta -> texto oscuro, sino texto blanco
-            text_color = tema.COLOR_NEGRO if lum > 0.5 else tema.COLOR_BLANCO
-        except Exception:
-            text_color = COLOR_FUENTE if COLOR_FUENTE else 'inherit'
-
-        return [f'background-color: {COLOR_PRINCIPAL}; color: {text_color}; font-weight: bold;'] * len(s)
-    else:
-        return [''] * len(s)
-
 # Título principal y logo grande (estilos específicos por secciones)
 # === NUEVAS VARIABLES DE COLOR ===
 COLOR_MAGENTA_NEON = tema.COLOR_MAGENTA_NEON   # celeste38C4FF
@@ -1068,6 +1039,43 @@ COLOR_GLOW_SUAVE = tema.COLOR_GLOW_SUAVE # Sombra de neón suave (Magenta)
 
 # Usaremos COLOR_MAGENTA_NEON como nuestro COLOR_PRINCIPAL en el CSS
 COLOR_PRINCIPAL = COLOR_MAGENTA_NEON
+
+def highlight_problema(s):
+    """
+    Función para estilizar las filas con más de una falla.
+    """
+    try:
+        val = s.get('Cantidad de Fallas', 0)
+        is_problema = float(val) > 1 if val is not None else False
+    except (ValueError, TypeError):
+        is_problema = False
+        
+    if is_problema:
+        def _hex_to_rgb(h):
+            h = h.lstrip('#')
+            if len(h) == 6:
+                return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+            return (0, 0, 0)
+
+        def _luminance(rgb_tuple):
+            r_v, g_v, b_v = [c/255.0 for c in rgb_tuple]
+            def _adjust(v):
+                return v/12.92 if v <= 0.03928 else ((v+0.055)/1.055) ** 2.4
+            rl = _adjust(r_v)
+            gl = _adjust(g_v)
+            bl = _adjust(b_v)
+            return 0.2126*rl + 0.7152*gl + 0.0722*bl
+
+        try:
+            rgb_val = _hex_to_rgb(COLOR_PRINCIPAL)
+            lum = _luminance(rgb_val)
+            text_color = tema.COLOR_NEGRO if lum > 0.5 else tema.COLOR_BLANCO
+        except Exception:
+            text_color = COLOR_FUENTE if 'COLOR_FUENTE' in globals() else 'white'
+
+        return [f'background-color: {COLOR_PRINCIPAL}; color: {text_color}; font-weight: bold;'] * len(s)
+    else:
+        return [''] * len(s)
 _page_css = ["<style>"]
 
 # 1. ESTILO GLOBAL Y FONDO PROFUNDO
@@ -1574,18 +1582,10 @@ with col2:
 
 
 # =================== HEADER & FILE UPLOAD (Mantenemos la lógica de la sesión) ===================
-
-if 'df_forma9_raw' not in st.session_state:
-    st.session_state['df_forma9_raw'] = None
-# ... (mantener el resto de la inicialización de session_state) ...
-
 if 'df_forma9_raw' not in st.session_state:
     st.session_state['df_forma9_raw'] = None
 if 'df_bd_raw' not in st.session_state:
     st.session_state['df_bd_raw'] = None
-def new_func():
-    st.session_state['df_forma9_calculated']
-
 if 'df_forma9_calculated' not in st.session_state:
     st.session_state['df_forma9_calculated'] = None
 if 'df_bd_calculated' not in st.session_state:
@@ -1606,6 +1606,8 @@ if 'unique_als' not in st.session_state:
     st.session_state['unique_als'] = []
 if 'unique_activos' not in st.session_state:
     st.session_state['unique_activos'] = []
+if 'fecha_evaluacion_state' not in st.session_state:
+    st.session_state['fecha_evaluacion_state'] = datetime.now().date()
 
 
 # ========== NUEVO LAYOUT DE CARGA Y FECHA ========== 
@@ -2300,7 +2302,7 @@ if st.session_state['reporte_runes'] is not None:
     </style>
     """, unsafe_allow_html=True)
 
-    tab_resumen, tab_performance, tab_fallas, tab_indices = st.tabs(["📊 RESUMEN", "⚡ PERFORMANCE", "🚨 FALLAS", "📈 ÍNDICES & DATA"])
+    tab_resumen, tab_performance, tab_mtbf, tab_fallas, tab_indices = st.tabs(["📊 RESUMEN", "⚡ PERFORMANCE", "🕒 TMEF (MTBF)", "🚨 FALLAS", "📈 ÍNDICES & DATA"])
 
     with tab_resumen:
         
@@ -2606,18 +2608,25 @@ if st.session_state['reporte_runes'] is not None:
                 # 2) Fallback: si algún pozo no tiene match directo, buscar el RUN con FECHA_RUN <= FECHA_FORMA9
                 missing_idxs = [i for i in range(len(df_f9_merge)) if i not in runlife_map]
                 if missing_idxs:
+                    # Garantizar que sea un diccionario mutable
+                    runlife_map_final = dict(runlife_map)
                     for i in missing_idxs:
                         try:
-                            candidate = merged_df[(merged_df['_idx'] == i) & (merged_df['FECHA_RUN'] <= merged_df.loc[merged_df['_idx'] == i, 'FECHA_FORMA9'].iloc[0])]
-                            if not candidate.empty:
-                                # tomar el RUN con FECHA_RUN más reciente
-                                idx_choice = candidate['FECHA_RUN'].idxmax()
-                                runlife_map[i] = merged_df.loc[idx_choice, 'RUN LIFE']
+                            # Filtrar candidatos
+                            mask_i = (merged_df['_idx'] == i)
+                            if not merged_df[mask_i].empty:
+                                f9_val = merged_df.loc[mask_i, 'FECHA_FORMA9'].iloc[0]
+                                candidate = merged_df[mask_i & (merged_df['FECHA_RUN'] <= f9_val)]
+                                if not candidate.empty:
+                                    # tomar el RUN con FECHA_RUN más reciente
+                                    idx_choice = candidate['FECHA_RUN'].idxmax()
+                                    runlife_map_final[i] = merged_df.loc[idx_choice, 'RUN LIFE']
                         except Exception:
-                            # dejar sin match si algo falla
                             continue
+                    runlife_map = runlife_map_final
 
-                df_f9_merge['RUN LIFE'] = df_f9_merge.index.map(lambda i: runlife_map.get(i, np.nan))
+                # Mapear resultados
+                df_f9_merge['RUN LIFE'] = pd.Series(df_f9_merge.index).map(lambda i: runlife_map.get(i, np.nan)).values
 
                 # Mostrar resumen rápido de mapeo para ayudar a debugging y ver distribución
                 try:
@@ -2849,6 +2858,39 @@ if st.session_state['reporte_runes'] is not None:
         else:
             st.info('No hay datos de RUN o de FORMA9 disponibles para el filtro actual.')
 
+    with tab_mtbf:
+        st.markdown(f"""
+        <div style="background: linear-gradient(90deg, rgba(19, 91, 236, 0.1), transparent); padding: 10px; border-left: 5px solid #135bec; border-radius: 5px; margin-top: 1.5em; margin-bottom: 1em;">
+            <h3 id="analisis-mtbf" style='font-size:1.6rem; font-weight:800; margin:0; color:#135bec; letter-spacing: -0.5px;'>
+                 ANÁLISIS DE TMEF (MTBF)
+            </h3>
+        </div>
+        """, unsafe_allow_html=True)
+        # Análisis MTBF
+        try:
+            mtbf_global, mtbf_por_pozo = calcular_mtbf(df_bd_filtered, fecha_evaluacion)
+            
+            # Cálculo de MTBF Efectivo (teniendo en cuenta solo días trabajados)
+            mtbf_efectivo_global = None
+            if 'RUN_LIFE_EFECTIVO' in df_bd_filtered.columns:
+                try:
+                    # Usamos la misma lógica de cálculo pero basándonos en RLE para los eventos registrados
+                    mtbf_efectivo_global, _ = calcular_mtbf(df_bd_filtered, fecha_evaluacion, col_life='RUN_LIFE_EFECTIVO')
+                except Exception:
+                    mtbf_efectivo_global = None
+            
+            # Mostrar ambos indicadores
+            mostrar_mtbf(
+                mtbf_global, 
+                mtbf_por_pozo, 
+                mtbf_efectivo=mtbf_efectivo_global, 
+                df_bd=df_bd_filtered, 
+                fecha_evaluacion=fecha_evaluacion
+            )
+        except Exception as e:
+            st.warning(f"No se pudo calcular el MTBF: {e}")
+
+
         with st.expander("Verificaciones de Consistencia", expanded=False):
             for relacion, es_valida in verificaciones_filtered.items():
                 status = "✅ Válida" if es_valida else "❌ No válida"
@@ -3028,21 +3070,22 @@ if st.session_state['reporte_runes'] is not None:
             ]
             # Enriquecer la tabla con run life a falla y razón de pull
             detalles_fallas = []
-            for _, row in filtered_fallas.iterrows():
-                mes = row['MES']
-                mask = (df_bd_filtered['FECHA_FALLA'].dt.to_period('M') == mes.to_period('M'))
-                runs_mes = df_bd_filtered[mask]
-                for _, run in runs_mes.iterrows():
-                    razon = run.get('RAZON ESPECIFICA PULL', '')
-                    clasificacion = clasificar_razon_ia(razon) if razon else ''
-                    detalles_fallas.append({
-                        'Mes': mes,
-                        'Pozo': run.get('POZO', ''),
-                        'Fecha Falla': run.get('FECHA_FALLA', ''),
-                        'Tiempo Vida a Falla': run.get('RUN LIFE', ''),
-                        'Razón de Pull': razon,
-                        'Clasificación IA': clasificacion
-                    })
+            if df_bd_filtered is not None:
+                for _, row in filtered_fallas.iterrows():
+                    mes = row['MES']
+                    mask = (df_bd_filtered['FECHA_FALLA'].dt.to_period('M') == mes.to_period('M'))
+                    runs_mes = df_bd_filtered[mask]
+                    for _, run in runs_mes.iterrows():
+                        razon = run.get('RAZON ESPECIFICA PULL', '')
+                        clasificacion = clasificar_razon_ia(razon) if razon else ''
+                        detalles_fallas.append({
+                            'Mes': mes,
+                            'Pozo': run.get('POZO', ''),
+                            'Fecha Falla': run.get('FECHA_FALLA', ''),
+                            'Tiempo Vida a Falla': run.get('RUN LIFE', ''),
+                            'Razón de Pull': razon,
+                            'Clasificación IA': clasificacion
+                        })
             df_detalles_fallas = pd.DataFrame(detalles_fallas)
             # --- Layout 2x2 simétrico ---
             col1, col2 = st.columns(2)
@@ -3287,10 +3330,12 @@ if st.session_state['reporte_runes'] is not None:
         </div>
         """, unsafe_allow_html=True)
 
-        pozos_fallados_df = df_bd_filtered[
-            (df_bd_filtered['FECHA_FALLA'].dt.date >= fecha_evaluacion - timedelta(days=365)) &
-            (df_bd_filtered['FECHA_FALLA'].dt.date <= fecha_evaluacion)
-        ]
+        pozos_fallados_df = pd.DataFrame()
+        if df_bd_filtered is not None and not df_bd_filtered.empty:
+            pozos_fallados_df = df_bd_filtered[
+                (df_bd_filtered['FECHA_FALLA'].dt.date >= fecha_evaluacion - timedelta(days=365)) &
+                (df_bd_filtered['FECHA_FALLA'].dt.date <= fecha_evaluacion)
+            ]
 
         if not pozos_fallados_df.empty:
             fallas_por_pozo = pozos_fallados_df.groupby('POZO')['RUN'].count().reset_index()
@@ -3331,15 +3376,20 @@ if st.session_state['reporte_runes'] is not None:
                     # Traer razón específica de pull y clasificarla
                     for index, row in pozos_problema.iterrows():
                         # Buscar razones en df_bd_filtered para ese pozo
-                        if 'RAZON ESPECIFICA PULL' in df_bd_filtered.columns and 'FECHA_FALLA' in df_bd_filtered.columns:
-                            mask = (
-                                (df_bd_filtered['POZO'] == row['POZO']) &
-                                (df_bd_filtered['FECHA_FALLA'].dt.date >= fecha_evaluacion - timedelta(days=365)) &
-                                (df_bd_filtered['FECHA_FALLA'].dt.date <= fecha_evaluacion)
-                            )
-                            razones = df_bd_filtered.loc[mask, 'RAZON ESPECIFICA PULL'].dropna().tolist()
-                        else:
-                            razones = []
+                        razones = []
+                        if isinstance(df_bd_filtered, pd.DataFrame):
+                            if 'RAZON ESPECIFICA PULL' in df_bd_filtered.columns and 'FECHA_FALLA' in df_bd_filtered.columns:
+                                # Asegurar que comparamos fechas (objects) o timestamps consistentemente
+                                date_limit = pd.to_datetime(fecha_evaluacion) - timedelta(days=365)
+                                date_eval = pd.to_datetime(fecha_evaluacion)
+                                mask = (
+                                    (df_bd_filtered['POZO'] == row['POZO']) &
+                                    (df_bd_filtered['FECHA_FALLA'] >= date_limit) &
+                                    (df_bd_filtered['FECHA_FALLA'] <= date_eval)
+                                )
+                                df_temp = df_bd_filtered[mask]
+                                if not df_temp.empty:
+                                    razones = df_temp['RAZON ESPECIFICA PULL'].dropna().tolist()
                         
                         # Usar st.expander para mantenerlo minimizado por defecto
                         with st.expander(f"⚠️ {row['POZO']} ({row['Cantidad de Fallas']} fallas)", expanded=False):
@@ -3554,15 +3604,6 @@ if st.session_state['reporte_runes'] is not None:
 
                 except Exception as e:
                     st.error(f"Ocurrió un error al calcular los índices de falla. Asegúrate de que los datos filtrados contengan la información necesaria: {e}")
-    # Sección MTBF: Mover a tab_performance
-    with tab_performance:
-        st.markdown("<br>", unsafe_allow_html=True)
-        # Análisis MTBF
-        try:
-            mtbf_global, mtbf_por_pozo = calcular_mtbf(df_bd_filtered, fecha_evaluacion)
-            mostrar_mtbf(mtbf_global, mtbf_por_pozo, df_bd=df_bd_filtered, fecha_evaluacion=fecha_evaluacion)
-        except Exception as e:
-            st.warning(f"No se pudo calcular el MTBF: {e}")
 
     # Dataset y Gráficos Resumen: Mover a tab_indices
     with tab_indices:
