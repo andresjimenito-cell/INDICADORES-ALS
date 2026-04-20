@@ -1,6 +1,11 @@
 import streamlit as st
 import pandas as pd
-from graphviz import Digraph
+try:
+    from graphviz import Digraph
+    HAS_GRAPHVIZ = True
+except ImportError:
+    HAS_GRAPHVIZ = False
+
 import datetime 
 import pandas as pd 
 from theme import get_colors
@@ -101,9 +106,9 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
     def calc_running(df, fecha_eval):
         return df[(df['FECHA_RUN_DATE'] <= fecha_eval) & (df['FECHA_PULL_DATE'].isna() | (df['FECHA_PULL_DATE'] > fecha_eval))].shape[0]
     def calc_fallados(df, fecha_eval):
-        return df[(df['FECHA_FALLA_DATE'].notna()) & (df['FECHA_FALLA_DATE'] <= fecha_eval) & (df['FECHA_PULL_DATE'].isna() | (df['FECHA_PULL_DATE'] > fecha_eval))].shape[0]
+        return df[(df['FECHA_RUN_DATE'] <= fecha_eval) & (df['FECHA_FALLA_DATE'].notna()) & (df['FECHA_FALLA_DATE'] <= fecha_eval) & (df['FECHA_PULL_DATE'].isna() | (df['FECHA_PULL_DATE'] > fecha_eval))].shape[0]
     def calc_operativos(df, fecha_eval):
-        return df[(df['FECHA_FALLA_DATE'].isna() | (df['FECHA_FALLA_DATE'] > fecha_eval)) & (df['FECHA_PULL_DATE'].isna() | (df['FECHA_PULL_DATE'] > fecha_eval))].shape[0]
+        return df[(df['FECHA_RUN_DATE'] <= fecha_eval) & (df['FECHA_FALLA_DATE'].isna() | (df['FECHA_FALLA_DATE'] > fecha_eval)) & (df['FECHA_PULL_DATE'].isna() | (df['FECHA_PULL_DATE'] > fecha_eval))].shape[0]
 
     df_bd_als_calc = filtrar_als(df_bd, selected_als)
     run_todos = calc_running(df_bd, fecha_eval_date)
@@ -451,12 +456,14 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
     components.html(html_content, height=iframe_height, scrolling=False)
 
 
-from graphviz import Digraph # Import Digraph
+# Importación movida al inicio para control de errores y consistencia
 
 def build_kpis_graph(df_bd, df_forma9=None, reporte_run_life=None, indice_resumen_df=None, selected_als='TODOS', fecha_evaluacion=None):
     """Construye y devuelve un objeto graphviz.Digraph con los nodos y etiquetas de KPIs.
     Esta función no imprime en Streamlit; devuelve el `dot` para que el llamador lo muestre.
     """
+    if not HAS_GRAPHVIZ:
+        return None
     # Normalizar columnas
     df_bd = df_bd.copy()
     df_bd.columns = [str(c).upper().strip() for c in df_bd.columns]
@@ -492,9 +499,9 @@ def build_kpis_graph(df_bd, df_forma9=None, reporte_run_life=None, indice_resume
     def calc_running(df, fecha_eval):
         return df[(df['FECHA_RUN_DATE'] <= fecha_eval) & (df['FECHA_PULL_DATE'].isna() | (df['FECHA_PULL_DATE'] > fecha_eval))].shape[0]
     def calc_fallados(df, fecha_eval):
-        return df[(df['FECHA_FALLA_DATE'].notna()) & (df['FECHA_FALLA_DATE'] <= fecha_eval) & (df['FECHA_PULL_DATE'].isna() | (df['FECHA_PULL_DATE'] > fecha_eval))].shape[0]
+        return df[(df['FECHA_RUN_DATE'] <= fecha_eval) & (df['FECHA_FALLA_DATE'].notna()) & (df['FECHA_FALLA_DATE'] <= fecha_eval) & (df['FECHA_PULL_DATE'].isna() | (df['FECHA_PULL_DATE'] > fecha_eval))].shape[0]
     def calc_operativos(df, fecha_eval):
-        return df[(df['FECHA_FALLA_DATE'].isna() | (df['FECHA_FALLA_DATE'] > fecha_eval)) & (df['FECHA_PULL_DATE'].isna() | (df['FECHA_PULL_DATE'] > fecha_eval))].shape[0]
+        return df[(df['FECHA_RUN_DATE'] <= fecha_eval) & (df['FECHA_FALLA_DATE'].isna() | (df['FECHA_FALLA_DATE'] > fecha_eval)) & (df['FECHA_PULL_DATE'].isna() | (df['FECHA_PULL_DATE'] > fecha_eval))].shape[0]
 
     df_bd_als = filtrar_als(df_bd, selected_als)
     run_todos = calc_running(df_bd, fecha_eval_date)

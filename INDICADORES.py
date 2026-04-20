@@ -2669,12 +2669,13 @@ if st.session_state['reporte_runes'] is not None:
             # Agregados por bucket (suma de BOPD entre todos los bloques) y conteo de pozos únicos
             agg = merged.groupby(['RunLifeBucket']).agg(
                 BOPD_sum=pd.NamedAgg(column='BOPD', aggfunc='sum'),
-                Pozos=pd.NamedAgg(column='POZO', aggfunc=lambda x: x.nunique())
+                Pozos=pd.NamedAgg(column='POZO', aggfunc=lambda x: x.nunique()),
+                Lista_Pozos=pd.NamedAgg(column='POZO', aggfunc=lambda x: ', '.join(sorted(x.unique().astype(str))))
             ).reset_index()
 
             # Asegurar orden de buckets
             bucket_order = ['<2 años', '2-4 años', '4-6 años', '>6 años']
-            agg = agg.set_index('RunLifeBucket').reindex(bucket_order).fillna({'BOPD_sum': 0, 'Pozos': 0}).reset_index()
+            agg = agg.set_index('RunLifeBucket').reindex(bucket_order).fillna({'BOPD_sum': 0, 'Pozos': 0, 'Lista_Pozos': ''}).reset_index()
 
             if agg.empty:
                 st.info('No hay datos suficientes para generar la gráfica por buckets de Run Life.')
@@ -2691,14 +2692,15 @@ if st.session_state['reporte_runes'] is not None:
                     df_export_bopd.rename(columns={
                         'RunLifeBucket': 'Rango de Tiempo de Vida',
                         'BOPD_sum': 'Producción Total (BOPD)',
-                        'Pozos': 'Cantidad de Pozos'
+                        'Pozos': 'Cantidad de Pozos',
+                        'Lista_Pozos': 'Pozos en Rango'
                     }, inplace=True)
                     
                     # Crear botón de descarga
                     from io import BytesIO
                     output_bopd = BytesIO()
                     with pd.ExcelWriter(output_bopd, engine='openpyxl') as writer:
-                        df_export_bopd.to_excel(writer, index=False, sheet_name='BOPD vs Tiempo de Vida')
+                        df_export_bopd.to_excel(writer, index=False, sheet_name='Resumen por Rango')
                         # Agregar también los datos detallados por pozo
                         if not merged.empty:
                             merged_export = merged[['POZO', 'BOPD', 'RUN LIFE', 'RunLifeBucket']].copy()
@@ -2708,7 +2710,8 @@ if st.session_state['reporte_runes'] is not None:
                                 'RUN LIFE': 'Tiempo de Vida (días)',
                                 'RunLifeBucket': 'Rango de Tiempo de Vida'
                             }, inplace=True)
-                            merged_export.to_excel(writer, index=False, sheet_name='Detalle por Pozo')
+                            merged_export.sort_values(by=['Rango de Tiempo de Vida', 'Pozo'], inplace=True)
+                            merged_export.to_excel(writer, index=False, sheet_name='Detalle Individual')
                     excel_data_bopd = output_bopd.getvalue()
                     
                     st.download_button(
@@ -2720,7 +2723,7 @@ if st.session_state['reporte_runes'] is not None:
                     )
                     
                     st.dataframe(
-                        agg.rename(columns={'RunLifeBucket': 'Rango', 'BOPD_sum': 'BOPD', 'Pozos': '# Pozos'}), 
+                        agg.drop(columns=['Lista_Pozos']).rename(columns={'RunLifeBucket': 'Rango', 'BOPD_sum': 'BOPD', 'Pozos': '# Pozos'}), 
                         hide_index=True,
                         use_container_width=True,
                         column_config={
