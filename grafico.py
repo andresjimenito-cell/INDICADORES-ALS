@@ -530,55 +530,20 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
     if df_monthly is None or df_monthly.empty:
         return st.info("No hay datos mensuales para este filtro.")
 
-    # Preparar datos para descarga en Excel
-    df_export = df_monthly.copy()
-    
-    # Renombrar columnas para mejor legibilidad
-    df_export.rename(columns={
-        'Mes': 'Mes',
-        'Pozos_Operativos': 'Pozos Operativos',
-        'Pozos_ON': 'Pozos Activos',
-        'Pozos_OFF': 'Pozos Inactivos',
-        'RunLife_Promedio': 'Tiempo de Vida Promedio (días)',
-        'RunLife_General': 'Tiempo de Vida Total (días)',
-        'TMEF_Promedio': 'TMEF Promedio (días)',
-        'RunLife_Efectivo': 'Tiempo de Vida Efectivo Total (días)',
-        'RunLife_Efectivo_Fallados': 'Tiempo de Vida Efectivo Fallados (días)',
-        'Indice_Falla_ON': 'Índice de Falla ON (%)',
-        'Indice_Falla_ON_ALS': 'Índice de Falla ALS ON (%)'
-    }, inplace=True)
-    
-    # Convertir índices a porcentaje para mejor legibilidad
-    if 'Índice de Falla ON (%)' in df_export.columns:
-        df_export['Índice de Falla ON (%)'] = df_export['Índice de Falla ON (%)'] * 100
-    if 'Índice de Falla ALS ON (%)' in df_export.columns:
-        df_export['Índice de Falla ALS ON (%)'] = df_export['Índice de Falla ALS ON (%)'] * 100
-    
-    # Crear botón de descarga
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df_export.to_excel(writer, index=False, sheet_name='Resumen Performance')
-    excel_data = output.getvalue()
-    
-    st.download_button(
-        label="📥 Descargar datos completos en Excel",
-        data=excel_data,
-        file_name="resumen_performance_completo.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        key="download_performance_excel"
-    )
+    # El botón de exportación individual ha sido eliminado para limpieza visual.
+    # La exportación ahora es global al final del dashboard.
 
     # Preparar datos para JSON
     # Convertir fechas a string para evitar errores de serialización Timestamp
     categories = [str(m) for m in df_monthly['Mes'].dt.strftime('%b %Y')]
 
     
-    # Colores del tema
-    COLOR_PRIMARY = "#135bec" # Azul
-    COLOR_ACCENT = "#00f2ff"  # Cyan
-    COLOR_SUCCESS = "#b200cc" # Violeta/Magenta (Tiempo Vida)
-    COLOR_DANGER = "#ff0055"  # Rojo/Magenta (Indice Falla)
-    COLOR_WARNING = "#ffab40" # Naranja (Indice Falla ALS)
+    # Colores del tema HUD Premium
+    COLOR_PRIMARY = "#135bec" # Azul Tech
+    COLOR_ACCENT = "#00f2ff"  # Cyan Neón
+    COLOR_SUCCESS = "#00ff9d" # Verde Esmeralda Neón (Tiempo Vida)
+    COLOR_DANGER = "#ff00ff"  # Magenta Neón (Indice Falla)
+    COLOR_WARNING = "#ffab40" # Naranja Neón (Indice Falla ALS)
 
     pozos_on = df_monthly['Pozos_ON'].tolist()
     pozos_off = df_monthly['Pozos_OFF'].tolist()
@@ -597,27 +562,29 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
         "title": {
             "text": titulo.upper(),
             "left": "center",
-            "top": 0,
+            "top": 10,
             "textStyle": {
-                "color": "#fff",
-                "fontSize": 18,
-                "fontFamily": "Outfit, sans-serif",
-                "fontWeight": "900",
-                "letterSpacing": 1
+                "color": "#00f2ff",
+                "fontSize": 14,
+                "fontFamily": "Arial, sans-serif",
+                "fontWeight": "bold",
+                "textShadowBlur": 8,
+                "textShadowColor": "rgba(0, 242, 255, 0.4)"
             }
         },
+        "textStyle": {"fontFamily": "Arial, sans-serif"},
         "tooltip": {
             "trigger": "axis",
             "backgroundColor": "rgba(6, 10, 30, 0.9)",
-            "borderColor": COLOR_ACCENT,
+            "borderColor": "#00f2ff",
             "borderWidth": 1,
-            "textStyle": {"color": "#fff", "fontSize": 12},
+            "textStyle": {"color": "#fff", "fontSize": 12, "fontFamily": "Arial, sans-serif"},
             "axisPointer": {"type": "cross", "label": {"backgroundColor": "#6a7985"}}
         },
         "legend": {
             "data": ["Pozos ON", "Pozos OFF", "T. Vida Prom", "T. Vida Total", "T. Vida Efectivo", "T. V. Efec. Fallados", "TMEF", "Ind. Falla ON", "Ind. Falla ALS"],
             "bottom": 0,
-            "textStyle": {"color": "#ccc", "fontSize": 10},
+            "textStyle": {"color": "#ccc", "fontSize": 10, "fontFamily": "Arial, sans-serif"},
             "icon": "circle",
             "itemGap": 15
         },
@@ -760,7 +727,7 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
         ]
     }
 
-    chart_height = 500
+    chart_height = 400
     container_height = chart_height + 20
 
     html_template = f"""
@@ -768,22 +735,24 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
         <div id="echarts-main" style="width:100%; height:100%;"></div>
         <button id="zoom-btn" style="
             position: absolute; 
-            top: 10px; 
-            right: 10px; 
+            top: 8px; 
+            right: 8px; 
             z-index: 1000; 
-            background: rgba(200, 43, 150, 0.2); 
-            border: 1px solid rgba(200, 43, 150, 0.4); 
-            color: #ff00ff; 
-            padding: 4px 10px; 
-            border-radius: 20px; 
+            background: rgba(15, 23, 42, 0.8); 
+            border: 1px solid rgba(0, 242, 255, 0.2); 
+            color: #475569; 
+            padding: 2px 8px; 
+            border-radius: 4px; 
             cursor: pointer; 
-            font-size: 11px; 
-            font-family: 'Outfit', sans-serif;
-            font-weight: 600;
+            font-size: 8px; 
+            font-family: 'Arial', sans-serif;
+            font-weight: 700;
             text-transform: uppercase;
-            backdrop-filter: blur(5px);
+            backdrop-filter: blur(4px);
             transition: all 0.3s;
-        ">⛶ Ampliar</button>
+            height: 18px;
+            line-height: 1;
+        ">⛶ FULL</button>
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
@@ -807,11 +776,11 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
                         alert(`Error intentando activar pantalla completa: ${{err.message}}`);
                     }});
                     container.style.height = '100vh';
-                    zoomBtn.innerHTML = '✕ Cerrar';
+                    zoomBtn.innerHTML = '✕ CLOSE';
                 }} else {{
                     document.exitFullscreen();
                     container.style.height = '{chart_height}px';
-                    zoomBtn.innerHTML = '⛶ Ampliar';
+                    zoomBtn.innerHTML = '⛶ FULL';
                 }}
             }});
 
@@ -819,7 +788,7 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
             function exitHandler() {{
                 if (!document.fullscreenElement) {{
                     container.style.height = '{chart_height}px';
-                    zoomBtn.innerHTML = '⛶ Ampliar';
+                    zoomBtn.innerHTML = '⛶ FULL';
                     myChart.resize();
                 }} else {{
                     myChart.resize();
@@ -830,3 +799,4 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
     """
     
     components.html(html_template, height=container_height)
+    st.markdown('</div>', unsafe_allow_html=True)

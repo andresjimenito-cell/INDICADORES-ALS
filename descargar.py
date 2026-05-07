@@ -38,12 +38,43 @@ def exportar_excel_con_graficas(tablas: dict, graficas: dict) -> bytes:
         wb.save(output)
         return output.getvalue()
 
+def exportar_resumen_performance(df_monthly) -> bytes:
+    """
+    Exporta el DataFrame mensual de performance a un Excel formateado.
+    """
+    if df_monthly is None or df_monthly.empty:
+        return None
+        
+    df_export = df_monthly.copy()
+    
+    # Renombrar columnas para mejor legibilidad
+    renames = {
+        'Mes': 'Mes',
+        'Pozos_Operativos': 'Pozos Operativos',
+        'Pozos_ON': 'Pozos Activos',
+        'Pozos_OFF': 'Pozos Inactivos',
+        'RunLife_Promedio': 'Tiempo de Vida Promedio (días)',
+        'RunLife_General': 'Tiempo de Vida Total (días)',
+        'TMEF_Promedio': 'TMEF Promedio (días)',
+        'RunLife_Efectivo': 'Tiempo de Vida Efectivo Total (días)',
+        'RunLife_Efectivo_Fallados': 'Tiempo de Vida Efectivo Fallados (días)',
+        'Indice_Falla_ON': 'Índice de Falla ON (%)',
+        'Indice_Falla_ON_ALS': 'Índice de Falla ALS ON (%)'
+    }
+    df_export.rename(columns={k: v for k, v in renames.items() if k in df_export.columns}, inplace=True)
+    
+    # Convertir índices a porcentaje
+    if 'Índice de Falla ON (%)' in df_export.columns:
+        df_export['Índice de Falla ON (%)'] = df_export['Índice de Falla ON (%)'] * 100
+    if 'Índice de Falla ALS ON (%)' in df_export.columns:
+        df_export['Índice de Falla ALS ON (%)'] = df_export['Índice de Falla ALS ON (%)'] * 100
+        
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df_export.to_excel(writer, index=False, sheet_name='Performance')
+    return output.getvalue()
+
 # Ejemplo de uso en Streamlit:
-# import streamlit as st
-# from descargar import exportar_excel_con_graficas
-# if st.button('Descargar Reporte Completo'):
-#     excel_bytes = exportar_excel_con_graficas({'Tabla1': df1, 'Tabla2': df2}, {'Graf1': fig1, 'Graf2': fig2})
-#     st.download_button('Descargar Excel', data=excel_bytes, file_name='reporte_completo.xlsx', mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-# La funcionalidad de generación de diapositivas con IA ha sido eliminada.
-# Si necesitas exportar a PowerPoint en el futuro, podemos agregar una
-# función limpia que use `python-pptx` sin dependencias de IA.
+# from descargar import exportar_resumen_performance
+# excel_bytes = exportar_resumen_performance(st.session_state['df_monthly_summary'])
+# st.download_button('Descargar Excel', data=excel_bytes, ...)

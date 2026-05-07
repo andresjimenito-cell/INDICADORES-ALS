@@ -319,19 +319,8 @@ def render_premium_echarts_run_life(df_monthly, titulo="TIEMPO DE VIDA DASHBOARD
         'RunLife_Efectivo_Fallados': 'Tiempo de Vida Efectivo Fallados (días)'
     }, inplace=True)
     
-    # Crear botón de descarga
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df_export.to_excel(writer, index=False, sheet_name='Tiempo de Vida y TEMF')
-    excel_data = output.getvalue()
-    
-    st.download_button(
-        label="📥 Descargar datos en Excel",
-        data=excel_data,
-        file_name="tiempo_vida_temf.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        key="download_run_life_excel"
-    )
+    # El botón de exportación individual ha sido eliminado.
+    # La exportación se realiza de forma global al final del reporte.
 
     # Asegurar conversión a string para JSON
     categories = [str(m) for m in df_monthly['Mes'].dt.strftime('%b %Y')]
@@ -353,23 +342,31 @@ def render_premium_echarts_run_life(df_monthly, titulo="TIEMPO DE VIDA DASHBOARD
         "title": {
             "text": titulo.upper(),
             "left": "center",
-            "top": 0,
-            "textStyle": {"color": "#fff", "fontSize": 16, "fontFamily": "Outfit", "fontWeight": "900"}
+            "top": 10,
+            "textStyle": {
+                "color": "#00f2ff",
+                "fontSize": 14,
+                "fontFamily": "Arial, sans-serif",
+                "fontWeight": "bold",
+                "textShadowBlur": 8,
+                "textShadowColor": "rgba(0, 242, 255, 0.4)"
+            }
         },
+        "textStyle": {"fontFamily": "Arial, sans-serif"},
         "tooltip": {
             "trigger": "axis",
             "backgroundColor": "rgba(6, 10, 30, 0.9)",
-            "borderColor": COLOR_ACCENT,
-            "textStyle": {"color": "#fff"}
+            "borderColor": "#00f2ff",
+            "textStyle": {"color": "#fff", "fontFamily": "Arial, sans-serif"}
         },
         "legend": {
             "data": ["T. Vida Promed", "T. Vida Total", "T. Vida Efectivo", "T. V. Efec. Fallado", "TMEF"],
             "bottom": 0,
-            "textStyle": {"color": "#ccc", "fontSize": 10}
+            "textStyle": {"color": "#ccc", "fontSize": 10, "fontFamily": "Arial, sans-serif"}
         },
-        "grid": {"left": "3%", "right": "4%", "bottom": "15%", "top": "15%", "containLabel": True},
-        "xAxis": [{"type": "category", "data": categories, "axisLabel": {"color": "#888", "fontSize": 10}}],
-        "yAxis": [{"type": "value", "name": "DÍAS", "axisLabel": {"color": "#888"}}],
+        "grid": {"left": "3%", "right": "4%", "bottom": "15%", "top": "18%", "containLabel": True},
+        "xAxis": [{"type": "category", "data": categories, "axisLabel": {"color": "#888", "fontSize": 10, "fontFamily": "Arial, sans-serif"}}],
+        "yAxis": [{"type": "value", "name": "DÍAS", "axisLabel": {"color": "#888", "fontFamily": "Arial, sans-serif"}}],
         "series": [
             {"name": "T. Vida Promed", "type": "line", "smooth": True, "lineStyle": {"width": 3, "color": COLOR_SUCCESS}, "itemStyle": {"color": COLOR_SUCCESS}, "data": rl_prom},
             {"name": "T. Vida Total", "type": "line", "smooth": True, "lineStyle": {"width": 2, "type": "dashed", "color": COLOR_TOTAL}, "itemStyle": {"color": COLOR_TOTAL}, "data": rl_gen},
@@ -386,22 +383,24 @@ def render_premium_echarts_run_life(df_monthly, titulo="TIEMPO DE VIDA DASHBOARD
         <div id="echarts-rl" style="width:100%; height:100%;"></div>
         <button id="zoom-btn-rl" style="
             position: absolute; 
-            top: 10px; 
-            right: 10px; 
+            top: 8px; 
+            right: 8px; 
             z-index: 1000; 
-            background: rgba(200, 43, 150, 0.2); 
-            border: 1px solid rgba(200, 43, 150, 0.4); 
-            color: #ff00ff; 
-            padding: 4px 10px; 
-            border-radius: 20px; 
+            background: rgba(15, 23, 42, 0.8); 
+            border: 1px solid rgba(0, 242, 255, 0.2); 
+            color: #475569; 
+            padding: 2px 8px; 
+            border-radius: 4px; 
             cursor: pointer; 
-            font-size: 11px; 
-            font-family: 'Outfit', sans-serif;
-            font-weight: 600;
+            font-size: 8px; 
+            font-family: 'Arial', sans-serif;
+            font-weight: 700;
             text-transform: uppercase;
-            backdrop-filter: blur(5px);
+            backdrop-filter: blur(4px);
             transition: all 0.3s;
-        ">⛶ Ampliar</button>
+            height: 18px;
+            line-height: 1;
+        ">⛶ FULL</button>
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
@@ -425,11 +424,11 @@ def render_premium_echarts_run_life(df_monthly, titulo="TIEMPO DE VIDA DASHBOARD
                         alert(`Error intentando activar pantalla completa: ${{err.message}}`);
                     }});
                     container.style.height = '100vh';
-                    zoomBtn.innerHTML = '✕ Cerrar';
+                    zoomBtn.innerHTML = '✕ CLOSE';
                 }} else {{
                     document.exitFullscreen();
                     container.style.height = '{chart_height}px';
-                    zoomBtn.innerHTML = '⛶ Ampliar';
+                    zoomBtn.innerHTML = '⛶ FULL';
                 }}
             }});
 
@@ -437,7 +436,7 @@ def render_premium_echarts_run_life(df_monthly, titulo="TIEMPO DE VIDA DASHBOARD
             function exitHandler() {{
                 if (!document.fullscreenElement) {{
                     container.style.height = '{chart_height}px';
-                    zoomBtn.innerHTML = '⛶ Ampliar';
+                    zoomBtn.innerHTML = '⛶ FULL';
                     myChart.resize();
                 }} else {{
                     myChart.resize();
@@ -447,6 +446,7 @@ def render_premium_echarts_run_life(df_monthly, titulo="TIEMPO DE VIDA DASHBOARD
     </script>
     """
     components.html(html_template, height=container_height)
+    st.markdown('</div>', unsafe_allow_html=True)
 def render_premium_echarts_pozos(df_monthly, titulo="OPERATIVIDAD DASHBOARD"):
     """
     Renderiza un gráfico premium de Pozos e Índices utilizando ECharts (HTML/JS).
@@ -480,19 +480,8 @@ def render_premium_echarts_pozos(df_monthly, titulo="OPERATIVIDAD DASHBOARD"):
     if 'Índice de Falla ALS ON (%)' in df_export.columns:
         df_export['Índice de Falla ALS ON (%)'] = df_export['Índice de Falla ALS ON (%)'] * 100
     
-    # Crear botón de descarga
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df_export.to_excel(writer, index=False, sheet_name='Pozos e Índices')
-    excel_data = output.getvalue()
-    
-    st.download_button(
-        label="📥 Descargar datos en Excel",
-        data=excel_data,
-        file_name="pozos_indices.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        key="download_pozos_indices_excel"
-    )
+    # El botón de exportación individual ha sido eliminado.
+    # La exportación se realiza de forma global al final del reporte.
 
     # Asegurar conversión a string para JSON
     categories = [str(m) for m in df_monthly['Mes'].dt.strftime('%b %Y')]
@@ -509,16 +498,24 @@ def render_premium_echarts_pozos(df_monthly, titulo="OPERATIVIDAD DASHBOARD"):
         "title": {
             "text": titulo.upper(),
             "left": "center",
-            "top": 0,
-            "textStyle": {"color": "#fff", "fontSize": 16, "fontFamily": "Outfit", "fontWeight": "900"}
+            "top": 10,
+            "textStyle": {
+                "color": "#00f2ff",
+                "fontSize": 14,
+                "fontFamily": "Arial, sans-serif",
+                "fontWeight": "bold",
+                "textShadowBlur": 8,
+                "textShadowColor": "rgba(0, 242, 255, 0.4)"
+            }
         },
-        "tooltip": {"trigger": "axis", "backgroundColor": "rgba(6, 10, 30, 0.9)", "borderColor": COLOR_ACCENT, "textStyle": {"color": "#fff"}},
-        "legend": {"data": ["Pozos ON", "Pozos OFF", "Ind. Falla ON", "Ind. Falla ALS"], "bottom": 0, "textStyle": {"color": "#ccc", "fontSize": 10}},
-        "grid": {"left": "3%", "right": "4%", "bottom": "15%", "top": "15%", "containLabel": True},
-        "xAxis": [{"type": "category", "data": categories, "axisLabel": {"color": "#888", "fontSize": 10}}],
+        "textStyle": {"fontFamily": "Arial, sans-serif"},
+        "tooltip": {"trigger": "axis", "backgroundColor": "rgba(6, 10, 30, 0.9)", "borderColor": COLOR_ACCENT, "textStyle": {"color": "#fff", "fontFamily": "Arial, sans-serif"}},
+        "legend": {"data": ["Pozos ON", "Pozos OFF", "Ind. Falla ON", "Ind. Falla ALS"], "bottom": 0, "textStyle": {"color": "#ccc", "fontSize": 10, "fontFamily": "Arial, sans-serif"}},
+        "grid": {"left": "3%", "right": "4%", "bottom": "15%", "top": "18%", "containLabel": True},
+        "xAxis": [{"type": "category", "data": categories, "axisLabel": {"color": "#888", "fontSize": 10, "fontFamily": "Arial, sans-serif"}}],
         "yAxis": [
-            {"type": "value", "name": "POZOS", "axisLabel": {"color": "#888"}},
-            {"type": "value", "name": "INDICE %", "position": "right", "axisLabel": {"color": "#888", "formatter": "{value}%"}}
+            {"type": "value", "name": "POZOS", "axisLabel": {"color": "#888", "fontFamily": "Arial, sans-serif"}},
+            {"type": "value", "name": "INDICE %", "position": "right", "axisLabel": {"color": "#888", "formatter": "{value}%", "fontFamily": "Arial, sans-serif"}}
         ],
         "series": [
             {"name": "Pozos ON", "type": "bar", "stack": "total", "itemStyle": {"color": COLOR_ACCENT}, "data": pozos_on},
@@ -552,22 +549,24 @@ def render_premium_echarts_pozos(df_monthly, titulo="OPERATIVIDAD DASHBOARD"):
         <div id="echarts-pozos" style="width:100%; height:100%;"></div>
         <button id="zoom-btn-pozos" style="
             position: absolute; 
-            top: 10px; 
-            right: 10px; 
+            top: 8px; 
+            right: 8px; 
             z-index: 1000; 
-            background: rgba(200, 43, 150, 0.2); 
-            border: 1px solid rgba(200, 43, 150, 0.4); 
-            color: #ff00ff; 
-            padding: 4px 10px; 
-            border-radius: 20px; 
+            background: rgba(15, 23, 42, 0.8); 
+            border: 1px solid rgba(0, 242, 255, 0.2); 
+            color: #475569; 
+            padding: 2px 8px; 
+            border-radius: 4px; 
             cursor: pointer; 
-            font-size: 11px; 
-            font-family: 'Outfit', sans-serif;
-            font-weight: 600;
+            font-size: 8px; 
+            font-family: 'Arial', sans-serif;
+            font-weight: 700;
             text-transform: uppercase;
-            backdrop-filter: blur(5px);
+            backdrop-filter: blur(4px);
             transition: all 0.3s;
-        ">⛶ Ampliar</button>
+            height: 18px;
+            line-height: 1;
+        ">⛶ FULL</button>
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
@@ -591,11 +590,11 @@ def render_premium_echarts_pozos(df_monthly, titulo="OPERATIVIDAD DASHBOARD"):
                         alert(`Error intentando activar pantalla completa: ${{err.message}}`);
                     }});
                     container.style.height = '100vh';
-                    zoomBtn.innerHTML = '✕ Cerrar';
+                    zoomBtn.innerHTML = '✕ CLOSE';
                 }} else {{
                     document.exitFullscreen();
                     container.style.height = '{chart_height}px';
-                    zoomBtn.innerHTML = '⛶ Ampliar';
+                    zoomBtn.innerHTML = '⛶ FULL';
                 }}
             }});
 
@@ -603,7 +602,7 @@ def render_premium_echarts_pozos(df_monthly, titulo="OPERATIVIDAD DASHBOARD"):
             function exitHandler() {{
                 if (!document.fullscreenElement) {{
                     container.style.height = '{chart_height}px';
-                    zoomBtn.innerHTML = '⛶ Ampliar';
+                    zoomBtn.innerHTML = '⛶ FULL';
                     myChart.resize();
                 }} else {{
                     myChart.resize();

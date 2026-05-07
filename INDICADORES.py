@@ -1,32 +1,17 @@
 """
 INDICADORES.py
 ==============
-Orquestador principal de la aplicación de Indicadores ALS.
-Módulo centralizado que integra configuración, estilos, UI y lógica modularizada.
+Orquestador principal — INDICADORES ALS · Frontera Energy.
+Layout profesional: header compacto, tabs con identidad visual,
+estado vacío atractivo y filtrado eficiente.
+Refreshed at: 2026-05-07 17:54
 """
 
 import streamlit as st
-import pandas as pd
-from datetime import datetime
 
-# Importar módulos locales de configuración y estilos
-from config import COLOR_PRINCIPAL
-from styles import apply_all_styles
-
-# Importar módulos de UI y carga
-from header_ui import render_header
-from sidebar_ui import render_sidebar
-from upload_ui import render_upload_section
-from data_loader import load_cached_data
-
-# Importar módulos de Tabs
-from tabs.tab_resumen import render_tab_resumen
-from tabs.tab_performance import render_tab_performance
-from tabs.tab_mtbf import render_tab_mtbf
-from tabs.tab_fallas import render_tab_fallas
-from tabs.tab_indices import render_tab_indices
-
-# --- CONFIGURACIÓN DE PÁGINA ---
+# ─────────────────────────────────────────────────────────────────────────────
+# CONFIGURACIÓN DE PÁGINA - DEBE SER LA PRIMERA LLAMADA A ST
+# ─────────────────────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="INDICADORES ALS | FRONTERA",
     page_icon="🛡️",
@@ -34,111 +19,302 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# --- APLICAR ESTILOS ---
+import pandas as pd
+from datetime import datetime
+import kpis
+
+from config import COLOR_PRINCIPAL
+from styles import apply_all_styles
+
+from header_ui import render_header
+from sidebar_ui import render_sidebar
+from upload_ui import render_upload_section
+from data_loader import load_cached_data
+
+from tabs.tab_resumen import render_tab_resumen
+from tabs.tab_performance import render_tab_performance
+from tabs.tab_mtbf import render_tab_mtbf
+from tabs.tab_fallas import render_tab_fallas
+from tabs.tab_indices import render_tab_indices
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ESTILOS GLOBALES + CSS PROPIO DEL ORQUESTADOR
+# ─────────────────────────────────────────────────────────────────────────────
+
 apply_all_styles()
 
-# --- CARGAR CACHÉ AL INICIO ---
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@500;600&display=swap');
+
+/* ── TABS HUD CENTRALIZADOS Y VIBRANTES ── */
+div[data-baseweb="tab-list"] {
+    display: flex !important;
+    justify-content: center !important;
+    gap: 15px !important;
+    border-bottom: none !important;
+    padding: 5px 0 !important;
+    margin-bottom: 0px !important; /* MINIMIZADO AL MÁXIMO */
+    width: 100% !important;
+}
+[data-baseweb="tab"] {
+    background-color: rgba(15, 23, 42, 0.95) !important;
+    background-image: none !important;
+    border: 1px solid rgba(0, 217, 255, 0.4) !important;
+    border-radius: 10px !important;
+    padding: 12px 28px !important;
+    font-family: 'Orbitron', monospace !important;
+    font-size: 0.8rem !important;
+    font-weight: 800 !important;
+    color: #94a3b8 !important;
+    text-transform: uppercase !important;
+    transition: all 0.3s !important;
+}
+[data-baseweb="tab"]:hover {
+    color: #fff !important;
+    background-color: rgba(0, 217, 255, 0.2) !important;
+    border-color: #00D9FF !important;
+}
+[aria-selected="true"][data-baseweb="tab"] {
+    color: #fff !important;
+    background: linear-gradient(135deg, #00D9FF 0%, #FF00FF 100%) !important;
+    border: none !important;
+    box-shadow: 0 0 20px rgba(0, 217, 255, 0.5) !important;
+}
+/* Forzar visibilidad del botón en Streamlit moderno */
+[data-baseweb="tab"] > div {
+    background: transparent !important;
+}
+/* Ocultar la línea y el resalte por defecto */
+div[data-baseweb="tab-border"], div[data-baseweb="tab-highlight"], [data-testid="stTabHighlight"] {
+    display: none !important;
+}
+
+/* ── Toast ── */
+div[data-testid="stToast"] {
+    font-family: 'Rajdhani', sans-serif !important;
+    font-size: 0.75rem !important;
+    letter-spacing: 1px !important;
+}
+
+/* ── Scrollbar delgada ── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+::-webkit-scrollbar-thumb { background: rgba(0,217,255,0.25); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,217,255,0.5); }
+
+/* ── Info box sin datos ── */
+.als-empty-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 16px;
+    padding: 48px 32px;
+    border: 1px dashed rgba(0,217,255,0.2);
+    border-radius: 14px;
+    background: radial-gradient(ellipse at 50% 0%, rgba(0,217,255,0.04) 0%, transparent 70%);
+    text-align: center;
+    margin-top: 24px;
+}
+.als-empty-icon { font-size: 3rem; opacity: 0.6; }
+.als-empty-title {
+    font-family: 'Orbitron', monospace; font-size: 1rem; font-weight: 700;
+    background: linear-gradient(135deg, #00D9FF, #FF00FF);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    letter-spacing: 2px;
+}
+.als-empty-sub {
+    font-family: 'Rajdhani', sans-serif; font-size: 0.8rem; font-weight: 500;
+    color: #475569; letter-spacing: 1px; max-width: 420px; line-height: 1.6;
+}
+.als-empty-steps {
+    display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+    margin-top: 4px;
+}
+.als-step {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 14px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(0,217,255,0.12);
+    border-radius: 8px;
+    font-family: 'Rajdhani', sans-serif; font-size: 0.72rem;
+    font-weight: 600; color: #64748B; letter-spacing: 1px;
+}
+.als-step-num {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: rgba(0,217,255,0.12);
+    border: 1px solid rgba(0,217,255,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Orbitron', monospace; font-size: 0.5rem;
+    font-weight: 700; color: #00D9FF; flex-shrink: 0;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CARGAR CACHÉ AL INICIO
+# ─────────────────────────────────────────────────────────────────────────────
+
 if st.session_state.get('reporte_runes') is None:
     cached_data = load_cached_data()
     if cached_data:
-        st.session_state['df_bd_calculated']     = cached_data['df_bd']
-        st.session_state['df_forma9_calculated'] = cached_data['df_forma9']
+        st.session_state['df_bd_calculated']      = cached_data['df_bd']
+        st.session_state['df_forma9_calculated']  = cached_data['df_forma9']
         st.session_state['fecha_evaluacion_state'] = cached_data['fecha_evaluacion']
-        st.session_state['reporte_runes']        = cached_data['reporte_runes']
-        st.session_state['historico_run_life']   = cached_data['historico_run_life']
-        st.session_state['reporte_fallas']       = cached_data['reporte_fallas']
-        # Re-inicializar filtros si es necesario
-        st.toast("Caché cargado correctamente.", icon="✅")
+        st.session_state['reporte_runes']         = cached_data['reporte_runes']
+        st.session_state['historico_run_life']    = cached_data['historico_run_life']
+        st.session_state['reporte_fallas']        = cached_data['reporte_fallas']
+        st.toast("✅ Caché restaurado correctamente.", icon="✅")
 
-# --- RENDERIZAR SIDEBAR Y OBTENER FILTROS ---
+# ─────────────────────────────────────────────────────────────────────────────
+# SIDEBAR → FILTROS
+# ─────────────────────────────────────────────────────────────────────────────
+
 filters = render_sidebar()
 
-# --- RENDERIZAR HEADER ---
-render_header()
+# ── HEADER & CONFIG ──────────────────────────────────────────────────────────
+col_head, col_als, col_cfg = st.columns([0.91, 0.045, 0.045], gap="small")
+with col_head:
+    render_header(
+        titulo_pagina="INDICADORES ALS",
+        fecha_eval=st.session_state.get('fecha_evaluacion_state'),
+    )
 
-# --- SECCIÓN DE CARGA ---
-render_upload_section()
+with col_als:
+    st.write('<div style="margin-top:4px;"></div>', unsafe_allow_html=True)
+    with st.popover("🏷️", help="Comparativa ALS en KPIs"):
+        df_bd_raw = st.session_state.get('df_bd_calculated')
+        if df_bd_raw is not None and not df_bd_raw.empty:
+            als_opts = sorted([str(x).strip() for x in df_bd_raw['ALS'].dropna().unique() if str(x).strip() != ''])
+            als_options = ['ESP'] + als_opts
+            
+            # Buscamos el índice actual en session state
+            cur = st.session_state.get('kpis_als_filter', 'ESP')
+            try:
+                idx = als_options.index(str(cur)) if str(cur) in als_options else 0
+            except:
+                idx = 0
+                
+            st.selectbox(
+                'Sistema a comparar:',
+                als_options,
+                key='kpis_als_filter',
+                index=idx
+            )
+        else:
+            st.info("Carga datos para filtrar.")
 
-# --- LÓGICA DE FILTRADO Y RENDERIZADO DE TABS ---
+with col_cfg:
+    st.write('<div style="margin-top:4px;"></div>', unsafe_allow_html=True)
+    render_upload_section()
+
+# ── LÓGICA PRINCIPAL ─────────────────────────────────────────────────────────
+
 if st.session_state.get('reporte_runes') is not None:
-    # Obtener data calculada de session_state
-    df_bd_calc     = st.session_state['df_bd_calculated'].copy()
-    df_forma9_calc  = st.session_state['df_forma9_calculated'].copy()
-    fecha_eval      = st.session_state['fecha_evaluacion_state']
-    
-    # Aplicar filtros globales
-    if filters['selected_activo'] != 'TODOS' and 'ACTIVO' in df_bd_calc.columns:
-        df_bd_calc = df_bd_calc[df_bd_calc['ACTIVO'] == filters['selected_activo']]
-    
-    if filters['selected_bloque'] != 'TODOS' and 'BLOQUE' in df_bd_calc.columns:
-        df_bd_calc = df_bd_calc[df_bd_calc['BLOQUE'] == filters['selected_bloque']]
-        
-    if filters['selected_campo'] != 'TODOS' and 'CAMPO' in df_bd_calc.columns:
-        df_bd_calc = df_bd_calc[df_bd_calc['CAMPO'] == filters['selected_campo']]
-        
-    if filters['selected_als'] != 'TODOS' and 'ALS' in df_bd_calc.columns:
-        df_bd_calc = df_bd_calc[df_bd_calc['ALS'] == filters['selected_als']]
-        
-    if filters['selected_proveedor'] != 'TODOS' and 'PROVEEDOR' in df_bd_calc.columns:
-        df_bd_calc = df_bd_calc[df_bd_calc['PROVEEDOR'] == filters['selected_proveedor']]
-        
-    if filters['selected_nick'] != 'TODOS' and 'NICK' in df_bd_calc.columns:
-        df_bd_calc = df_bd_calc[df_bd_calc['NICK'] == filters['selected_nick']]
 
-    # Filtrar Forma 9 según los pozos resultantes de BD
-    pozos_en_bd = df_bd_calc['POZO'].unique()
+    # ── Obtener datos calculados ───────────────────────────────────────────
+    df_bd_calc    = st.session_state['df_bd_calculated'].copy()
+    df_forma9_calc = st.session_state['df_forma9_calculated'].copy()
+    fecha_eval    = st.session_state['fecha_evaluacion_state']
+
+    # ── Aplicar filtros globales ───────────────────────────────────────────
+    _filtros = {
+        'ACTIVO':    filters['selected_activo'],
+        'BLOQUE':    filters['selected_bloque'],
+        'CAMPO':     filters['selected_campo'],
+        'ALS':       filters['selected_als'],
+        'PROVEEDOR': filters['selected_proveedor'],
+        'NICK':      filters['selected_nick'],
+    }
+    for col, val in _filtros.items():
+        if val != 'TODOS' and col in df_bd_calc.columns:
+            df_bd_calc = df_bd_calc[df_bd_calc[col] == val]
+
+    # ── Filtrar Forma 9 según pozos resultantes ────────────────────────────
+    pozos_en_bd       = df_bd_calc['POZO'].unique() if 'POZO' in df_bd_calc.columns else []
     df_forma9_filtered = df_forma9_calc[df_forma9_calc['POZO'].isin(pozos_en_bd)].copy()
 
-    # Recalcular reporte RUNES para la vista filtrada (opcional, o pasar filtrado)
-    reporte_runes = st.session_state['reporte_runes'] 
+    reporte_runes = st.session_state['reporte_runes']
 
-    # --- DEFINICIÓN DE TABS ---
-    tab_resumen, tab_performance, tab_mtbf, tab_fallas, tab_indices = st.tabs([
-        "📊 RESUMEN", 
+    # ── NAVEGACIÓN (TABS ESTILIZADOS COMO BOTTOM BAR) ─────────────────────
+    # Los estilos en styles.py se encargan de mover estos tabs a la parte inferior.
+    tab_resumen, tab_perf, tab_fallas = st.tabs([
+        "◈ RESUMEN", 
         "⚡ PERFORMANCE", 
-        "🕒 TMEF (MTBF)", 
-        "🚨 FALLAS", 
-        "📈 ÍNDICES & DATA"
+        "⚠ FALLAS · ÍNDICES"
     ])
 
     with tab_resumen:
         render_tab_resumen(
-            df_bd_calc, 
-            df_forma9_filtered, 
-            reporte_runes, 
-            fecha_eval, 
-            filters['selected_activo']
+            df_bd_calc,
+            df_forma9_filtered,
+            reporte_runes,
+            fecha_eval,
+            filters['selected_activo'],
         )
-
-    with tab_performance:
-        render_tab_performance(
-            df_bd_calc, 
-            df_forma9_filtered, 
-            fecha_eval
-        )
-
-    with tab_mtbf:
-        render_tab_mtbf(
-            df_bd_calc, 
-            df_forma9_filtered, 
-            fecha_eval, 
-            st.session_state.get('verificaciones', {}), 
-            filters['selected_activo']
-        )
+    with tab_perf:
+        col_left, col_right = st.columns(2, gap="medium")
+        with col_left:
+            from tabs.tab_performance import render_tab_performance
+            render_tab_performance(df_bd_calc, df_forma9_filtered, fecha_eval)
+        with col_right:
+            from tabs.tab_mtbf import render_tab_mtbf
+            render_tab_mtbf(
+                df_bd_calc,
+                df_forma9_filtered,
+                fecha_eval,
+                st.session_state.get('verificaciones', {}),
+                filters['selected_activo'],
+            )
 
     with tab_fallas:
-        render_tab_fallas(
-            df_bd_calc, 
-            fecha_eval
-        )
+        c_fallas, c_indices = st.columns(2, gap="medium")
+        with c_fallas:
+            from tabs.tab_fallas import render_tab_fallas
+            render_tab_fallas(df_bd_calc, fecha_eval)
+        with c_indices:
+            from tabs.tab_indices import render_tab_indices
+            render_tab_indices(
+                df_bd_calc, df_forma9_filtered, fecha_eval, filters['selected_activo']
+            )
 
-    with tab_indices:
-        render_tab_indices(
-            df_bd_calc, 
-            df_forma9_filtered, 
-            fecha_eval, 
-            filters['selected_activo']
-        )
+    # ─────────────────────────────────────────────────────────────────────────────
+    # FOOTER DE EXPORTACIÓN GLOBAL
+    # ─────────────────────────────────────────────────────────────────────────────
+    st.markdown("<br><hr style='border:0; height:1px; background:linear-gradient(to right, transparent, rgba(0,217,255,0.1), transparent); margin: 30px 0;'>", unsafe_allow_html=True)
+    
+    f1, f2, f3 = st.columns([0.35, 0.3, 0.35])
+    with f2:
+        from descargar import exportar_resumen_performance
+        df_ms = st.session_state.get('df_monthly_summary')
+        if df_ms is not None and not df_ms.empty:
+            excel_bytes = exportar_resumen_performance(df_ms)
+            st.download_button(
+                label="📥 DESCARGAR REPORTE EXCEL (DASHBOARD)",
+                data=excel_bytes,
+                file_name=f"REPORTE_INDICADORES_ALS_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True,
+                help="Genera un archivo Excel con todo el resumen de KPIs y Performance"
+            )
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ESTADO VACÍO — sin datos cargados
+# ─────────────────────────────────────────────────────────────────────────────
+
 else:
-    st.info("👋 Bienvenid@. Por favor, carga los archivos FORMA 9 y BD o usa las URLs por defecto para comenzar los cálculos.")
-    st.image("https://www.fronteraenergy.ca/wp-content/uploads/2023/05/logo-frontera-white.png", width=200)
+    st.markdown("""
+<div class="als-empty-state">
+    <div class="als-empty-icon">🛡️</div>
+    <div class="als-empty-title">SISTEMA LISTO</div>
+    <div class="als-empty-sub">
+        Carga los archivos de datos para iniciar el análisis de indicadores
+        de Artificial Lift Systems. Puedes usar las URLs por defecto
+        o subir tus propios archivos desde el panel de carga.
+    </div>
+    <div class="als-empty-steps">
+        <div class="als-step"><div class="als-step-num">1</div>FORMA 9 · Excel</div>
+        <div class="als-step"><div class="als-step-num">2</div>BD · Base de datos</div>
+        <div class="als-step"><div class="als-step-num">3</div>Fecha de evaluación</div>
+        <div class="als-step"><div class="als-step-num">4</div>Calcular KPIs</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)

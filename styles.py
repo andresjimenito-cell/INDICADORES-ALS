@@ -1,359 +1,460 @@
 """
 styles.py
 =========
-Centraliza TODA la inyección de CSS de la aplicación.
-Expone apply_all_styles() que debe llamarse UNA VEZ al inicio del script principal.
+Centraliza TODA la inyección de CSS de la aplicación con estética HUD Premium.
+Implementa Estrategia "Zero Space Waste" y componentes de alta densidad.
+Ahora con soporte para DataTables (Filtros, Ordenamiento y Copiado) en tablas HUD.
 """
 
 import html as html_module
 import streamlit as st
+import json
 import tema
 from config import (
     COLOR_PRINCIPAL, COLOR_FUENTE, COLOR_FONDO_OSCURO, COLOR_FONDO_CONTENEDOR,
-    COLOR_MAGENTA_NEON, COLOR_AZUL_CIBER, COLOR_GLOW_SUAVE, COLOR_GRID,
+    COLOR_MAGENTA_NEON, COLOR_AZUL_CIBER, COLOR_GLOW_SUAVE,
 )
-from dashboard_css import get_dashboard_css
 
-
-def inject_custom_css():
-    """Inyecta CSS base del sidebar y layout sin modificar comportamiento por defecto."""
+def _apply_styles_internal():
+    """Lógica central de inyección de estilos HUD."""
     st.markdown(f"""
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700;900&family=Inter:wght@300;400;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        
+        /* DataTables HUD Theme Integration */
+        @import url('https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css');
+        @import url('https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css');
 
-        [data-testid="stAppViewContainer"] {{ padding: 0 !important; margin: 0 !important; }}
-        [data-testid="stMainBlockContainer"] {{ padding: 1rem !important; box-sizing: border-box !important; }}
-        [data-testid="stToolbar"] {{ display: block !important; visibility: visible !important; }}
-        [data-testid="stHeader"] {{ display: block !important; visibility: visible !important; }}
+        [data-testid="stAppViewContainer"] {{ 
+            padding: 0 !important; 
+            margin: 0 !important; 
+            background-color: #060a1e !important;
+        }}
+        [data-testid="stMainBlockContainer"] {{ 
+            padding: 0rem 1rem !important; 
+            max-width: 100% !important;
+        }}
 
+        /* FORZAR SIDEBAR ABIERTO (styles.py) */
+        [data-testid="stSidebar"] {{
+            left: 0 !important;
+            transform: none !important;
+            visibility: visible !important;
+            min-width: 220px !important;
+            max-width: 220px !important;
+            display: block !important;
+        }}
+        [data-testid="stAppViewContainer"] {{
+            display: flex !important;
+            flex-direction: row !important;
+        }}
+        [data-testid="stAppViewContainer"] > section:nth-child(2) {{
+            margin-left: 220px !important;
+            min-width: calc(100% - 220px) !important;
+        }}
+        
+        /* Ocultar elementos de Streamlit para ganar espacio */
+        header[data-testid="stHeader"] {{ display: none !important; }}
+        footer {{ display: none !important; }}
+        #MainMenu {{ display: none !important; }}
+        
+        /* Reducir espacio entre bloques de Streamlit */
+        div.block-container {{
+            padding-top: 0rem !important;
+            padding-bottom: 1rem !important;
+        }}
+        div[data-testid="stVerticalBlock"] > div {{
+            padding-top: 0rem !important;
+            padding-bottom: 0rem !important;
+        }}
+        div[data-testid="stVerticalBlock"] {{
+            gap: 0.15rem !important;
+        }}
+        
+        /* Espacio superior de los contenidos de las pestañas */
+        div[data-testid="stTabContent"] {{
+            padding-top: 0rem !important;
+        }}
+        
+        /* Eliminar márgenes de los widgets de Streamlit */
+        .stMarkdown, .stMetric, .stSelectbox {{
+            margin-bottom: 0rem !important;
+        }}
+        
         .stApp {{
-            background-color: #0a0e27 !important;
-            background-image: 
-                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%),
-                radial-gradient(circle at 10% 20%, rgba(19,91,236,0.05) 0%, transparent 40%),
-                radial-gradient(circle at 90% 80%, rgba(0,242,255,0.05) 0%, transparent 40%) !important;
-            background-size: 100% 4px, 100% 100%, 100% 100% !important;
+            background-color: #060a1e !important;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+        }}
+
+        .kpi-card {{
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.6), rgba(2, 6, 23, 0.85));
+            border: 1px solid rgba(0, 242, 255, 0.15);
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            backdrop-filter: blur(4px);
+            margin-bottom: 10px;
             font-family: 'Inter', sans-serif !important;
         }}
+        .kpi-label {{
+            font-size: 0.65rem;
+            color: #94a3b8;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }}
+        .kpi-value {{
+            font-size: 1.6rem;
+            font-weight: 800;
+            line-height: 1.2;
+        }}
+        .kpi-icon {{
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+        }}
+        
+        /* --- DataTables HUD Customization --- */
+        .dataTables_wrapper {{
+            color: #fff !important;
+            font-family: 'Inter', sans-serif !important;
+        }}
+        .dataTables_filter input {{
+            background: rgba(255,255,255,0.05) !important;
+            border: 1px solid #00f2ff !important;
+            color: #fff !important;
+            border-radius: 5px !important;
+            padding: 4px 10px !important;
+            outline: none !important;
+        }}
+        
+        /* Estilo para el botón de Copiar HUD */
+        button.dt-button, div.dt-button, a.dt-button {{
+            background: rgba(0, 242, 255, 0.1) !important;
+            border: 1px solid rgba(0, 242, 255, 0.4) !important;
+            color: #00f2ff !important;
+            font-family: 'Orbitron', sans-serif !important;
+            font-size: 0.65rem !important;
+            text-transform: uppercase !important;
+            padding: 4px 12px !important;
+            border-radius: 4px !important;
+            transition: all 0.3s !important;
+            margin-bottom: 10px !important;
+        }}
+        button.dt-button:hover {{
+            background: #00f2ff !important;
+            color: #000 !important;
+            box-shadow: 0 0 15px rgba(0, 242, 255, 0.4) !important;
+        }}
 
-        [data-testid="stSidebar"] {{
-            background-color: #060a1e !important;
-            background-image: radial-gradient(circle at 0% 0%, rgba(0,242,255,0.08) 0%, transparent 50%),
-                              linear-gradient(180deg, #060a1e 0%, #030612 100%) !important;
-            border-right: 1px solid rgba(0,242,255,0.2) !important;
-            box-shadow: 10px 0 30px rgba(0,0,0,0.5) !important;
+        table.dataTable thead th {{
+            background: rgba(0, 242, 255, 0.1) !important;
+            color: #00f2ff !important;
+            font-family: 'Orbitron', sans-serif !important;
+            border-bottom: 1px solid #00f2ff !important;
         }}
-        [data-testid="stSidebar"]::before {{
-            content: " "; position: absolute; top:0; left:0; bottom:0; right:0;
-            background: linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.1) 50%);
-            z-index:100; background-size:100% 4px; pointer-events:none; opacity:0.2;
+        table.dataTable tbody td {{
+            background: transparent !important;
+            border-bottom: 1px solid rgba(255,255,255,0.05) !important;
         }}
-        [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {{ gap:1.2rem !important; padding:2rem 1rem !important; }}
-        [data-testid="stSidebar"] .stMarkdown p {{ font-family:'Inter',sans-serif !important; color:#94a3b8 !important; font-size:0.9rem !important; }}
-        [data-testid="stSidebar"] label {{
-            font-family:'Outfit',sans-serif !important; color:#00f2ff !important; text-transform:uppercase !important;
-            letter-spacing:0.15em !important; font-weight:700 !important; font-size:0.7rem !important;
-            margin-bottom:0.5rem !important; text-shadow:0 0 5px rgba(0,242,255,0.2) !important;
+        
+        .dataTables_paginate .paginate_button {{
+            color: #94a3b8 !important;
         }}
-        [data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"],
-        [data-testid="stSidebar"] .stMultiSelect div[data-baseweb="select"] {{
-            background-color:rgba(10,15,30,0.7) !important; border:1px solid rgba(0,242,255,0.2) !important;
-            border-radius:12px !important; backdrop-filter:blur(10px) !important; transition:all 0.3s cubic-bezier(0.4,0,0.2,1) !important;
+        .dataTables_paginate .paginate_button.current {{
+            background: rgba(0, 242, 255, 0.2) !important;
+            border-color: #00f2ff !important;
+            color: #00f2ff !important;
         }}
-        [data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"]:hover {{
-            border-color:#00f2ff !important; background-color:rgba(10,15,30,0.9) !important;
-            box-shadow:0 0 20px rgba(0,242,255,0.15) !important; transform:translateY(-1px);
-        }}
-        [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {{
-            font-family:'Outfit',sans-serif !important; color:#ff00ff !important; text-transform:uppercase !important;
-            letter-spacing:0.2em !important; font-weight:900 !important; font-size:1.1rem !important;
-            margin-top:1rem !important; margin-bottom:1.5rem !important;
-            text-shadow:0 0 15px rgba(255,0,255,0.3) !important;
-            border-bottom:1px solid rgba(255,0,255,0.2); padding-bottom:0.5rem;
-        }}
-        [data-testid="stSidebar"] ::-webkit-scrollbar {{ width:4px; }}
-        [data-testid="stSidebar"] ::-webkit-scrollbar-thumb {{ background:rgba(0,242,255,0.2); border-radius:10px; }}
 
-        .stPlotlyChart {{ background:transparent !important; border-radius:15px !important; box-shadow:0 10px 30px rgba(0,0,0,0.4) !important; }}
-        footer {{ visibility:hidden !important; }}
+        /* --- HUD Upload Section Styles --- */
+        .upload-container {{
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(0, 217, 255, 0.1);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+            backdrop-filter: blur(8px);
+        }}
+        .compact-card {{
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        .compact-card span {{
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: #00D9FF;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }}
+        .upload-area {{
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px dashed rgba(0, 217, 255, 0.2);
+            border-radius: 8px;
+            padding: 4px;
+            transition: all 0.3s;
+        }}
+        .upload-area:hover {{
+            border-color: #00D9FF;
+            background: rgba(0, 217, 255, 0.05);
+        }}
+        
+        /* Ajustes para inputs de Streamlit dentro de tarjetas */
+        .stTextInput input, .stDateInput input {{
+            background-color: rgba(0, 0, 0, 0.3) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            color: #fff !important;
+            font-size: 0.8rem !important;
+        }}
+        .stTextInput label, .stDateInput label {{
+            font-size: 0.6rem !important;
+            color: #64748B !important;
+            text-transform: uppercase !important;
+            letter-spacing: 1px !important;
+        }}
+        
+        .fecha-alerta {{
+            background: linear-gradient(90deg, rgba(255, 0, 255, 0.1), transparent);
+            border-left: 3px solid #FF00FF;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-top: 8px;
+        }}
+
+        /* Estilo para el Popover de Configuración (Botón Engranaje en Header) */
+        div[data-testid="stPopover"] > button {{
+            background: rgba(0, 217, 255, 0.1) !important;
+            border: 1px solid rgba(0, 217, 255, 0.4) !important;
+            color: #00D9FF !important;
+            border-radius: 50% !important;
+            width: 30px !important;
+            height: 30px !important;
+            min-height: 30px !important;
+            padding: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-size: 1rem !important;
+            transition: all 0.3s !important;
+            margin: 0 !important;
+            box-shadow: 0 0 10px rgba(0, 217, 255, 0.1) !important;
+        }}
+        div[data-testid="stPopover"] > button:hover {{
+            box-shadow: 0 0 15px rgba(0, 217, 255, 0.3) !important;
+            transform: rotate(45deg);
+        }}
+
+        /* Contenedor para controles de gráfica (Overlay) */
+        div.chart-controls-wrapper {{
+            position: relative;
+            width: 100%;
+        }}
+        div.chart-controls-overlay {{
+            position: absolute;
+            top: 8px;
+            right: 45px;
+            z-index: 1001;
+            pointer-events: none;
+        }}
+        div.chart-controls-overlay > div {{
+            pointer-events: auto;
+        }}
+        div.chart-controls-overlay .stDownloadButton button {{
+            background: rgba(15, 23, 42, 0.9) !important;
+            border: 1px solid rgba(0, 242, 255, 0.4) !important;
+            color: #00f2ff !important; /* Más visible */
+            font-size: 8px !important;
+            padding: 0px !important;
+            min-height: 16px !important;
+            height: 16px !important;
+            width: 16px !important;
+            min-width: 16px !important;
+            border-radius: 4px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            transition: all 0.3s !important;
+            backdrop-filter: blur(4px) !important;
+            box-shadow: 0 0 5px rgba(0, 242, 255, 0.1) !important;
+        }}
+        div.chart-controls-overlay .stDownloadButton button:hover {{
+            background: rgba(0, 242, 255, 0.1) !important;
+            border-color: #00f2ff !important;
+            color: #00f2ff !important;
+        }}
+
+        /* ── HUD FLOATING NAVIGATION (ESPECÍFICO PARA TABLIST) ── */
+        div[data-testid="stTabs"] {{
+            display: flex !important;
+            flex-direction: column !important;
+        }}
+
+        div[data-testid="stTabs"] [role="tablist"] {{
+            position: fixed !important;
+            bottom: 30px !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            z-index: 999999 !important;
+            background: rgba(8, 12, 28, 0.9) !important;
+            backdrop-filter: blur(15px) !important;
+            padding: 5px 25px !important;
+            border-radius: 50px !important;
+            border: 1px solid rgba(0, 242, 255, 0.4) !important;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.8), 0 0 20px rgba(0, 242, 255, 0.2) !important;
+            width: auto !important;
+            min-width: 500px !important;
+            display: flex !important;
+            justify-content: center !important;
+            gap: 15px !important;
+            order: 2 !important; /* Mueve la barra al final del flujo */
+        }}
+
+        /* Asegurar que el contenido de los tabs NO se mueva con la barra y esté arriba */
+        div[data-testid="stTabContent"] {{
+            order: 1 !important;
+            background: transparent !important;
+            border: none !important;
+            padding-top: 0px !important;
+            width: 100% !important;
+        }}
+
+        /* Quitar la línea inferior por defecto de los tabs */
+        div[data-testid="stTabs"] [role="tablist"] {{
+            border: none !important;
+        }}
+
+        /* Estilo de cada botón de tab */
+        div[data-testid="stTabs"] button[data-baseweb="tab"] {{
+            background: transparent !important;
+            border: none !important;
+            padding: 8px 18px !important;
+            color: #94a3b8 !important;
+            font-family: 'Orbitron', sans-serif !important;
+            font-size: 0.7rem !important;
+            letter-spacing: 1.5px !important;
+            text-transform: uppercase !important;
+            transition: all 0.3s !important;
+            border-radius: 20px !important;
+            height: auto !important;
+        }}
+        
+        div[data-testid="stTabs"] button[data-baseweb="tab"]:hover {{
+            color: #00f2ff !important;
+            background: rgba(0, 242, 255, 0.05) !important;
+        }}
+        
+        /* Tab seleccionado (Estado Activo) */
+        div[data-testid="stTabs"] button[aria-selected="true"] {{
+            color: #00f2ff !important;
+            background: rgba(0, 242, 255, 0.15) !important;
+            border: 1px solid rgba(0, 242, 255, 0.3) !important;
+            box-shadow: 0 0 15px rgba(0, 242, 255, 0.2) !important;
+        }}
+
+        /* Esconder la barra naranja/azul debajo del tab seleccionado */
+        div[data-testid="stTabs"] [data-baseweb="tab-highlight"] {{
+            display: none !important;
+        }}
+
+        /* Remover el radio antiguo si quedara */
+        div.stRadio.floating-nav-wrapper {{
+            display: none !important;
+        }}
     </style>
     """, unsafe_allow_html=True)
-
-
-def _apply_base_css():
-    """Aplica el bloque CSS de tarjetas, botones e inputs."""
-    _container_bg = COLOR_FONDO_CONTENEDOR if COLOR_FONDO_CONTENEDOR else 'transparent'
-    lines = ["<style>"]
-    if COLOR_FONDO_OSCURO:
-        lines.append(f".stApp {{ background-color: {COLOR_FONDO_OSCURO} !important; }}")
-        if COLOR_FUENTE:
-            lines.append(f".stApp, .stApp * {{ color: {COLOR_FUENTE} !important; }}")
-    lines.append(f"h1, h2, h3 {{ color: {COLOR_PRINCIPAL} !important; text-shadow: 0 2px 10px {COLOR_PRINCIPAL}33; }}")
-    lines.append(
-        f"div[data-testid=\"stMetric\"] {{ background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)) !important; "
-        f"backdrop-filter: blur(6px) saturate(120%); border-radius: 12px !important; padding: 12px !important; "
-        f"margin-bottom: 12px !important; box-shadow: 0 10px 30px {COLOR_PRINCIPAL}33, 0 4px 8px rgba(0,0,0,0.25) !important; "
-        f"border: 1px solid rgba(255,255,255,0.03) !important; }}"
-    )
-    lines.append(f".stDataFrame, .stTable {{ background: {_container_bg} !important; color: {COLOR_FUENTE} !important; border-radius: 10px !important; box-shadow: 0 8px 30px rgba(0,0,0,0.25) !important; }}")
-    lines.append(
-        f".stButton>button {{ background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)) !important; "
-        f"border: 1px solid {COLOR_PRINCIPAL} !important; color: {COLOR_PRINCIPAL} !important; border-radius: 10px !important; "
-        f"padding: 10px 14px !important; box-shadow: 0 6px 18px rgba(0,0,0,0.35), 0 2px 6px rgba(0,0,0,0.2) inset !important; "
-        f"transition: transform 180ms ease, box-shadow 180ms ease; }}"
-    )
-    lines.append(
-        f".stButton>button:hover {{ transform: translateY(-3px) rotateX(1deg); "
-        f"box-shadow: 0 18px 50px {COLOR_PRINCIPAL}33, 0 6px 20px rgba(0,0,0,0.45) !important; "
-        f"color: {tema.COLOR_BLANCO} !important; background: linear-gradient(90deg, {COLOR_PRINCIPAL}, {tema.SECUENCIA_COLORES_GRAFICOS[6]}) !important; }}"
-    )
-    lines.append(".stSelectbox>div>div, .stTextInput>div>div>input, .stDateInput>div>input, .stFileUploader { background: rgba(255,255,255,0.02) !important; border: 1px solid rgba(255,255,255,0.04) !important; border-radius: 8px !important; padding: 8px !important; box-shadow: inset 0 2px 6px rgba(0,0,0,0.2); }")
-    lines.append(".plotly .bg, .plotly .plotbg, .plotly .bgrect, .plotly .cartesianlayer .bg { fill: rgba(0,0,0,0) !important; }")
-    lines.append(".plotly svg { background: transparent !important; }")
-    lines.append(".compact-card { background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)); padding: 8px 12px; border-radius: 10px; display: inline-block; font-weight:700; color: inherit; box-shadow: 0 8px 20px rgba(0,0,0,0.25); margin-bottom:8px; }")
-    lines.append(".compact-card, .upload-card { transition: all 0.3s ease; display: inline-block; padding: 18px 24px; border-radius: 16px; font-weight: 700; color: #ffffff; background-color: #0a0e27; border: 1px solid rgba(41,1,94,0.4); box-shadow: 0 0 3px rgba(41,1,94,0.5), inset 0 0 2px rgba(41,1,94,0.3); cursor: default; }")
-    lines.append(".compact-card:hover, .upload-card:hover { box-shadow: 0 0 6px #C82B96, inset 0 0 3px rgba(217,0,206,0.5); transform: translateY(-1px); }")
-    lines.append(".stSelectbox>div>div, .stTextInput>div>div>input, .stDateInput>div>input, .stFileUploader { min-height:48px; padding:12px 14px !important; font-size:14px !important; border-radius:10px !important; }")
-    lines.append(".upload-area { padding:10px; border-radius:10px; background: linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border:1px dashed rgba(255,255,255,0.06); box-shadow: inset 0 4px 12px rgba(0,0,0,0.06); margin-top:8px; }")
-    lines.append("[data-testid=\"stToolbar\"] { display: block !important; visibility: visible !important; }")
-    lines.append("[data-testid=\"stHeader\"] { display: block !important; visibility: visible !important; }")
-    lines.append("html, body { overflow-x: hidden !important; max-width: 100vw !important; }")
-    lines.append("[data-testid=\"stAppViewContainer\"] { overflow-x: hidden !important; max-width: 100vw !important; }")
-    lines.append("[data-testid=\"stMainBlockContainer\"] { overflow-x: hidden !important; max-width: 100% !important; box-sizing: border-box !important; }")
-    lines.append("[data-testid=\"stVerticalBlock\"], [data-testid=\"stHorizontalBlock\"] { overflow-x: hidden !important; max-width: 100% !important; box-sizing: border-box !important; }")
-    lines.append("[data-testid=\"column\"] { overflow-x: hidden !important; max-width: 100% !important; box-sizing: border-box !important; }")
-    lines.append(".stDataFrame, .stTable { max-width: 100% !important; overflow-x: auto !important; box-sizing: border-box !important; }")
-    lines.append("div.row-widget { overflow-x: hidden !important; max-width: 100% !important; }")
-    lines.append("</style>")
-    st.markdown('\n'.join(lines), unsafe_allow_html=True)
-
-
-def _apply_page_css():
-    """Aplica el bloque CSS de página: tipografía, métricas, tablas, inputs, gráficos."""
-    page_css = ["<style>"]
-    page_css.append(f"""
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap');
-    body, .stApp {{ background-color: {COLOR_FONDO_OSCURO} !important; font-family: 'Rajdhani', sans-serif; color: {COLOR_FUENTE}; }}
-    .main .block-container {{ max-width: 2000px; padding-left: 1rem; padding-right: 2rem; margin-left: 0rem; margin-right: 2rem; }}
-    """)
-    page_css.append(f"""
-    h1, h2, h3 {{
-        font-family: 'Orbitron', monospace !important; font-weight: 700;
-        background: linear-gradient(90deg, {COLOR_MAGENTA_NEON}, {COLOR_AZUL_CIBER});
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        text-shadow: none; text-transform: uppercase; letter-spacing: 3px;
-    }}
-    """)
-    page_css.append(f"""
-    div[data-testid="stMetric"] {{
-        background: rgba(12,20,50,0.7) !important; backdrop-filter: blur(8px);
-        border-radius: 15px !important; padding: 20px !important; margin-bottom: 20px !important;
-        border: 1px solid {COLOR_MAGENTA_NEON}33 !important; box-shadow: 0 0 25px {COLOR_GLOW_SUAVE} !important; transition: all 0.3s;
-    }}
-    div[data-testid="stMetric"]:hover {{ box-shadow: 0 0 35px {COLOR_MAGENTA_NEON}88 !important; transform: translateY(-3px); }}
-    div[data-testid="stMetricValue"] {{ font-family:'Orbitron',monospace; color:{COLOR_AZUL_CIBER} !important; text-shadow:0 0 10px {COLOR_AZUL_CIBER}55; }}
-    div[data-testid="stMetricLabel"] {{ color:{COLOR_FUENTE} !important; font-weight:600; text-transform:uppercase; letter-spacing:1px; }}
-    """)
-    page_css.append(f"""
-    /* Estilo Premium para DataFrames y Tablas (UI Style) */
-    [data-testid="stDataFrame"], [data-testid="stTable"], .stDataFrame, .stTable {{
-        background: rgba(10, 14, 39, 0.4) !important;
-        backdrop-filter: blur(12px) !important;
-        border: 1px solid rgba(0, 242, 255, 0.15) !important;
-        border-radius: 12px !important;
-        padding: 15px !important;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(0, 242, 255, 0.05) !important;
-        transition: all 0.3s ease;
-    }}
     
-    [data-testid="stDataFrame"]:hover, [data-testid="stTable"]:hover {{
-        border-color: rgba(0, 242, 255, 0.4) !important;
-        box-shadow: 0 15px 50px rgba(0, 242, 255, 0.1), inset 0 0 30px rgba(0, 242, 255, 0.08) !important;
-    }}
 
-    /* Estilizado de las cabeceras de tabla (ag-grid y estándar) */
-    .stDataFrame th, .stTable th {{
-        background: rgba(0, 242, 255, 0.05) !important;
-        color: #00f2ff !important;
-        font-family: 'Orbitron', sans-serif !important;
-        text-transform: uppercase !important;
-        letter-spacing: 1px !important;
-        font-size: 0.75rem !important;
-        border-bottom: 2px solid rgba(0, 242, 255, 0.3) !important;
-    }}
+def inject_custom_css():
+    _apply_styles_internal()
 
-    .stDataFrame td, .stTable td {{
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
-        font-size: 0.85rem !important;
-        color: rgba(255, 255, 255, 0.85) !important;
-    }}
+def render_hud_table(df, table_id="hud_table"):
+    """Renderiza un DataFrame como una tabla HTML con estilo HUD, DataTables y botón Copiar."""
+    if df.empty:
+        st.info("Sin datos para mostrar.")
+        return
 
-    /* Inputs estilo HUD */
-    .stSelectbox>div>div, .stTextInput>div>div>input, .stDateInput>div>input,
-    .stFileUploader, div[data-testid="stFileUploadDropzone"] {{
-        background: rgba(15, 23, 42, 0.8) !important; 
-        border: 1px solid rgba(0, 242, 255, 0.2) !important;
-        color: #fff !important; 
-        border-radius: 10px !important; 
-        padding: 8px !important; 
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3) !important;
-    }}
+    # Convertir a HTML
+    html_table = df.to_html(index=False, table_id=table_id, classes='display nowrap hud-table')
     
-    .stSelectbox>div>div:hover, .stTextInput>div>div>input:hover {{
-        border-color: #00f2ff !important;
-        box-shadow: 0 0 15px rgba(0, 242, 255, 0.2) !important;
-    }}
-    """)
-    page_css.append("""
-    .stPlotlyChart > div[role='figure'] { background: rgba(0,0,0,0) !important; border-radius: 10px; }
-    .plotly .bg, .plotly .plotbg, .plotly .bgrect, .plotly .cartesianlayer .bg { fill: rgba(0,0,0,0) !important; }
-    .plotly svg { background: transparent !important; }
-    .plotly .legend rect { fill: rgba(0,0,0,0) !important; stroke: rgba(0,0,0,0) !important; }
-    .plotly .legend text, .plotly .legendtitle { fill: currentColor !important; }
-    /* Estilo Premium para TABS */
-    .stTabs [data-baseweb="tab-list"] {{
-        gap: 8px !important;
-        background-color: rgba(10, 14, 39, 0.5) !important;
-        padding: 10px !important;
-        border-radius: 15px !important;
-        border: 1px solid rgba(255, 255, 255, 0.05) !important;
-    }}
+    st.components.v1.html(f"""
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;600&display=swap');
+        @import url('https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css');
+        @import url('https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css');
+        
+        body {{ background: transparent; color: #fff; font-family: 'Rajdhani', sans-serif; }}
+        .dataTables_wrapper {{ color: #fff !important; }}
+        .dataTables_filter input {{ background: rgba(255,255,255,0.05); border: 1px solid #00f2ff; color: #fff; border-radius: 5px; padding: 5px; }}
+        
+        /* Botón HUD */
+        button.dt-button {{
+            background: rgba(0, 242, 255, 0.1) !important;
+            border: 1px solid rgba(0, 242, 255, 0.5) !important;
+            color: #00f2ff !important;
+            font-family: 'Orbitron' !important;
+            font-size: 10px !important;
+            padding: 5px 15px !important;
+            border-radius: 20px !important;
+            text-transform: uppercase !important;
+            cursor: pointer;
+            transition: 0.3s;
+        }}
+        button.dt-button:hover {{
+            background: #00f2ff !important;
+            color: #000 !important;
+            box-shadow: 0 0 10px #00f2ff;
+        }}
 
-    .stTabs [data-baseweb="tab"] {{
-        height: 50px !important;
-        background-color: rgba(255, 255, 255, 0.03) !important;
-        border-radius: 10px !important;
-        color: rgba(255, 255, 255, 0.6) !important;
-        font-family: 'Orbitron', sans-serif !important;
-        font-weight: 700 !important;
-        border: 1px solid transparent !important;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        padding: 0 20px !important;
-    }}
+        table.dataTable thead th {{ background: rgba(0, 242, 255, 0.1); color: #00f2ff; font-family: 'Orbitron'; font-size: 11px; }}
+        table.dataTable tbody td {{ border-bottom: 1px solid rgba(255,255,255,0.05); padding: 8px; font-size: 13px; }}
+        .dataTables_info, .dataTables_paginate {{ color: #94a3b8 !important; font-size: 11px; }}
+    </style>
+    
+    <div style="background: rgba(6,10,30,0.8); padding:10px; border:1px solid rgba(0,242,255,0.3); border-radius:10px;">
+        {html_table}
+    </div>
 
-    .stTabs [aria-selected="true"] {{
-        background: linear-gradient(135deg, rgba(0, 242, 255, 0.1), rgba(0, 242, 255, 0.05)) !important;
-        color: #00f2ff !important;
-        border: 1px solid rgba(0, 242, 255, 0.4) !important;
-        box-shadow: 0 0 20px rgba(0, 242, 255, 0.15) !important;
-    }}
-
-    .stTabs [data-baseweb="tab"]:hover {{
-        color: #fff !important;
-        background-color: rgba(255, 255, 255, 0.08) !important;
-    }}
-
-    /* Contenedores de Gráficos */
-    .stPlotlyChart, [data-testid="stGraphVis"] {{
-        background: rgba(15, 23, 42, 0.3) !important;
-        border-radius: 15px !important;
-        border: 1px solid rgba(255, 255, 255, 0.05) !important;
-        padding: 10px !important;
-        box-shadow: 0 15px 45px rgba(0, 0, 0, 0.4) !important;
-    }}
-
-    div[data-testid="stVerticalBlock"], div[data-testid="stHorizontalBlock"],
-    div[data-testid="column"], section[data-testid="stSidebar"],
-    .element-container, .stMarkdown, .stDataFrame {
-        position: relative; z-index: 100 !important;
-    }
-    """)
-    page_css.append("</style>")
-    st.markdown('\n'.join(page_css), unsafe_allow_html=True)
-
-
-def _apply_dashboard_css():
-    """Inyecta el CSS del dashboard (header, animaciones, tarjetas)."""
-    st.markdown(get_dashboard_css(), unsafe_allow_html=True)
-
-    dashboard_css = f"""
-<style>
-:root {{
-    --color-primary: {tema.COLOR_DASH_PRIMARY};
-    --color-secondary: {tema.COLOR_DASH_SECONDARY};
-    --color-accent-pink: {tema.COLOR_DASH_PINK};
-    --color-accent-orange: {tema.COLOR_DASH_ORANGE};
-    --color-accent-cyan: {tema.COLOR_DASH_CYAN};
-    --color-accent-green: {tema.COLOR_DASH_GREEN};
-    --color-accent-yellow: {tema.COLOR_DASH_YELLOW};
-    --color-dark: {tema.COLOR_DASH_DARK};
-    --color-light: {tema.COLOR_DASH_LIGHT};
-    --gradient-fire: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 25%, #c44569 50%, #a73667 75%, #8b2760 100%);
-    --gradient-ocean: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-    --gradient-sunset: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-    --gradient-aurora: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-    --gradient-cosmic: linear-gradient(135deg, #5f2c82 0%, #49a09d 100%);
-    --gradient-neon: linear-gradient(135deg, #00f260 0%, #0575e6 100%);
-    --radius-xl: 24px; --radius-mega: 32px;
-    --shadow-glow: 0 0 40px rgba(99,102,241,0.5);
-    --shadow-intense: 0 20px 60px rgba(0,0,0,0.4);
-    --transition-fast: 0.3s cubic-bezier(0.4,0,0.2,1);
-    --transition-smooth: 0.6s cubic-bezier(0.34,1.56,0.64,1);
-}}
-@keyframes float {{ 0%,100% {{ transform: translateY(0px); }} 50% {{ transform: translateY(-10px); }} }}
-@keyframes pulse-glow {{
-    0%,100% {{ box-shadow: 0 0 20px rgba(99,102,241,0.5),0 0 40px rgba(139,92,246,0.3); }}
-    50% {{ box-shadow: 0 0 40px rgba(99,102,241,0.8),0 0 80px rgba(139,92,246,0.6); }}
-}}
-@keyframes gradient-shift {{ 0% {{ background-position: 0% 50%; }} 50% {{ background-position: 100% 50%; }} 100% {{ background-position: 0% 50%; }} }}
-@keyframes shimmer {{ 0% {{ transform: translateX(-100%); }} 100% {{ transform: translateX(100%); }} }}
-@keyframes rotate-border {{ 0% {{ transform: rotate(0deg); }} 100% {{ transform: rotate(360deg); }} }}
-.stApp {{ background: transparent; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }}
-.main .block-container {{ padding: 1.2rem 1.8rem; max-width: 100%; }}
-.dashboard-header {{
-    background: {tema.COLOR_HEADER_BG}; padding: 1.5rem 2rem; border-radius: 8px; margin-bottom: 2rem;
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); border-bottom: 4px solid {tema.COLOR_HEADER_BORDER};
-    color: {tema.COLOR_HEADER_TEXT}; position: relative; overflow: hidden;
-}}
-.dashboard-header::before {{
-    content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-    animation: rotate-border 15s linear infinite;
-}}
-.dashboard-header:hover {{
-    transform: translateY(-8px) scale(1.01);
-    box-shadow: 0 0 100px rgba(236,0,212,0.8), 0 30px 100px rgba(0,0,0,0.6), inset 0 0 150px rgba(255,255,255,0.15);
-}}
-.header-title {{ font-size:3.5rem; font-weight:900; background:linear-gradient(135deg,{tema.COLOR_BLANCO} 0%,{tema.COLOR_PURPLE_LIGHT} 50%,{tema.COLOR_DASH_PINK} 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; text-shadow:0 5px 20px rgba(255,255,255,0.3); letter-spacing:-1px; position:relative; z-index:1; }}
-.header-date {{ background:rgba(255,255,255,0.15); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); padding:1rem 2.5rem; border-radius:50px; font-weight:800; font-size:1.2rem; border:2px solid rgba(255,255,255,0.3); color:{tema.COLOR_BLANCO}; box-shadow:0 0 10px rgba(99,241,161,0.5),inset 0 0 20px rgba(255,255,255,0.1); position:relative; z-index:1; transition:all var(--transition-fast); }}
-.header-date:hover {{ transform:scale(1.05); box-shadow:0 0 50px rgba(236,72,153,0.08); }}
-</style>
-"""
-    st.markdown(dashboard_css, unsafe_allow_html=True)
-
+    <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+    <script>
+        $(document).ready(function() {{
+            $('#{table_id}').DataTable({{
+                "pageLength": 10,
+                "language": {{ "url": "https://cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json" }},
+                "dom": 'Bfrtip',
+                "buttons": [
+                    {{
+                        extend: 'copy',
+                        text: '📋 Copiar Tabla',
+                        className: 'hud-copy-btn'
+                    }}
+                ]
+            }});
+        }});
+    </script>
+    """, height=520)
 
 def apply_all_styles():
-    """
-    Punto de entrada único: aplica TODOS los bloques CSS en el orden correcto.
-    Llamar una sola vez al inicio del script principal.
-    """
-    _apply_base_css()
-    _apply_page_css()
-    _apply_dashboard_css()
-    inject_custom_css()
-
+    _apply_styles_internal()
 
 def show_success_box(msg: str):
-    """Muestra un mensaje de éxito con estilo Ciberpunk."""
-    COLOR_OK    = tema.COLOR_EXITO_TEXTO
-    COLOR_BG    = tema.COLOR_EXITO_FONDO_BOX
-    safe_msg    = html_module.escape(str(msg))
+    safe_msg = html_module.escape(str(msg))
     st.markdown(f"""
-        <div class='success-box'>
-            <div class='success-check'>☑</div>
-            <div class='success-body'>
-                <div class='success-title'>OPERACIÓN HECHA</div>
-                <div class='success-message'>{safe_msg}</div>
-            </div>
+        <div style="background:rgba(0,255,157,0.1); border-left:5px solid #00ff9d; padding:15px; border-radius:8px; margin:10px 0;">
+            <div style="color:#00ff9d; font-family:'Orbitron'; font-size:0.7rem; letter-spacing:2px;">SISTEMA ONLINE</div>
+            <div style="color:#fff; font-size:0.85rem; margin-top:5px;">{safe_msg}</div>
         </div>
-        <style>
-            .success-box {{ display:flex; align-items:center; gap:1rem; padding:1.2rem 1.5rem; border-radius:12px;
-                background:{COLOR_BG}99; border:1px solid {COLOR_OK}aa;
-                box-shadow:0 0 15px {COLOR_OK}55,inset 0 0 5px {COLOR_OK}22; margin-bottom:1rem; }}
-            .success-check {{ font-size:2rem; line-height:1; }}
-            .success-title {{ font-weight:700; color:{COLOR_OK}; font-size:1.15rem; text-transform:uppercase;
-                letter-spacing:1.5px; text-shadow:0 0 5px {COLOR_OK}33; }}
-            .success-message {{ color:"{tema.COLOR_BLANCO}"; opacity:0.9; font-size:0.95rem; margin-top:0.2rem; }}
-        </style>
     """, unsafe_allow_html=True)

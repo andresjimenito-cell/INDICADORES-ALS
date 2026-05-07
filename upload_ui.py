@@ -21,6 +21,7 @@ from calculations import (
     generar_reporte_completo,
 )
 from styles import show_success_box
+from descargar import exportar_resumen_performance
 
 
 def get_last_day_of_previous_month():
@@ -37,95 +38,95 @@ def render_upload_section():
     """
     # Determinar si expandir (sin datos calculados)
     expander_state = st.session_state.get('df_bd_calculated') is None
+    
+    label_popover = "⚙️"
 
-    with st.expander("📂 Carga de Archivos y Parámetros", expanded=expander_state):
-        col_f9, col_bd, col_params = st.columns([1, 1, 1])
-
-    # --- Tarjeta 1: FORMA 9 ---
-    with col_f9:
+    with st.popover(label_popover, use_container_width=False):
+        st.markdown('<div class="upload-container" style="padding:10px;">', unsafe_allow_html=True)
+        
+        # --- Tarjeta 1: FORMA 9 ---
         st.markdown("""
-        <div class='compact-card'><span>Carga de FORMA 9 🗃️</span></div>
+        <div class='compact-card'><span>🗃️ FORMA 9</span></div>
+        <div class='upload-area'>
         """, unsafe_allow_html=True)
-        with st.container(border=True):
-            st.markdown("<div class='upload-area'>", unsafe_allow_html=True)
-            forma9_file = st.file_uploader("FORMA 9 (.csv/.xlsx)", type=["csv", "xlsx"], key="forma9_file")
-            st.markdown("</div>", unsafe_allow_html=True)
-            url_forma9 = st.text_input(
-                "URL F9", key="url_forma9_excel",
-                value="https://1drv.ms/x/c/06cc4035ad46ff97/IQAlCua1BGOXRbcSzUY0OVyzAS8KOoDNxuvUqrsORhjMcKM?e=o8FZyJ",
-                help="URL pública de FORMA 9 (OneDrive/SharePoint).",
-            )
-            forma9_online_file = None
-            if url_forma9:
-                fname = cached_onedrive_download(url_forma9, 'forma9_online.xlsx')
-                if fname:
-                    forma9_online_file = fname
-                    show_success_box("F9 online descargada OK (Caché).")
-                else:
-                    st.error("F9 online error: No se pudo descargar el archivo desde OneDrive.")
+        forma9_file = st.file_uploader("Subir F9", type=["csv", "xlsx"], key="forma9_file", label_visibility="collapsed")
+        st.markdown("</div>", unsafe_allow_html=True)
+        url_forma9 = st.text_input(
+            "🔗 URL ONEDRIVE", key="url_forma9_excel",
+            value="https://1drv.ms/x/c/06cc4035ad46ff97/IQAlCua1BGOXRbcSzUY0OVyzAS8KOoDNxuvUqrsORhjMcKM?e=o8FZyJ",
+        )
+        forma9_online_file = None
+        if url_forma9:
+            fname = cached_onedrive_download(url_forma9, 'forma9_online.xlsx')
+            if fname:
+                forma9_online_file = fname
+            else:
+                st.error("F9 online error.")
+        
+        st.markdown('<div style="margin-top:10px;"></div>', unsafe_allow_html=True)
 
-    # --- Tarjeta 2: BD ---
-    with col_bd:
+        # --- Tarjeta 2: BD ---
         st.markdown("""
-        <div class='compact-card'><span>Carga  Base de Datos 🗃️</span></div>
+        <div class='compact-card'><span>📊 BASE DE DATOS</span></div>
+        <div class='upload-area'>
         """, unsafe_allow_html=True)
-        with st.container(border=True):
-            st.markdown("<div class='upload-area'>", unsafe_allow_html=True)
-            bd_file = st.file_uploader("BD (.csv o .xlsx)", type=["csv", "xlsx"], key="bd_file")
-            st.markdown("</div>", unsafe_allow_html=True)
-            url_bd = st.text_input(
-                "URL BD", key="url_bd_excel",
-                value="https://1drv.ms/x/c/06cc4035ad46ff97/IQBFUqV7GWUfTqIPciLZeNEIAdlrMygqQITAR9Ku5frPrZE?e=P0xf75",
-                help="URL pública de BD (OneDrive/SharePoint).",
-            )
-            bd_online_file = None
-            if url_bd:
-                fname = cached_onedrive_download(url_bd, 'bd_online.xlsx')
-                if fname:
-                    bd_online_file = fname
-                    show_success_box("BD online descargada OK (Caché).")
-                else:
-                    st.error("BD online error: No se pudo descargar el archivo desde OneDrive.")
+        bd_file = st.file_uploader("Subir BD", type=["csv", "xlsx"], key="bd_file", label_visibility="collapsed")
+        st.markdown("</div>", unsafe_allow_html=True)
+        url_bd = st.text_input(
+            "🔗 URL ONEDRIVE", key="url_bd_excel",
+            value="https://1drv.ms/x/c/06cc4035ad46ff97/IQBFUqV7GWUfTqIPciLZeNEIAdlrMygqQITAR9Ku5frPrZE?e=P0xf75",
+        )
+        bd_online_file = None
+        if url_bd:
+            fname = cached_onedrive_download(url_bd, 'bd_online.xlsx')
+            if fname:
+                bd_online_file = fname
+            else:
+                st.error("BD online error.")
 
-    # --- Tarjeta 3: Parámetros ---
-    with col_params:
-        st.markdown("""
-        <div class='compact-card'><span>Parámetros de Evaluación ⚙️</span></div>
-        """, unsafe_allow_html=True)
-        st.markdown("""
-        <style>
-        .fecha-alerta {
-            padding:0.5rem 1rem; background-color:var(--secondary-background-color);
-            border-radius:8px; margin-bottom:0.5rem; font-weight:700;
-            color:var(--text-color); box-shadow:0 1px 3px rgba(0,0,0,0.1);
-        }
-        </style>
-        """, unsafe_allow_html=True)
+        st.markdown('<div style="margin-top:10px;"></div>', unsafe_allow_html=True)
 
+        # --- Tarjeta 3: Parámetros ---
+        st.markdown("""
+        <div class='compact-card'><span>⚙️ PARÁMETROS</span></div>
+        """, unsafe_allow_html=True)
+        
         default_date = get_last_day_of_previous_month()
+        fecha_evaluacion = st.date_input(
+            "🗓️ FECHA EVALUACIÓN",
+            value=default_date,
+            key="fecha_eval",
+            max_value=default_date,
+        )
+        
+        st.markdown(f"""
+        <div class="fecha-alerta">
+            <div style="color:#FF00FF; font-size:0.6rem; font-family:Orbitron;">SISTEMA DE CORTE</div>
+            <div style="font-size:0.85rem; font-weight:700;">{fecha_evaluacion.strftime('%d %b %Y').upper()}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-        with st.container(border=True):
-            fecha_evaluacion = st.date_input(
-                "🗓️ Fecha de Evaluación",
-                value=default_date,
-                key="fecha_eval",
-                disabled=False,
-                max_value=default_date,
-            )
-            try:
-                fecha_formateada_num = fecha_evaluacion.strftime("%d-%m-%Y")
-            except Exception:
-                fecha_formateada_num = str(fecha_evaluacion)
-
-            st.markdown("---")
-            st.markdown(f"""
-            <div class="fecha-alerta">
-                <div><span>FECHA EVALUAR:</span> <b>{fecha_formateada_num}</b></div>
-                <div style="margin-top:0.25rem;font-size:0.95rem;">No superar esta fecha.</div>
-            </div>
-            """, unsafe_allow_html=True)
-
-            calcular_btn = st.button("🚀 Calcular Datos Iniciales", key="calcular_btn", use_container_width=True)
+        st.markdown('<div style="margin-top:15px;"></div>', unsafe_allow_html=True)
+        calcular_btn = st.button("🚀 EJECUTAR CÁLCULOS", key="calcular_btn", use_container_width=True)
+        
+        # --- NUEVA SECCIÓN DISCRETA DE EXPORTACIÓN ---
+        df_monthly = st.session_state.get('df_monthly_summary')
+        if df_monthly is not None and not df_monthly.empty:
+            st.markdown('<div style="margin-top:20px; border-top:1px solid rgba(0,217,255,0.1); padding-top:10px;"></div>', unsafe_allow_html=True)
+            st.markdown("<div style='font-family:Orbitron; font-size:0.6rem; color:#475569; letter-spacing:1px; margin-bottom:5px;'>📂 EXPORTAR</div>", unsafe_allow_html=True)
+            
+            excel_bytes = exportar_resumen_performance(df_monthly)
+            if excel_bytes:
+                st.download_button(
+                    label="💾 DESCARGAR PERFORMANCE (.XLSX)",
+                    data=excel_bytes,
+                    file_name=f"ALS_Performance_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="btn_download_excel_discreet",
+                    use_container_width=True
+                )
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
         # Determinar archivos finales
         forma9_final = forma9_file if forma9_file is not None else forma9_online_file
