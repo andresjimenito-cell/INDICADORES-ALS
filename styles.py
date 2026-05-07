@@ -28,8 +28,11 @@ def inject_custom_css():
 
         .stApp {{
             background-color: #0a0e27 !important;
-            background-image: radial-gradient(circle at 10% 20%, rgba(19,91,236,0.05) 0%, transparent 40%),
-                              radial-gradient(circle at 90% 80%, rgba(0,242,255,0.05) 0%, transparent 40%) !important;
+            background-image: 
+                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%),
+                radial-gradient(circle at 10% 20%, rgba(19,91,236,0.05) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(0,242,255,0.05) 0%, transparent 40%) !important;
+            background-size: 100% 4px, 100% 100%, 100% 100% !important;
             font-family: 'Inter', sans-serif !important;
         }}
 
@@ -152,18 +155,55 @@ def _apply_page_css():
     div[data-testid="stMetricLabel"] {{ color:{COLOR_FUENTE} !important; font-weight:600; text-transform:uppercase; letter-spacing:1px; }}
     """)
     page_css.append(f"""
-    .stDataFrame, .stTable, .stContainer, div[data-testid="stVerticalBlock"] {{
-        background: {COLOR_FONDO_OSCURO}99 !important; border-radius: 5px !important;
-        border: 1px solid {COLOR_AZUL_CIBER}22; box-shadow: 0 8px 30px rgba(0,0,0,0.4) !important; padding: 10px;
+    /* Estilo Premium para DataFrames y Tablas (UI Style) */
+    [data-testid="stDataFrame"], [data-testid="stTable"], .stDataFrame, .stTable {{
+        background: rgba(10, 14, 39, 0.4) !important;
+        backdrop-filter: blur(12px) !important;
+        border: 1px solid rgba(0, 242, 255, 0.15) !important;
+        border-radius: 12px !important;
+        padding: 15px !important;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(0, 242, 255, 0.05) !important;
+        transition: all 0.3s ease;
     }}
-    """)
-    page_css.append(f"""
+    
+    [data-testid="stDataFrame"]:hover, [data-testid="stTable"]:hover {{
+        border-color: rgba(0, 242, 255, 0.4) !important;
+        box-shadow: 0 15px 50px rgba(0, 242, 255, 0.1), inset 0 0 30px rgba(0, 242, 255, 0.08) !important;
+    }}
+
+    /* Estilizado de las cabeceras de tabla (ag-grid y estándar) */
+    .stDataFrame th, .stTable th {{
+        background: rgba(0, 242, 255, 0.05) !important;
+        color: #00f2ff !important;
+        font-family: 'Orbitron', sans-serif !important;
+        text-transform: uppercase !important;
+        letter-spacing: 1px !important;
+        font-size: 0.75rem !important;
+        border-bottom: 2px solid rgba(0, 242, 255, 0.3) !important;
+    }}
+
+    .stDataFrame td, .stTable td {{
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+        font-size: 0.85rem !important;
+        color: rgba(255, 255, 255, 0.85) !important;
+    }}
+
+    /* Inputs estilo HUD */
     .stSelectbox>div>div, .stTextInput>div>div>input, .stDateInput>div>input,
     .stFileUploader, div[data-testid="stFileUploadDropzone"] {{
-        background: {COLOR_FONDO_OSCURO} !important; border: 1px solid {COLOR_MAGENTA_NEON}55 !important;
-        color: {COLOR_FUENTE} !important; border-radius: 8px !important; padding: 8px !important; transition: all 0.2s;
+        background: rgba(15, 23, 42, 0.8) !important; 
+        border: 1px solid rgba(0, 242, 255, 0.2) !important;
+        color: #fff !important; 
+        border-radius: 10px !important; 
+        padding: 8px !important; 
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3) !important;
     }}
-    .stTextInput>div>div>input:focus {{ border-color:{COLOR_AZUL_CIBER} !important; box-shadow:0 0 15px {COLOR_AZUL_CIBER}44 !important; }}
+    
+    .stSelectbox>div>div:hover, .stTextInput>div>div>input:hover {{
+        border-color: #00f2ff !important;
+        box-shadow: 0 0 15px rgba(0, 242, 255, 0.2) !important;
+    }}
     """)
     page_css.append("""
     .stPlotlyChart > div[role='figure'] { background: rgba(0,0,0,0) !important; border-radius: 10px; }
@@ -171,6 +211,48 @@ def _apply_page_css():
     .plotly svg { background: transparent !important; }
     .plotly .legend rect { fill: rgba(0,0,0,0) !important; stroke: rgba(0,0,0,0) !important; }
     .plotly .legend text, .plotly .legendtitle { fill: currentColor !important; }
+    /* Estilo Premium para TABS */
+    .stTabs [data-baseweb="tab-list"] {{
+        gap: 8px !important;
+        background-color: rgba(10, 14, 39, 0.5) !important;
+        padding: 10px !important;
+        border-radius: 15px !important;
+        border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    }}
+
+    .stTabs [data-baseweb="tab"] {{
+        height: 50px !important;
+        background-color: rgba(255, 255, 255, 0.03) !important;
+        border-radius: 10px !important;
+        color: rgba(255, 255, 255, 0.6) !important;
+        font-family: 'Orbitron', sans-serif !important;
+        font-weight: 700 !important;
+        border: 1px solid transparent !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        padding: 0 20px !important;
+    }}
+
+    .stTabs [aria-selected="true"] {{
+        background: linear-gradient(135deg, rgba(0, 242, 255, 0.1), rgba(0, 242, 255, 0.05)) !important;
+        color: #00f2ff !important;
+        border: 1px solid rgba(0, 242, 255, 0.4) !important;
+        box-shadow: 0 0 20px rgba(0, 242, 255, 0.15) !important;
+    }}
+
+    .stTabs [data-baseweb="tab"]:hover {{
+        color: #fff !important;
+        background-color: rgba(255, 255, 255, 0.08) !important;
+    }}
+
+    /* Contenedores de Gráficos */
+    .stPlotlyChart, [data-testid="stGraphVis"] {{
+        background: rgba(15, 23, 42, 0.3) !important;
+        border-radius: 15px !important;
+        border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        padding: 10px !important;
+        box-shadow: 0 15px 45px rgba(0, 0, 0, 0.4) !important;
+    }}
+
     div[data-testid="stVerticalBlock"], div[data-testid="stHorizontalBlock"],
     div[data-testid="column"], section[data-testid="stSidebar"],
     .element-container, .stMarkdown, .stDataFrame {

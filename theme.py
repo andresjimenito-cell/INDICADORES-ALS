@@ -60,7 +60,7 @@ def get_colors(theme_base: str | None = None):
 
 
 def get_plotly_layout(xaxis_color: str | None = None, yaxis_color: str | None = None, theme_base: str | None = None):
-    """Devuelve un layout HUD premium para Plotly."""
+    """Devuelve un layout HUD premium para Plotly con estética UI avanzada."""
     colors = get_colors(theme_base)
     xa = xaxis_color or colors.get("muted")
     ya = yaxis_color or colors.get("muted")
@@ -68,35 +68,53 @@ def get_plotly_layout(xaxis_color: str | None = None, yaxis_color: str | None = 
     layout = {
         "template": "plotly_dark",
         "paper_bgcolor": "rgba(0,0,0,0)",
-        "plot_bgcolor": "rgba(0,0,0,0)",
-        "font": {"family": "Inter, sans-serif", "color": colors.get("text"), "size": 12},
-        "title": {"font": {"family": "Outfit, sans-serif", "size": 24, "color": colors.get("text")}},
+        "plot_bgcolor": "rgba(15, 23, 42, 0.2)",
+        "font": {"family": "'Inter', sans-serif", "color": colors.get("text"), "size": 12},
+        "title": {
+            "font": {"family": "'Orbitron', sans-serif", "size": 20, "color": colors.get("secondary")},
+            "pad": {"t": 20, "b": 20},
+            "x": 0.05,
+            "xanchor": "left"
+        },
         "xaxis": {
             "color": xa,
-            "gridcolor": "rgba(255, 255, 255, 0.05)",
-            "linecolor": colors.get("primary"),
+            "gridcolor": "rgba(255, 255, 255, 0.03)",
+            "linecolor": "rgba(0, 242, 255, 0.2)",
             "zeroline": False,
-            "tickfont": {"size": 10}
+            "tickfont": {"size": 10},
+            "showgrid": True,
+            "automargin": True
         },
         "yaxis": {
             "color": ya,
-            "gridcolor": "rgba(255, 255, 255, 0.05)",
-            "linecolor": colors.get("primary"),
+            "gridcolor": "rgba(255, 255, 255, 0.03)",
+            "linecolor": "rgba(0, 242, 255, 0.2)",
             "zeroline": False,
-            "tickfont": {"size": 10}
+            "tickfont": {"size": 10},
+            "showgrid": True,
+            "automargin": True
         },
         "legend": {
             "bgcolor": "rgba(10, 14, 39, 0.8)",
-            "bordercolor": colors.get("border"),
+            "bordercolor": "rgba(0, 242, 255, 0.2)",
             "borderwidth": 1,
-            "font": {"size": 11, "color": colors.get("text")}
+            "font": {"size": 11, "color": colors.get("text")},
+            "orientation": "h",
+            "yanchor": "bottom",
+            "y": -0.3,
+            "xanchor": "center",
+            "x": 0.5
         },
-        "margin": {"t": 80, "b": 60, "l": 60, "r": 40},
+        "margin": {"t": 80, "b": 100, "l": 60, "r": 40},
+        "hovermode": "closest",
         "hoverlabel": {
-            "bgcolor": colors.get("background"),
-            "font": {"family": "Inter, sans-serif", "size": 13},
-            "bordercolor": colors.get("secondary")
-        }
+            "bgcolor": "#0a0e27",
+            "font": {"family": "'Inter', sans-serif", "size": 13, "color": "#fff"},
+            "bordercolor": "#00f2ff"
+        },
+        "colorway": [
+            "#00f2ff", "#135bec", "#ff0080", "#00ff99", "#ffde31", "#ff4b4b"
+        ]
     }
 
     return layout
