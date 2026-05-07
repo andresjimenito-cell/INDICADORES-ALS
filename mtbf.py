@@ -1,6 +1,7 @@
 import pandas as pd
 import streamlit as st
 import plotly.express as px
+import json
 from theme import get_colors, get_plotly_layout, styled_title, plotly_styled_title
 
 _colors = get_colors()
@@ -137,11 +138,53 @@ def mostrar_mtbf(mtbf_global, mtbf_por_pozo, mtbf_efectivo=None, df_bd=None, fec
         else:
             st.dataframe(mtbf_por_pozo.reset_index().rename(columns={0: 'TMEF (días)'}), use_container_width=True, hide_index=True)
     with col_graf:
-        if df_bd is not None and fecha_evaluacion is not None:
-            df_hist = historico_mtbf(df_bd, fecha_evaluacion)
-            graficar_historico_mtbf(df_hist)
+        if df_bd is not None and mtbf_global > 0:
+            # En lugar de histórico por fecha, mostramos el VALOR actual por CAMPO/ACTIVO
+            grupo_col = 'CAMPO' if 'CAMPO' in df_bd.columns else 'ACTIVO'
+            res_graf = []
+            for item in sorted(df_bd[grupo_col].dropna().unique()):
+                df_c = df_bd[df_bd[grupo_col] == item]
+                val_c, _ = calcular_mtbf(df_c, fecha_evaluacion)
+                if val_c > 0:
+                    res_graf.append({'Categoria': item, 'TMEF': round(val_c, 2)})
+            
+            if res_graf:
+                df_res_graf = pd.DataFrame(res_graf).sort_values('TMEF', ascending=True)
+                
+                echarts_options_val = {
+                    "backgroundColor": "transparent",
+                    "title": {"text": f"TMEF ACTUAL POR {grupo_col}", "left": "center", "textStyle": {"color": "#fff", "fontSize": 14}},
+                    "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
+                    "grid": {"left": "3%", "right": "10%", "bottom": "3%", "top": "15%", "containLabel": True},
+                    "xAxis": {"type": "value", "name": "Días", "axisLabel": {"color": "#888"}, "splitLine": {"lineStyle": {"color": "rgba(255,255,255,0.05)"}}},
+                    "yAxis": {"type": "category", "data": df_res_graf['Categoria'].tolist(), "axisLabel": {"color": "#fff", "fontSize": 10}},
+                    "series": [{
+                        "name": "TMEF",
+                        "type": "bar",
+                        "data": df_res_graf['TMEF'].tolist(),
+                        "itemStyle": {
+                            "color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0,
+                                      "colorStops": [{"offset": 0, "color": "#135bec"}, {"offset": 1, "color": "#00f2ff"}]},
+                            "borderRadius": [0, 10, 10, 0]
+                        },
+                        "label": {"show": True, "position": "right", "color": "#fff", "fontSize": 10}
+                    }]
+                }
+                
+                html_val = f"""
+                <div id="echarts-mtbf-val" style="width:100%; height:400px;"></div>
+                <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+                <script>
+                    (function() {{
+                        var myChart = echarts.init(document.getElementById('echarts-mtbf-val'), 'dark');
+                        myChart.setOption({json.dumps(echarts_options_val)});
+                        window.addEventListener('resize', function() {{ myChart.resize(); }});
+                    }})();
+                </script>
+                """
+                st.components.v1.html(html_val, height=420)
         else:
-            pass  # Eliminado mensaje informativo para limpiar la UI
+            st.info("No hay datos suficientes para generar el gráfico de valores TMEF.")
 
 def historico_mtbf(df_bd, fecha_evaluacion):
     """
