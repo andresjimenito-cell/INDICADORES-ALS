@@ -1,6 +1,5 @@
 # === IMPORTS ===
 import streamlit as st
-from datetime import datetime
 import time
 import subprocess
 import sys
@@ -45,7 +44,6 @@ st.markdown(f"""
  }}
  
  @keyframes glow {{
-    /* GLOW: tono fucsia atenuado (más oscuro y menos intenso) */
         0%, 100% {{ box-shadow: 0 0 10px rgba(120, 0, 80, 0.12); }}
         50% {{ box-shadow: 0 0 14px rgba(120, 0, 80, 0.16); }}
  }}
@@ -96,7 +94,6 @@ st.markdown(f"""
  /* INPUTS */
  .stTextInput > div > div > input {{
   background: rgba(10, 14, 39, 0.9) !important;
-  /* CAMBIADO: De verde (0, 255, 153) a fucsia/morado (170, 0, 255) */
     border: 2px solid rgba(170, 0, 255, 0.26) !important;
   border-radius: 12px;
   padding: 1rem;
@@ -106,7 +103,6 @@ st.markdown(f"""
  
  .stTextInput > div > div > input:focus {{
   border-color: {COLOR_ACENTO} !important;
-  /* CAMBIADO: De verde (0, 255, 153) a fucsia/morado (170, 0, 255) */
     box-shadow: 0 0 8px rgba(170, 0, 255, 0.16);
  }}
  
@@ -117,9 +113,7 @@ st.markdown(f"""
   font-weight: 700;
   letter-spacing: 2px;
   border-radius: 12px;
-  /* CAMBIADO: De verde/cian (0, 255, 153) y (0, 217, 255) a fucsia/morado (255, 0, 153) y (170, 0, 255) */
     background: linear-gradient(135deg, rgba(120, 0, 80, 0.16), rgba(90, 0, 170, 0.14));
-    /* TONO FUSCIA OSCURECIDO */
         border: 2px solid rgba(120, 0, 80, 0.18);
         box-shadow: 0 3px 8px rgba(120, 0, 80, 0.12);
   transition: all 0.3s ease;
@@ -127,14 +121,12 @@ st.markdown(f"""
  
  .stButton > button:hover {{
   transform: translateY(-3px);
-  /* CAMBIADO: De verde (0, 255, 153) a fucsia/morado (255, 0, 153) */
     box-shadow: 0 6px 18px rgba(120, 0, 80, 0.12);
   border-color: {COLOR_ACENTO};
  }}
  
     /* DASHBOARD HEADER */
  .dashboard-header {{
-    /* FONDO DEL HEADER: fucsia atenuado */
     background: linear-gradient(135deg, rgba(120, 0, 80, 0.02), rgba(90, 0, 170, 0.08));
         border: 2px solid rgba(120, 0, 80, 0.16);
     border-radius: 20px;
@@ -163,101 +155,8 @@ st.markdown(f"""
   letter-spacing: 2px;
  }}
  
- /* CARDS DE MÓDULOS */
- .module-card {{
-    background: linear-gradient(135deg, rgba(10, 14, 39, 0.9), rgba(26, 31, 58, 0.8));
-    /* Fucsia más oscuro y menos saturado para bordes */
-    border: 2px solid rgba(120, 0, 80, 0.22);
-  border-radius: 20px;
-  padding: 1.5rem;
-  backdrop-filter: blur(10px);
-        box-shadow: 0 6px 14px rgba(0, 0, 0, 0.45);
-  min-height: 280px;
-  transition: all 0.4s ease;
-  position: relative;
-  overflow: hidden;
- }}
- 
- .module-card:hover {{
-    transform: translateY(-8px);
-        box-shadow: 0 10px 28px rgba(120, 0, 80, 0.12);
-    border-color: {COLOR_ACENTO};
- }}
- 
-    .module-icon {{
-    font-size: 3.5rem;
-    margin-bottom: 0.8rem;
-        filter: drop-shadow(0 0 8px {COLOR_SOMBRA});
- }}
- 
- .module-title {{
-  font-family: 'Arial', sans-serif;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: {COLOR_ACENTO};
-  margin-bottom: 0.8rem;
-  letter-spacing: 2px;
- }}
- 
- .module-description {{
-  font-family: 'Arial', sans-serif;
-  font-size: 0.9rem;
-  line-height: 1.6;
-  color: rgba(232, 245, 233, 0.9);
- }}
- 
- .module-badge {{
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  padding: 0.4rem 0.8rem;
-  font-size: 0.7rem;
-  font-family: 'Arial', sans-serif;
-  font-weight: 700;
-  letter-spacing: 1px;
-  background: linear-gradient(135deg, {COLOR_PRIMARIO}, {COLOR_ACENTO});
-  border-radius: 20px;
-  /* CAMBIADO: De verde (0, 255, 153) a fucsia/morado (255, 0, 153) */
-        box-shadow: 0 0 8px rgba(120, 0, 80, 0.12);
-  animation: pulse 2s ease-in-out infinite;
- }}
- 
- /* INFO CARDS */
- .info-card {{
-  /* CAMBIADO: De verde/cian (0, 255, 153) y (0, 217, 255) a fucsia/morado (255, 0, 153) y (170, 0, 255) */
-    background: linear-gradient(135deg, rgba(120, 0, 80, 0.16), rgba(90, 0, 170, 0.14));
-    /* TONOS FUSCIA OSCURECIDOS */
-        border: 2px solid rgba(120, 0, 80, 0.18);
-        box-shadow: 0 3px 8px rgba(120, 0, 80, 0.12);
-  backdrop-filter: blur(10px);
-  transition: all 0.3s ease;
- }}
- 
- .info-card:hover {{
-    transform: translateY(-5px);
-        box-shadow: 0 6px 18px rgba(120, 0, 80, 0.12);
- }}
- 
- .info-icon {{ font-size: 2rem; }}
- 
- .info-value {{
-  font-family: 'Arial', sans-serif;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: {COLOR_ACENTO};
-  margin: 0.5rem 0;
- }}
- 
- .info-label {{
-  font-family: 'Arial', sans-serif;
-  font-size: 0.8rem;
-  letter-spacing: 1px;
-  opacity: 0.8;
- }}
-
  /* EXPANDER */
  .stExpander {{
-    /* EXPANDER: borde fucsia atenuado */
     border: 2px solid rgba(120, 0, 80, 0.18);
   border-radius: 12px;
   background: rgba(10, 14, 39, 0.6);
@@ -330,61 +229,35 @@ def _apply_streamlit_ui_visibility():
 _apply_streamlit_ui_visibility()
 
 # === LÓGICA DE EJECUCIÓN DEL MÓDULO ===
-if 'launch_module_path' in st.session_state and st.session_state.get('launch_module_path'):
+if st.session_state.get('authenticated') and 'launch_module_path' in st.session_state and st.session_state.get('launch_module_path'):
     launch_path = st.session_state.get('launch_module_path')
     launch_name = st.session_state.get('launch_module_name', os.path.splitext(os.path.basename(launch_path))[0])
 
-    st.markdown(f"<div style='display:flex; justify-content:space-between; align-items:center;'>"
-                f"<h2 style='color: {COLOR_ACENTO}; margin:0; font-family: \"Arial\", sans-serif;'>EJECUTANDO MÓDULO: {launch_name.upper()}</h2>"
-                f"</div>", unsafe_allow_html=True)
-
-    if st.button("⬅️ VOLVER AL DASHBOARD", key="btn_return_dashboard"):
-        for key in ['launch_module_path', 'launch_module_name']:
-            if key in st.session_state:
-                del st.session_state[key]
-        st.rerun()
+    # Barra superior mínima para permitir cerrar sesión o volver si fuera necesario
+    col_nav1, col_nav2 = st.columns([0.85, 0.15])
+    with col_nav2:
+        if st.button("🚪 SALIR", key="btn_logout_top"):
+            for key in ['launch_module_path', 'launch_module_name', 'authenticated', 'username']:
+                if key in st.session_state:
+                    del st.session_state[key]
+            st.rerun()
 
     try:
-        for _k in ['show_resumen_publico', 'go_to_indicadores']:
-            if _k in st.session_state:
-                try:
-                    del st.session_state[_k]
-                except Exception:
-                    pass
-
-        debug_info = st.session_state.get('launch_module_debug')
-        resolved_fname = st.session_state.get('launch_module_resolved_filename')
-        if resolved_fname or debug_info:
-            try:
-                st.markdown(
-                    f"<div style='margin-bottom:6px; font-size:12px; opacity:0.85;'>Archivo resuelto: <b>{resolved_fname}</b> — Ruta: <code>{launch_path}</code></div>",
-                    unsafe_allow_html=True
-                )
-            except Exception:
-                pass
-
         spec = importlib.util.spec_from_file_location("launched_module", launch_path)
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
-
-        try:
-            if hasattr(mod, 'show_resumen'):
-                try:
-                    mod.show_resumen()
-                    st.stop()
-                except Exception as e:
-                    st.error(f"Error ejecutando show_resumen() del módulo {launch_path}: {e}")
-            elif hasattr(mod, 'main'):
-                try:
-                    mod.main()
-                    st.stop()
-                except Exception as e:
-                    st.error(f"Error ejecutando main() del módulo {launch_path}: {e}")
-        except Exception:
-            pass
+        
+        # Si el módulo tiene una función main o show_resumen, la llamamos
+        if hasattr(mod, 'show_resumen'):
+            mod.show_resumen()
+        elif hasattr(mod, 'main'):
+            mod.main()
+            
     except Exception as e:
         st.error(f"❌ Error al cargar el módulo {launch_path}: {e}")
-        st.write("Si quieres volver al dashboard pulsa 'VOLVER AL DASHBOARD'.")
+        if st.button("VOLVER AL LOGIN"):
+            st.session_state.authenticated = False
+            st.rerun()
     
     st.stop()
 
@@ -400,15 +273,6 @@ def authenticate(username, password):
 
 # === FUNCIÓN PARA ABRIR MÓDULOS ===
 def open_module(module_name):
-    current_user = (st.session_state.get('username') or '').strip().lower()
-    try:
-        requested_basename = os.path.basename(module_name).lower()
-    except Exception:
-        requested_basename = str(module_name).lower()
-    if current_user == 'invitado':
-        if not (requested_basename == 'resumen_publico.py' or requested_basename == 'resumen_publico'):
-            st.error("Acceso denegado: el usuario 'invitado' solo puede ver el Resumen Público.")
-            return False
     try:
         cwd_files = os.listdir('.')
         target = None
@@ -428,25 +292,11 @@ def open_module(module_name):
 
         if target is None:
             st.error(f"❌ No se encontró el archivo: {module_name}")
-            st.info(f"💡 Asegúrate de que {module_name} esté en el mismo directorio que app.py")
             return False
 
         full_path = os.path.abspath(target)
         st.session_state['launch_module_path'] = full_path
         st.session_state['launch_module_name'] = os.path.splitext(os.path.basename(full_path))[0]
-        st.session_state['launch_module_resolved_filename'] = os.path.basename(target)
-
-        try:
-            st.session_state['launch_module_debug'] = {
-                'requested': module_name,
-                'resolved_target': target,
-                'full_path': full_path,
-                'cwd': os.getcwd(),
-                'cwd_files_count': len(os.listdir('.'))
-            }
-        except Exception:
-            st.session_state['launch_module_debug'] = None
-
         st.rerun()
         return True
         
@@ -513,203 +363,19 @@ def show_login():
         </div>
         """, unsafe_allow_html=True)
 
-# === DASHBOARD PRINCIPAL ===
-def show_dashboard():
-    st.markdown(f"""
-    <div class="dashboard-header">
-        <h1 class="dashboard-title">CENTRO DE CONTROL</h1>
-        <p class="dashboard-subtitle">Bienvenido, <strong>{st.session_state.username.upper()}</strong>. Selecciona el módulo a iniciar.</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    col1, col2, col3 = st.columns(3, gap="medium")
-    
-    with col1:
-        st.markdown("""
-        <div class="module-card">
-            <div class="module-badge">OPERACIONAL</div>
-            <div class="module-icon">📊</div>
-            <div class="module-title">INDICADORES ALS</div>
-            <div class="module-description">
-                Plataforma integral de análisis y monitoreo de indicadores de Sistemas Artificiales
-                de Levantamiento (ALS). Incluye métricas clave como TMEF, Tiempo de Vida, índices de falla y 
-                reportes de performance de equipos.
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("<div style='margin-top: 0.8rem;'></div>", unsafe_allow_html=True)
-        col_btn1, col_btn2 = st.columns([1, 1], gap='small')
-        with col_btn1:
-            if st.button("🚀 INICIAR INDICADORES", key="btn_indicadores_dashboard", use_container_width=True):
-                open_module("indicadores.py")
-        with col_btn2:
-            if st.button("📊 VER RESUMEN PÚBLICO", key="btn_resumen_publico", use_container_width=True):
-                open_module("resumen_publico.py")
-    
-    with col2:
-        st.markdown("""
-        <div class="module-card">
-            <div class="module-badge">INGENIERÍA</div>
-            <div class="module-icon">⚙️</div>
-            <div class="module-title">EVALUACIÓN ESP</div>
-            <div class="module-description">
-                Herramienta avanzada para la evaluación técnica, económica y energética 
-                de diseños de Bombas Sumergibles Eléctricas (ESP). Permite la comparación 
-                detallada de proveedores y análisis del Costo Total del Ciclo de Vida (TLCC).
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("<div style='margin-top: 0.8rem;'></div>", unsafe_allow_html=True)
-        if st.button("🚀 INICIAR EVALUACIÓN", key="btn_evaluacion", use_container_width=True):
-            open_module("evaluacion.py")
-
-    with col3:
-        st.markdown("""
-        <div class="module-card">
-            <div class="module-badge">INNOVACIÓN</div>
-            <div class="module-icon">🖥️</div>
-            <div class="module-title">ESP VISUALIZER</div>
-            <div class="module-description">
-                Visualización gráfica avanzada e interactiva para sistemas ESP. 
-                Entorno visual moderno implementado con tecnología web de última generación.
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("<div style='margin-top: 0.8rem;'></div>", unsafe_allow_html=True)
-        if st.button("🚀 INICIAR VISUALIZADOR", key="btn_visualizador", use_container_width=True):
-            open_module("esp_visualizer.py")
-    
-    st.markdown("---")
-    
-    col_info1, col_info2, col_info3 = st.columns(3, gap="small")
-    
-    with col_info1:
-        st.markdown(f"""
-        <div class="info-card">
-            <div class="info-icon">💡</div>
-            <div class="info-value">2</div>
-            <div class="info-label">Módulos Activos</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col_info2:
-        st.markdown(f"""
-        <div class="info-card">
-            <div class="info-icon">⏰</div>
-            <div class="info-value">{datetime.now().strftime("%H:%M")}</div>
-            <div class="info-label">Hora del Sistema</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col_info3:
-        st.markdown(f"""
-        <div class="info-card">
-            <div class="info-icon">👤</div>
-            <div class="info-value">{st.session_state.username.upper()}</div>
-            <div class="info-label">Usuario Activo</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    with st.expander("📁 VERIFICACIÓN DE ARCHIVOS DEL SISTEMA"):
-        col_check1, col_check2, col_check3 = st.columns(3)
-        
-        with col_check1:
-            if os.path.exists("indicadores.py"):
-                st.success("✅ **indicadores.py** encontrado y listo.")
-            else:
-                st.error("❌ **indicadores.py** no encontrado. Módulo Inactivo.")
-        
-        with col_check2:
-            if os.path.exists("evaluacion.py"):
-                st.success("✅ **evaluacion.py** encontrado y listo.")
-            else:
-                st.error("❌ **evaluacion.py** no encontrado. Módulo Inactivo.")
-        
-        with col_check3:
-            if os.path.exists("esp_visualizer.py"):
-                st.success("✅ **esp_visualizer.py** encontrado y listo.")
-            else:
-                st.error("❌ **esp_visualizer.py** no encontrado. Módulo Inactivo.")
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    col_logout1, col_logout2, col_logout3 = st.columns([1, 2, 1])
-    with col_logout2:
-        if st.button("🚪 CERRAR SESIÓN", key="btn_logout", use_container_width=True):
-            st.session_state.authenticated = False
-            st.session_state.username = ""
-            st.session_state['hide_main_menu_only'] = False
-            st.rerun()
-
-# === NAV SIDEBAR ===
-def render_sidebar():
-    with st.sidebar:
-        st.markdown(f"""
-        <div style="text-align:center; padding:10px 0;">
-            <div style="font-family:'Arial', sans-serif; font-weight:900; font-size:1.4rem; color:{COLOR_ACENTO}; margin-bottom:5px;">FRONTERA</div>
-            <div style="font-family:'Arial', sans-serif; font-size:0.9rem; letter-spacing:2px; opacity:0.8;">ALS SYSTEM</div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.divider()
-        
-        if st.button("🏠 DASHBOARD", use_container_width=True):
-             for key in ['launch_module_path', 'launch_module_name']:
-                if key in st.session_state:
-                    del st.session_state[key]
-             st.rerun()
-        
-        st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
-        st.markdown("<div style='font-size:0.8rem; font-weight:bold; opacity:0.6; margin-bottom:5px;'>MÓDULOS</div>", unsafe_allow_html=True)
-        
-        if st.button("📊 INDICADORES", use_container_width=True):
-             open_module("indicadores.py")
-             
-        if st.button("🌍 RESUMEN PÚBLICO", use_container_width=True):
-             open_module("resumen_publico.py")
-
-        if st.button("⚙️ EVALUACIÓN ESP", use_container_width=True):
-             open_module("evaluacion.py")
-
-        if st.button("🖥️ VISUALIZER", use_container_width=True):
-             open_module("esp_visualizer.py")
-
-        st.divider()
-        if st.button("🚪 CERRAR SESIÓN", key="btn_logout_sidebar", use_container_width=True):
-            st.session_state.authenticated = False
-            st.session_state.username = ""
-            st.session_state['hide_main_menu_only'] = False
-            st.rerun()
-
 # === LÓGICA PRINCIPAL ===
 def main():
-    if not st.session_state.authenticated:
+    if not st.session_state.get('authenticated', False):
         show_login()
     else:
-        # Renderizar sidebar siempre si está autenticado
-        render_sidebar()
-        
-        username = (st.session_state.get('username') or '').strip().lower()
-
-        if username == 'invitado':
-            try:
-                import importlib
-                rp = importlib.import_module('resumen_publico')
-                if hasattr(rp, 'show_resumen'):
-                    rp.show_resumen()
-                    return
-            except Exception:
-                try:
-                    open_module('resumen_publico.py')
-                    return
-                except Exception:
-                    st.error('No se pudo cargar el resumen público para el usuario invitado.')
-                    return
-
-        show_dashboard()
+        # Si ya estamos autenticados pero no hemos lanzado el módulo, lo lanzamos automáticamente
+        if 'launch_module_path' not in st.session_state:
+            username = (st.session_state.get('username') or '').strip().lower()
+            if username == 'invitado':
+                open_module('resumen_publico.py')
+            else:
+                # Se lanza INDICADORES.py por defecto
+                open_module('INDICADORES.py')
 
 if __name__ == "__main__":
     main()

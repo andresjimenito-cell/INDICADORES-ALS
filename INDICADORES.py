@@ -12,12 +12,15 @@ import streamlit as st
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIGURACIÓN DE PÁGINA - DEBE SER LA PRIMERA LLAMADA A ST
 # ─────────────────────────────────────────────────────────────────────────────
-st.set_page_config(
-    page_title="INDICADORES ALS | FRONTERA",
-    page_icon="🛡️",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
+try:
+    st.set_page_config(
+        page_title="INDICADORES ALS | FRONTERA",
+        page_icon="🛡️",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
+except Exception:
+    pass
 
 import pandas as pd
 from datetime import datetime
