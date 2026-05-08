@@ -340,13 +340,6 @@ def show_login():
                 else:
                     st.error("❌ Credenciales incorrectas. Inténtalo de nuevo.")
 
-        if st.button("🔓 INGRESAR COMO INVITADO", key="btn_ingresar_invitado", use_container_width=True):
-            st.session_state.authenticated = True
-            st.session_state.username = 'invitado'
-            st.session_state['hide_main_menu_only'] = True
-            st.success("✅ Accedido como invitado")
-            time.sleep(0.3)
-            st.rerun()
         
         st.markdown("""
         <div style='text-align: center; margin-top: 1.5rem; opacity: 0.5;'>
