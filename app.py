@@ -233,15 +233,6 @@ if st.session_state.get('authenticated') and 'launch_module_path' in st.session_
     launch_path = st.session_state.get('launch_module_path')
     launch_name = st.session_state.get('launch_module_name', os.path.splitext(os.path.basename(launch_path))[0])
 
-    # Barra superior mínima para permitir cerrar sesión o volver si fuera necesario
-    col_nav1, col_nav2 = st.columns([0.85, 0.15])
-    with col_nav2:
-        if st.button("🚪 SALIR", key="btn_logout_top"):
-            for key in ['launch_module_path', 'launch_module_name', 'authenticated', 'username']:
-                if key in st.session_state:
-                    del st.session_state[key]
-            st.rerun()
-
     try:
         spec = importlib.util.spec_from_file_location("launched_module", launch_path)
         mod = importlib.util.module_from_spec(spec)
