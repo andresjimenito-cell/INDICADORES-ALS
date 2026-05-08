@@ -16,74 +16,28 @@ def inject_plotly_dynamic_styles():
     """
     st.markdown("""
     <style>
-    /* ========================================
-       ESTILOS DINÁMICOS PARA GRÁFICAS (Plotly)
-       Ejes, Leyenda y Texto: Blanco en Dark / Negro en Light
-    ======================================== */
-
     /* 1. CONFIGURACIÓN DE FONDOS */
     [data-testid="stPlotlyChart"], .plotly-graph-div, .js-plotly-plot {
         background-color: transparent !important;
     }
 
     /* 2. MODO OSCURO (DARK MODE) */
-    /* Ejes, Leyenda, Títulos y Ticks en BLANCO */
     [data-theme="dark"] .plotly text,
-    [data-theme="dark"] .plotly tspan,
-    [data-theme="dark"] .plotly .xtick text,
-    [data-theme="dark"] .plotly .ytick text,
-    [data-theme="dark"] .plotly .xtitle,
-    [data-theme="dark"] .plotly .ytitle,
-    div[data-portal-id][data-theme="dark"] .plotly text,
-    div[data-portal-id][data-theme="dark"] .plotly tspan,
-    div[data-portal-id][data-theme="dark"] .plotly .xtick text,
-    div[data-portal-id][data-theme="dark"] .plotly .ytick text {
-        fill: #ffffff !important;
-        color: #ffffff !important;
-    }
-
-    [data-theme="dark"] .plotly .bg, 
-    [data-theme="dark"] .plotly .plotbg, 
-    [data-theme="dark"] .plotly .bgrect {
-        fill: #0A0E27 !important;
-    }
-
-    /* 3. MODO CLARO (LIGHT MODE) */
-    /* Ejes, Leyenda, Títulos y Ticks en NEGRO */
-    [data-theme="light"] .plotly text,
-    [data-theme="light"] .plotly tspan,
-    [data-theme="light"] .plotly .xtick text,
-    [data-theme="light"] .plotly .ytick text,
-    [data-theme="light"] .plotly .xtitle,
-    [data-theme="light"] .plotly .ytitle,
-    div[data-portal-id][data-theme="light"] .plotly text,
-    div[data-portal-id][data-theme="light"] .plotly tspan,
-    div[data-portal-id][data-theme="light"] .plotly .xtick text,
-    div[data-portal-id][data-theme="light"] .plotly .ytick text {
-        fill: #000000 !important;
-        color: #000000 !important;
-    }
-
-    [data-theme="light"] .plotly .bg, 
-    [data-theme="light"] .plotly .plotbg, 
-    [data-theme="light"] .plotly .bgrect {
+    [data-theme="dark"] .plotly tspan {
         fill: #ffffff !important;
     }
 
-    /* 4. TEXTO DE LEYENDA CON ILUMINACIÓN BLANCA ULTRA-INTENSA */
+    /* 3. TEXTO DE LEYENDA - Limpio y legible */
     .plotly .legendtext {
-        fill: #000000 !important;
-        color: #000000 !important;
-        /* Resplandor masivo acumulado para brillo extremo */
-        filter: drop-shadow(0 0 2px #fff) 
-                drop-shadow(0 0 3px #fff) 
-                drop-shadow(0 0 5px #fff) 
+        fill: #ffffff !important;
+        font-weight: 600 !important;
+        font-size: 10px !important;
     }
 
-    /* 5. COLOR DE LAS LÍNEAS DE LOS EJES (OPCIONAL) */
-    /* Para que las líneas de la cuadrícula no sean demasiado fuertes */
-    [data-theme="dark"] .plotly .gridlayer path { stroke: rgba(255,255,255,0.4) !important; }
-    [data-theme="light"] .plotly .gridlayer path { stroke: rgba(0,0,0,0.4) !important; }
+    /* 4. GRID LINES - Sutiles */
+    [data-theme="dark"] .plotly .gridlayer path { 
+        stroke: rgba(255,255,255,0.1) !important; 
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -473,7 +427,10 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
 
     from theme import get_plotly_layout
     layout = get_plotly_layout()
-    layout['title'] = plotly_styled_title(titulo)
+    if titulo:
+        layout['title'] = plotly_styled_title(titulo)
+    else:
+        layout['title'] = None
     layout.update(dict(
         showlegend=True,
         barmode='stack',
@@ -488,27 +445,31 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
             borderwidth=1
         ),
         xaxis=dict(
-            title=dict(text='<b>TIEMPO</b>', font=dict(size=14, family='Outfit')),
+            title=None,
             tickformat='%Y-%m',
             range=[x_start, x_end],
             gridcolor='rgba(255,255,255,0.05)',
-            linecolor='#135bec'
+            linecolor='#135bec',
+            tickfont=dict(size=9)
         ),
         yaxis=dict(
-            title=dict(text='<b>POZOS / DÍAS VIDA / TMEF</b>', font=dict(size=14, family='Outfit')),
+            title=None,
             gridcolor='rgba(255,255,255,0.05)',
-            linecolor='#135bec'
+            linecolor='#135bec',
+            tickfont=dict(size=9)
         ),
         yaxis2=dict(
-            title=dict(text='<b>ÍNDICE DE FALLA</b>', font=dict(size=14, family='Outfit')),
+            title=None,
             overlaying='y',
             side='right',
             range=[0, upper_y2],
-            tickformat='.2%',
+            tickformat='.0%',
             showgrid=False,
-            linecolor='#00f2ff'
+            linecolor='#00f2ff',
+            tickfont=dict(size=9, color='#00f2ff')
         ),
-        margin=dict(t=100, b=80, l=90, r=90)
+        margin=dict(t=40, b=30, l=35, r=35),
+        height=280
     ))
 
     fig.update_layout(**layout)
@@ -545,21 +506,25 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
     COLOR_DANGER = "#ff00ff"  # Magenta Neón (Indice Falla)
     COLOR_WARNING = "#ffab40" # Naranja Neón (Indice Falla ALS)
 
-    pozos_on = df_monthly['Pozos_ON'].tolist()
-    pozos_off = df_monthly['Pozos_OFF'].tolist()
-    rl_prom = [round(float(x), 2) for x in df_monthly['RunLife_Promedio'].tolist()]
-    rl_gen = [round(float(x), 2) for x in df_monthly['RunLife_General'].tolist()]
-    tmef = [round(float(x), 2) for x in df_monthly['TMEF_Promedio'].tolist()]
-    rle = [round(float(x), 2) for x in df_monthly['RunLife_Efectivo'].tolist()]
-    rle_fallados = [round(float(x), 2) for x in df_monthly.get('RunLife_Efectivo_Fallados', [0]*len(df_monthly)).tolist()]
-    # Asegurar que los índices existen antes de redondear
-    if_on = [round(float(x) * 100, 2) if pd.notna(x) else 0 for x in df_monthly['Indice_Falla_ON'].tolist()] if 'Indice_Falla_ON' in df_monthly.columns else []
-    if_als = [round(float(x) * 100, 2) if pd.notna(x) else 0 for x in df_monthly['Indice_Falla_ON_ALS'].tolist()] if 'Indice_Falla_ON_ALS' in df_monthly.columns else []
+    def _safe_list(series):
+        return [round(float(x), 2) if pd.notna(x) else None for x in series.tolist()]
+
+    pozos_on = [int(x) if pd.notna(x) else 0 for x in df_monthly['Pozos_ON'].tolist()]
+    pozos_off = [int(x) if pd.notna(x) else 0 for x in df_monthly['Pozos_OFF'].tolist()]
+    rl_prom = _safe_list(df_monthly['RunLife_Promedio'])
+    rl_gen = _safe_list(df_monthly['RunLife_General'])
+    tmef = _safe_list(df_monthly['TMEF_Promedio'])
+    rle = _safe_list(df_monthly['RunLife_Efectivo'])
+    rle_fallados = _safe_list(df_monthly.get('RunLife_Efectivo_Fallados', pd.Series([0]*len(df_monthly))))
+    
+    if_on = [round(float(x) * 100, 2) if pd.notna(x) else None for x in df_monthly['Indice_Falla_ON'].tolist()] if 'Indice_Falla_ON' in df_monthly.columns else []
+    if_als = [round(float(x) * 100, 2) if pd.notna(x) else None for x in df_monthly['Indice_Falla_ON_ALS'].tolist()] if 'Indice_Falla_ON_ALS' in df_monthly.columns else []
 
 
     echarts_options = {
         "backgroundColor": "transparent",
         "title": {
+            "show": bool(titulo),
             "text": titulo.upper(),
             "left": "center",
             "top": 10,
@@ -591,7 +556,7 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
         "grid": {
             "left": "3%",
             "right": "4%",
-            "bottom": "12%",
+            "bottom": "15%",
             "top": "18%",
             "containLabel": True
         },
@@ -601,7 +566,7 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
                 "boundaryGap": True,
                 "data": categories,
                 "axisLine": {"lineStyle": {"color": "rgba(255,255,255,0.1)"}},
-                "axisLabel": {"color": "#888", "fontSize": 10}
+                "axisLabel": {"color": "#888", "fontSize": 10, "fontFamily": "Arial, sans-serif"}
             }
         ],
         "yAxis": [
@@ -611,7 +576,7 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
                 "position": "left",
                 "splitLine": {"lineStyle": {"color": "rgba(255,255,255,0.05)"}},
                 "axisLine": {"show": True, "lineStyle": {"color": COLOR_PRIMARY}},
-                "axisLabel": {"color": "#888"}
+                "axisLabel": {"color": "#888", "fontFamily": "Arial, sans-serif"}
             },
             {
                 "type": "value",
@@ -619,7 +584,7 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
                 "position": "right",
                 "splitLine": {"show": False},
                 "axisLine": {"show": True, "lineStyle": {"color": COLOR_DANGER}},
-                "axisLabel": {"color": "#888", "formatter": "{value} %"}
+                "axisLabel": {"color": "#888", "formatter": "{value} %", "fontFamily": "Arial, sans-serif"}
             }
         ],
         "series": [
@@ -731,7 +696,7 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
     container_height = chart_height + 20
 
     html_template = f"""
-    <div id="chart-container" style="position: relative; width:100%; height:{chart_height}px; background: #060a1e; border-radius: 15px; overflow: hidden;">
+    <div id="chart-container" style="position: relative; width:100%; height:{chart_height}px; background: #060a1e; border: 1px solid rgba(0, 242, 255, 0.15); border-radius: 15px; overflow: hidden;">
         <div id="echarts-main" style="width:100%; height:100%;"></div>
         <button id="zoom-btn" style="
             position: absolute; 

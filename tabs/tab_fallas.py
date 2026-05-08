@@ -72,7 +72,7 @@ def render_tab_fallas(df_bd_filtered, fecha_evaluacion):
     df_det = pd.DataFrame(detalles)
 
     with col_left:
-        st.markdown("<h5>📊 DISTRIBUCIÓN POR ETAPA DE VIDA</h5>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-bottom:10px;'></div>", unsafe_allow_html=True)
         if not df_det.empty:
             conteo = df_det.groupby(['Etapa', 'Clasif']).size().reset_index(name='Cant')
             etapas = ['Infantil', 'Prematura', 'En Garantía', 'Sin Garantía']
@@ -89,25 +89,60 @@ def render_tab_fallas(df_bd_filtered, fecha_evaluacion):
 
             echarts_dist = {
                 "backgroundColor": "transparent",
-                "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
-                "legend": {"bottom": 0, "textStyle": {"color": "#ccc"}, "icon": "circle"},
-                "grid": {"left": "3%", "right": "4%", "bottom": "20%", "containLabel": True},
-                "xAxis": [{"type": "category", "data": tipos, "axisLabel": {"color": "#888", "rotate": 35, "fontSize": 9}}],
-                "yAxis": [{"type": "value", "axisLabel": {"color": "#888"}, "splitLine": {"lineStyle": {"color": "rgba(255,255,255,0.05)"}}}],
+                "title": {
+                    "text": "DISTRIBUCIÓN POR ETAPA DE VIDA",
+                    "left": "center",
+                    "top": 0,
+                    "textStyle": {
+                        "color": "#00f2ff",
+                        "fontSize": 13,
+                        "fontFamily": "Arial, sans-serif",
+                        "fontWeight": "bold"
+                    }
+                },
+                "textStyle": {"fontFamily": "Arial, sans-serif"},
+                "tooltip": {
+                    "trigger": "axis", 
+                    "axisPointer": {"type": "shadow"},
+                    "backgroundColor": "rgba(6, 10, 30, 0.9)",
+                    "borderColor": "#00f2ff",
+                    "textStyle": {"color": "#fff", "fontFamily": "Arial, sans-serif"}
+                },
+                "legend": {"bottom": 0, "textStyle": {"color": "#ccc", "fontSize": 10, "fontFamily": "Arial, sans-serif"}, "icon": "circle"},
+                "grid": {"left": "3%", "right": "4%", "bottom": "20%", "top": "15%", "containLabel": True},
+                "xAxis": [{"type": "category", "data": tipos, "axisLabel": {"color": "#888", "rotate": 35, "fontSize": 9, "fontFamily": "Arial, sans-serif"}}],
+                "yAxis": [{"type": "value", "axisLabel": {"color": "#888", "fontFamily": "Arial, sans-serif"}, "splitLine": {"lineStyle": {"color": "rgba(255,255,255,0.05)"}}}],
                 "series": series
             }
-            components.html(f'<div id="echarts-fallas-dist" style="width:100%; height:380px;"></div><script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script><script>(function(){{var myChart=echarts.init(document.getElementById("echarts-fallas-dist"),"dark");myChart.setOption({json.dumps(echarts_dist)});window.addEventListener("resize",function(){{myChart.resize();}});}})();</script>', height=400)
+            components.html(f'<div id="echarts-fallas-dist" style="width:100%; height:380px; background:#060a1e; border-radius:15px; overflow:hidden; border:1px solid rgba(0,242,255,0.1);"></div><script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script><script>(function(){{var myChart=echarts.init(document.getElementById("echarts-fallas-dist"),"dark");myChart.setOption({json.dumps(echarts_dist)});window.addEventListener("resize",function(){{myChart.resize();}});}})();</script>', height=400)
 
     with col_right:
-        st.markdown("<h5>🌹 CAUSA RAÍZ (ANÁLISIS IA)</h5>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-bottom:10px;'></div>", unsafe_allow_html=True)
         if not df_det.empty:
             pie_data = df_det['Clasif'].value_counts().reset_index()
             pie_list = [{"name": r['Clasif'], "value": int(r['count'])} for _, r in pie_data.iterrows()]
             
             echarts_pie = {
                 "backgroundColor": "transparent",
-                "tooltip": {"trigger": "item"},
-                "legend": {"orient": "vertical", "right": 10, "top": "center", "textStyle": {"color": "#ccc", "fontSize": 10}},
+                "title": {
+                    "text": "CAUSA RAÍZ (ANÁLISIS IA)",
+                    "left": "center",
+                    "top": 0,
+                    "textStyle": {
+                        "color": "#00f2ff",
+                        "fontSize": 13,
+                        "fontFamily": "Arial, sans-serif",
+                        "fontWeight": "bold"
+                    }
+                },
+                "textStyle": {"fontFamily": "Arial, sans-serif"},
+                "tooltip": {
+                    "trigger": "item",
+                    "backgroundColor": "rgba(6, 10, 30, 0.9)",
+                    "borderColor": "#00f2ff",
+                    "textStyle": {"color": "#fff", "fontFamily": "Arial, sans-serif"}
+                },
+                "legend": {"orient": "vertical", "right": 10, "top": "center", "textStyle": {"color": "#ccc", "fontSize": 10, "fontFamily": "Arial, sans-serif"}},
                 "series": [{
                     "type": "pie",
                     "radius": ["40%", "70%"],
@@ -115,11 +150,11 @@ def render_tab_fallas(df_bd_filtered, fecha_evaluacion):
                     "avoidLabelOverlap": False,
                     "itemStyle": {"borderRadius": 10, "borderColor": "#060a1e", "borderWidth": 2},
                     "label": {"show": False},
-                    "emphasis": {"label": {"show": True, "fontSize": 14, "fontWeight": "bold", "color": "#fff"}},
+                    "emphasis": {"label": {"show": True, "fontSize": 14, "fontWeight": "bold", "color": "#fff", "fontFamily": "Arial, sans-serif"}},
                     "data": pie_list
                 }]
             }
-            components.html(f'<div id="echarts-fallas-pie" style="width:100%; height:380px;"></div><script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script><script>(function(){{var myChart=echarts.init(document.getElementById("echarts-fallas-pie"),"dark");myChart.setOption({json.dumps(echarts_pie)});window.addEventListener("resize",function(){{myChart.resize();}});}})();</script>', height=400)
+            components.html(f'<div id="echarts-fallas-pie" style="width:100%; height:380px; background:#060a1e; border-radius:15px; overflow:hidden; border:1px solid rgba(0,242,255,0.1);"></div><script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script><script>(function(){{var myChart=echarts.init(document.getElementById("echarts-fallas-pie"),"dark");myChart.setOption({json.dumps(echarts_pie)});window.addEventListener("resize",function(){{myChart.resize();}});}})();</script>', height=400)
 
     st.markdown("<br>", unsafe_allow_html=True)
     

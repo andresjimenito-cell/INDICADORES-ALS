@@ -47,14 +47,10 @@ def _select(label: str, icon: str, options: list, key: str):
     except Exception:
         idx = 0
 
-    # Label con ícono inline
-    st.sidebar.markdown(
-        f"""<div style="display:flex; align-items:center; gap:5px; font-family:'Courier New',monospace; font-size:0.52rem; font-weight:700; color:#37474f; letter-spacing:2px; text-transform:uppercase; margin:8px 0 1px 0;"><span style="font-size:0.7rem;">{icon}</span>{label}</div>""",
-        unsafe_allow_html=True,
-    )
+    # Usar el label estándar de Streamlit (estilizado vía CSS) para garantizar visibilidad
     return st.sidebar.selectbox(
-        label, options=options, index=idx, key=key,
-        on_change=_mark_change, label_visibility="collapsed"
+        f"{icon} {label}", options=options, index=idx, key=key,
+        on_change=_mark_change, label_visibility="visible"
     )
 
 
@@ -64,7 +60,7 @@ def _select(label: str, icon: str, options: list, key: str):
 
 SIDEBAR_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;800&display=swap');
+
 
 /* SIDEBAR: dimensiones y fondo */
 [data-testid="stSidebar"] {
@@ -100,8 +96,18 @@ section[data-testid="stSidebar"] ::-webkit-scrollbar-thumb {
 }
 
 /* SELECTBOXES */
-section[data-testid="stSidebar"] .stSelectbox { margin-bottom: 0 !important; }
-section[data-testid="stSidebar"] .stSelectbox label { display: none !important; }
+section[data-testid="stSidebar"] .stSelectbox { margin-bottom: 4px !important; }
+section[data-testid="stSidebar"] .stSelectbox label { 
+    display: block !important; 
+    color: #00f2ff !important; 
+    font-size: 0.72rem !important; 
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1.5px !important;
+    font-family: 'Arial', sans-serif !important;
+    padding-left: 10px !important;
+    border-left: 2px solid #ff00ff !important;
+}
 section[data-testid="stSidebar"] .stSelectbox [data-baseweb="select"] {
     background: rgba(0,229,255,0.03) !important;
     border: 1px solid rgba(0,229,255,0.1) !important;
@@ -111,14 +117,14 @@ section[data-testid="stSidebar"] .stSelectbox [data-baseweb="select"] > div {
     padding: 3px 8px !important;
     min-height: 26px !important;
     font-size: 0.72rem !important;
-    font-family: 'Share Tech Mono', monospace !important;
+    font-family: 'Arial', sans-serif !important;
     color: #b0bec5 !important;
 }
 
 /* BOTÓN LOGOUT */
 section[data-testid="stSidebar"] .stButton > button {
     width: 100% !important;
-    font-family: 'Share Tech Mono', monospace !important;
+    font-family: 'Arial', sans-serif !important;
     font-size: 0.65rem !important;
     letter-spacing: 1.5px !important;
     padding: 5px 0 !important;
@@ -134,11 +140,11 @@ section[data-testid="stSidebar"] .stButton > button {
 # ---------------------------------------------------------------------------
 
 def _header_html(logo_tag: str) -> str:
-    return f'<div style="background:linear-gradient(180deg, rgba(0,229,255,0.04) 0%, transparent 100%); border-bottom:1px solid rgba(0,229,255,0.08); padding:18px 16px 14px 16px; text-align:center; position:relative;"><div style="position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg, transparent, #00e5ff, transparent); opacity:0.4;"></div>{logo_tag}<div style="font-family:\'Exo 2\', sans-serif; font-weight:800; font-size:0.9rem; letter-spacing:4px; margin-top:8px; background:linear-gradient(135deg, #00e5ff 0%, #e040fb 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; text-transform:uppercase;">FRONTERA</div><div style="font-family:\'Share Tech Mono\', monospace; font-size:0.45rem; color:#263238; letter-spacing:3px; text-transform:uppercase; margin-top:3px;">ALS · PANEL DE CONTROL</div></div>'
+    return f'<div style="background:linear-gradient(180deg, rgba(0,229,255,0.04) 0%, transparent 100%); border-bottom:1px solid rgba(0,229,255,0.08); padding:18px 16px 14px 16px; text-align:center; position:relative;"><div style="position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg, transparent, #00e5ff, transparent); opacity:0.4;"></div>{logo_tag}<div style="font-family:\'Arial\', sans-serif !important; font-weight:800; font-size:0.9rem; letter-spacing:4px; margin-top:8px; background:linear-gradient(135deg, #00e5ff 0%, #e040fb 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; text-transform:uppercase;">FRONTERA</div><div style="font-family:\'Arial\', sans-serif !important; font-size:0.45rem; color:#263238; letter-spacing:3px; text-transform:uppercase; margin-top:3px;">ALS · PANEL DE CONTROL</div></div>'
 
 
 def _section_header(text: str, color: str = "#00e5ff") -> str:
-    return f'<div style="font-family:\'Share Tech Mono\', monospace; font-size:0.48rem; color:{color}; letter-spacing:3px; text-transform:uppercase; padding:10px 16px 4px 16px; opacity:0.5;">{text}</div>'
+    return f'<div style="font-family:\'Arial\', sans-serif !important; font-size:0.48rem; color:{color}; letter-spacing:3px; text-transform:uppercase; padding:10px 16px 4px 16px; opacity:0.5;">{text}</div>'
 
 
 def _divider(color: str = "rgba(0,229,255,0.06)") -> str:
@@ -146,7 +152,7 @@ def _divider(color: str = "rgba(0,229,255,0.06)") -> str:
 
 
 def _no_data_box() -> str:
-    return '<div style="margin:8px 16px; padding:10px; background:rgba(0,229,255,0.02); border:1px dashed rgba(0,229,255,0.1); border-radius:4px; text-align:center; font-family:\'Share Tech Mono\', monospace; font-size:0.6rem; color:#263238; letter-spacing:1px;">⏳ SIN DATOS</div>'
+    return '<div style="margin:8px 16px; padding:10px; background:rgba(0,229,255,0.02); border:1px dashed rgba(0,229,255,0.1); border-radius:4px; text-align:center; font-family:\'Arial\', sans-serif !important; font-size:0.6rem; color:#263238; letter-spacing:1px;">⏳ SIN DATOS</div>'
 
 
 # Mapa icono → filtro
@@ -196,7 +202,7 @@ def render_sidebar() -> dict:
     st.sidebar.markdown(_header_html(logo_tag), unsafe_allow_html=True)
 
     # ── Bloque de filtros ────────────────────────────────────────────────────
-    st.sidebar.markdown(_section_header("// filtros activos"), unsafe_allow_html=True)
+    st.sidebar.markdown(_section_header(""), unsafe_allow_html=True)
 
     df_calc = st.session_state.get('df_bd_calculated')
 
@@ -221,7 +227,7 @@ def render_sidebar() -> dict:
     n_active = len(active_keys)
 
     if n_active > 0:
-        st.sidebar.markdown(f'<div style="margin:0 10px 6px 10px; padding:5px 10px; background:rgba(0,230,118,0.04); border:1px solid rgba(0,230,118,0.15); border-left:2px solid #00e676; border-radius:4px; font-family:\'Share Tech Mono\', monospace; font-size:0.55rem; color:#00e676; letter-spacing:1.5px;">◈ {n_active} FILTRO{"S" if n_active > 1 else ""} ACTIVO{"S" if n_active > 1 else ""}</div>', unsafe_allow_html=True)
+        st.sidebar.markdown(f'<div style="margin:0 10px 6px 10px; padding:5px 10px; background:rgba(0,230,118,0.04); border:1px solid rgba(0,230,118,0.15); border-left:2px solid #00e676; border-radius:4px; font-family:\'Arial\', sans-serif !important; font-size:0.55rem; color:#00e676; letter-spacing:1.5px;">◈ {n_active} FILTRO{"S" if n_active > 1 else ""} ACTIVO{"S" if n_active > 1 else ""}</div>', unsafe_allow_html=True)
 
     # ── Logout ───────────────────────────────────────────────────────────────
     st.sidebar.markdown('<div style="padding:4px 10px 10px 10px;">', unsafe_allow_html=True)
@@ -232,7 +238,7 @@ def render_sidebar() -> dict:
     st.sidebar.markdown('</div>', unsafe_allow_html=True)
 
     # ── Firma discreta ───────────────────────────────────────────────────────
-    st.sidebar.markdown(f'<div style="padding:6px 0 8px 0; text-align:center; font-family:\'Share Tech Mono\', monospace; font-size:0.42rem; color:#1a2332; letter-spacing:2px;">v2.0 · ALS MONITOR</div>', unsafe_allow_html=True)
+    st.sidebar.markdown(f'<div style="padding:6px 0 8px 0; text-align:center; font-family:\'Arial\', sans-serif !important; font-size:0.42rem; color:#1a2332; letter-spacing:2px;">v2.0 · ALS MONITOR</div>', unsafe_allow_html=True)
 
     return {
         'selected_activo':    st.session_state.get('general_activo_filter',    'TODOS'),

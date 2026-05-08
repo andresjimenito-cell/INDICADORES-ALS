@@ -69,9 +69,9 @@ def get_plotly_layout(xaxis_color: str | None = None, yaxis_color: str | None = 
         "template": "plotly_dark",
         "paper_bgcolor": "rgba(0,0,0,0)",
         "plot_bgcolor": "rgba(15, 23, 42, 0.2)",
-        "font": {"family": "'Inter', sans-serif", "color": colors.get("text"), "size": 12},
+        "font": {"family": "Arial, sans-serif", "color": colors.get("text"), "size": 12},
         "title": {
-            "font": {"family": "'Orbitron', sans-serif", "size": 20, "color": colors.get("secondary")},
+            "font": {"family": "Arial, sans-serif", "size": 20, "color": colors.get("secondary")},
             "pad": {"t": 20, "b": 20},
             "x": 0.05,
             "xanchor": "left"
@@ -109,7 +109,7 @@ def get_plotly_layout(xaxis_color: str | None = None, yaxis_color: str | None = 
         "hovermode": "closest",
         "hoverlabel": {
             "bgcolor": "#0a0e27",
-            "font": {"family": "'Inter', sans-serif", "size": 13, "color": "#fff"},
+            "font": {"family": "Arial, sans-serif", "size": 13, "color": "#fff"},
             "bordercolor": "#00f2ff"
         },
         "colorway": [
@@ -128,7 +128,7 @@ def styled_title(text: str, subtitle: str = None) -> str:
     return f"""
     <div style="margin: 2rem 0 1.5rem 0; position: relative; width: 100%;">
         {sub_html}
-        <h2 style="font-family: 'Outfit', sans-serif; font-size: 2.2rem; font-weight: 900; line-height: 1.1; margin: 0; color: white; letter-spacing: -0.02em; display: flex; align-items: baseline; gap: 0.5rem;">
+        <h2 style="font-family: 'Arial', sans-serif; font-size: 2.2rem; font-weight: 900; line-height: 1.1; margin: 0; color: white; letter-spacing: -0.02em; display: flex; align-items: baseline; gap: 0.5rem;">
             <span style="opacity: 0.95;">{text}</span>
             <span style="height: 4px; width: 4px; background: #00f2ff; border-radius: 50%; box-shadow: 0 0 10px #00f2ff;"></span>
         </h2>

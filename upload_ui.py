@@ -101,7 +101,7 @@ def render_upload_section():
         
         st.markdown(f"""
         <div class="fecha-alerta">
-            <div style="color:#FF00FF; font-size:0.6rem; font-family:Orbitron;">SISTEMA DE CORTE</div>
+            <div style="color:#FF00FF; font-size:0.6rem; font-family:'Arial', sans-serif !important;">SISTEMA DE CORTE</div>
             <div style="font-size:0.85rem; font-weight:700;">{fecha_evaluacion.strftime('%d %b %Y').upper()}</div>
         </div>
         """, unsafe_allow_html=True)
@@ -113,7 +113,7 @@ def render_upload_section():
         df_monthly = st.session_state.get('df_monthly_summary')
         if df_monthly is not None and not df_monthly.empty:
             st.markdown('<div style="margin-top:20px; border-top:1px solid rgba(0,217,255,0.1); padding-top:10px;"></div>', unsafe_allow_html=True)
-            st.markdown("<div style='font-family:Orbitron; font-size:0.6rem; color:#475569; letter-spacing:1px; margin-bottom:5px;'>📂 EXPORTAR</div>", unsafe_allow_html=True)
+            st.markdown("<div style='font-family:Arial, sans-serif !important; font-size:0.6rem; color:#475569; letter-spacing:1px; margin-bottom:5px;'>📂 EXPORTAR</div>", unsafe_allow_html=True)
             
             excel_bytes = exportar_resumen_performance(df_monthly)
             if excel_bytes:

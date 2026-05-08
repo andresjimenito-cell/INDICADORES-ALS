@@ -67,7 +67,7 @@ def get_dashboard_css():
 /* 🎯 ESTILOS GLOBALES */
 .stApp {
     background: transparent;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Arial', sans-serif !important;
 }
 
 .main .block-container {
@@ -483,7 +483,7 @@ section[data-testid="stSidebar"] .stButton > button {
     border: 1.5px solid rgba(255, 0, 255, 0.25);
     border-radius: 10px;
     color: #E0FFFF;
-    font-family: 'Rajdhani', 'Segoe UI', sans-serif;
+    font-family: 'Arial', sans-serif !important;
     font-size: 0.95rem;
     font-weight: 600;
     letter-spacing: 0.5px;
@@ -524,7 +524,7 @@ section[data-testid="stSidebar"] hr {
 section[data-testid="stSidebar"] p,
 section[data-testid="stSidebar"] div {
     color: #CBD5E1;
-    font-family: 'Rajdhani', 'Segoe UI', sans-serif;
+    font-family: 'Arial', sans-serif !important;
 }
 
 /* Títulos pequeños (etiquetas de sección) */
@@ -570,7 +570,7 @@ section[data-testid="stSidebar"] .stSelectbox [data-baseweb="select"] > div:hove
     margin-bottom: 0.4rem;
     color: #CBD5E1 !important;
     text-decoration: none !important;
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Arial', sans-serif !important;
     font-size: 0.9rem;
     font-weight: 500;
     border-radius: 8px;
@@ -589,7 +589,7 @@ section[data-testid="stSidebar"] .stSelectbox [data-baseweb="select"] > div:hove
 
 /* ===== TÍTULO DE NAVEGACIÓN ===== */
 .sidebar-nav-title {
-    font-family: 'Orbitron', monospace;
+    font-family: 'Arial', sans-serif !important;
     font-size: 0.85rem;
     font-weight: 700;
     color: #00D9FF;

@@ -49,7 +49,7 @@ def _init_session_state():
 
 _HEADER_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
 
 /* ── Barra principal ── */
 .als-header-bar {
@@ -85,7 +85,7 @@ _HEADER_CSS = """
 /* ── Título + subtítulo ── */
 .als-title-block { flex-shrink: 0; }
 .als-title {
-    font-family: 'Orbitron', monospace;
+    font-family: 'Arial', sans-serif !important;
     font-weight: 900;
     font-size: 0.85rem;
     letter-spacing: 2px;
@@ -97,7 +97,7 @@ _HEADER_CSS = """
     margin: 0;
 }
 .als-subtitle {
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Arial', sans-serif !important;
     font-size: 0.5rem;
     font-weight: 600;
     color: #475569;
@@ -119,12 +119,12 @@ _HEADER_CSS = """
     flex-shrink: 0;
 }
 .als-date-label {
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Arial', sans-serif !important;
     font-size: 0.45rem; font-weight: 700;
     color: #475569; letter-spacing: 1.5px; text-transform: uppercase;
 }
 .als-date-value {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Arial', sans-serif !important;
     font-size: 0.7rem; font-weight: 500;
     color: #00D9FF;
     letter-spacing: 1px;
@@ -146,13 +146,13 @@ _HEADER_CSS = """
     min-width: 50px;
 }
 .als-kpi-chip-label {
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Arial', sans-serif !important;
     font-size: 0.4rem; font-weight: 700;
     letter-spacing: 1px; text-transform: uppercase;
     color: #475569; white-space: nowrap;
 }
 .als-kpi-chip-value {
-    font-family: 'Orbitron', monospace;
+    font-family: 'Arial', sans-serif !important;
     font-size: 0.75rem; font-weight: 700;
     line-height: 1.1;
 }
@@ -174,7 +174,7 @@ _HEADER_CSS = """
     50%       { opacity: 0.4; transform: scale(0.7); }
 }
 .als-live-text {
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Arial', sans-serif !important;
     font-size: 0.5rem; font-weight: 700;
     color: #00ff9d; letter-spacing: 2px; text-transform: uppercase;
 }

@@ -151,25 +151,25 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
         als_val = parts[1].split(":")[1].strip() if len(parts) > 1 else ""
         
         return f"""
-            <div style="margin-top: 4px; text-align: center;">
-                <div style="font-size: 0.6rem; color: #94a3b8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Global</div>
-                <div style="font-size: 1.25rem; font-weight: 800; color: #ffffff; line-height: 1;">{total_val}</div>
-                <div style="margin-top: 8px;"></div>
-                <div style="font-size: 0.6rem; color: #94a3b8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">{als_label}</div>
-                <div style="font-size: 0.95rem; font-weight: 700; color: {als_color}; line-height: 1;">{als_val}</div>
+            <div style="margin-top: 2px; text-align: center;">
+                <div style="font-size: 0.55rem; color: #94a3b8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Global</div>
+                <div style="font-size: 1.15rem; font-weight: 800; color: #ffffff; line-height: 1;">{total_val}</div>
+                <div style="margin-top: 4px;"></div>
+                <div style="font-size: 0.55rem; color: #94a3b8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">{als_label}</div>
+                <div style="font-size: 0.85rem; font-weight: 700; color: {als_color}; line-height: 1;">{als_val}</div>
             </div>
         """
 
     cards_data = [
         {"title": "Corridas", "icon": "↻", "val": run_label, "color": "#00e5ff"},
         {"title": "Operativos", "icon": "◈", "val": operativos_label, "color": "#00e676"},
-        {"title": "Run Life", "icon": "⏳", "val": rl_label, "color": "#bc13fe"},
-        {"title": "Fallados", "icon": "◉", "val": fallado_label, "color": "#ff1744"},
         {"title": "Activos ON", "icon": "⚡", "val": on_label, "color": "#FFDE31"},
-        {"title": "RL Efectivo", "icon": "✅", "val": rle_label, "color": "#00ffa3"},
-        {"title": "Índice Falla", "icon": "⚠️", "val": if_label, "color": "#ff3e3e"},
         {"title": "Apagados OFF", "icon": "🔌", "val": off_label, "color": "#94a3b8"},
+        {"title": "Fallados", "icon": "◉", "val": fallado_label, "color": "#ff1744"},
+        {"title": "Índice Falla", "icon": "⚠️", "val": if_label, "color": "#ff3e3e"},
         {"title": "MTBF", "icon": "⏱️", "val": mtbf_label, "color": "#00cfff"},
+        {"title": "Run Life", "icon": "⏳", "val": rl_label, "color": "#bc13fe"},
+        {"title": "RL Efectivo", "icon": "✅", "val": rle_label, "color": "#00ffa3"},
     ]
 
     cards_html = ""
@@ -191,11 +191,10 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
 <html class="dark">
 <head>
     <meta charset="utf-8"/>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
     <style>
         body {{ 
             background: transparent; 
-            font-family: 'Inter', -apple-system, sans-serif; 
+            font-family: 'Arial', sans-serif !important; 
             margin: 0; 
             padding: 4px; 
             overflow: hidden; 
@@ -209,26 +208,35 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
         }}
 
         .kpi-card-premium {{
-            background: rgba(8, 12, 28, 0.85);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 8px;
-            padding: 12px 10px;
+            background: linear-gradient(135deg, rgba(8, 12, 28, 0.95), rgba(4, 8, 20, 0.98));
+            border: 1px solid rgba(0, 242, 255, 0.25);
+            border-radius: 12px;
+            padding: 10px 8px;
             display: flex;
             flex-direction: column;
             align-items: center;
             text-align: center;
-            gap: 10px;
+            gap: 4px;
             min-width: 0;
-            height: 175px;
-            transition: all 0.2s ease-out;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            height: 155px;
+            transition: all 0.25s ease-out;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            position: relative;
+            overflow: hidden;
+        }}
+
+        .kpi-card-premium::after {{
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
         }}
 
         .kpi-card-premium:hover {{
-            background: rgba(15, 23, 42, 0.95);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.6);
-            border-color: rgba(255, 255, 255, 0.15);
+            background: linear-gradient(135deg, rgba(15, 23, 42, 1), rgba(8, 12, 28, 1));
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.7), 0 0 10px rgba(0,242,255,0.1);
+            border-color: rgba(0, 242, 255, 0.35);
         }}
 
         .kpi-icon-container {{
@@ -271,7 +279,7 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
 </body>
 </html>
 """
-    components.html(html_content, height=210, scrolling=False)
+    components.html(html_content, height=180, scrolling=False)
 
 
 def build_kpis_graph(df_bd, df_forma9=None, reporte_run_life=None, indice_resumen_df=None, selected_als='TODOS', fecha_evaluacion=None):

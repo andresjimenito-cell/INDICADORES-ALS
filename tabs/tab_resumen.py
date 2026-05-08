@@ -56,7 +56,7 @@ def _inject_global_css() -> None:
 
 /* ── Expander sin bordes gruesos ── */
 .streamlit-expanderHeader {
-    font-family: 'Courier New', monospace !important;
+    font-family: 'Arial', sans-serif !important;
     font-size: 0.68rem !important;
     font-weight: 700 !important;
     color: #00e5ff !important;
@@ -79,7 +79,7 @@ def _inject_global_css() -> None:
 
 /* ── Ajuste de espacio superior (Zero Waste) ── */
 div[data-testid="stVerticalBlock"] > div:first-child {
-    margin-top: -10px !important;
+    margin-top: 0px !important;
 }
 
 /* Reducir padding interno de los tabs de Streamlit */
@@ -101,7 +101,7 @@ def _kpi_card(icon: str, label: str, value: str, color: str, sublabel: str = "")
 <div style="background:{_SURFACE}; border:1px solid {_BORDER}; border-left:2px solid {color}; border-radius:{_RADIUS}; padding:8px 12px; display:flex; align-items:center; gap:10px; box-shadow:inset 0 0 24px {glow}; min-height:54px;">
     <div style="width:32px; height:32px; background:{glow}; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:1rem;">{icon}</div>
     <div style="min-width:0;">
-        <div style="font-size:0.5rem; font-weight:700; color:#455a72; letter-spacing:1.8px; text-transform:uppercase; font-family:'Courier New', monospace;">{label}</div>
+        <div style="font-size:0.5rem; font-weight:700; color:#455a72; letter-spacing:1.8px; text-transform:uppercase; font-family:'Arial', sans-serif !important;">{label}</div>
         <div style="font-size:1.25rem; font-weight:800; color:{color}; line-height:1.15;">{value}</div>
     </div>
 </div>"""
@@ -111,7 +111,7 @@ def _section_title(text: str, color: str = _CYAN) -> None:
     """Título de sección: línea izquierda + texto en monospace."""
     st.markdown(
         f"""<div style="
-            font-family: 'Courier New', monospace;
+            font-family: 'Arial', sans-serif !important;
             font-size: 0.58rem;
             font-weight: 700;
             color: {color};
@@ -119,7 +119,7 @@ def _section_title(text: str, color: str = _CYAN) -> None:
             text-transform: uppercase;
             border-left: 2px solid {color};
             padding: 2px 0 2px 8px;
-            margin: 4px 0 2px 0;
+            margin: 15px 0 10px 0;
             opacity: 0.9;
         ">{text}</div>""",
         unsafe_allow_html=True,
@@ -130,15 +130,15 @@ def _mini_metric(label: str, value: str, color: str) -> str:
     """Micro-tarjeta para conteos dentro de la campaña anual."""
     return f"""
 <div style="background:{color}0d; border:1px solid {color}25; border-radius:6px; padding:5px 10px; margin-bottom:4px;">
-    <div style="color:{color}; font-size:0.48rem; font-weight:700; letter-spacing:2px; text-transform:uppercase; font-family:'Courier New', monospace;">{label}</div>
+    <div style="color:{color}; font-size:0.48rem; font-weight:700; letter-spacing:2px; text-transform:uppercase; font-family:'Arial', sans-serif !important;">{label}</div>
     <div style="font-size:1.3rem; font-weight:900; color:#ecf0f1; line-height:1.1;">{value}</div>
 </div>"""
 
 
 def _echarts_html(options: dict, height: int, chart_id: str) -> str:
-    """Wrapper mínimo para ECharts con tema oscuro."""
+    """Wrapper mínimo para ECharts con tema oscuro y contenedor premium."""
     return f"""
-<div id="{chart_id}" style="width:100%;height:{height}px;"></div>
+<div id="{chart_id}" style="width:100%;height:{height}px;background:#060a1e;border-radius:12px;border:1px solid rgba(0,242,255,0.15);overflow:hidden;"></div>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 <script>
 (function(){{
@@ -164,6 +164,10 @@ def render_tab_resumen(
     """Dashboard General v3 — Layout Optimizado Sin Scroll."""
 
     _inject_global_css()
+    
+    # Importar funciones de gráficos al inicio para evitar UnboundLocalError
+    from grafico import generar_grafico_resumen
+    from grafico_run_life import generar_grafico_run_life, generar_grafico_pozos_indices
 
     # ── Pre-procesamiento ────────────────────────────────────────────────────
     for col in ('FECHA_PULL', 'FECHA_FALLA', 'FECHA_RUN'):
@@ -180,7 +184,7 @@ def render_tab_resumen(
         indice_resumen_df = None
 
     # Monthly summary
-    _, df_monthly_summary = generar_grafico_resumen(df_bd_filtered, df_forma9_filtered, fecha_evaluacion)
+    fig_perf, df_monthly_summary = generar_grafico_resumen(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, titulo="")
     st.session_state['df_monthly_summary'] = df_monthly_summary
 
     # =========================================================================
@@ -193,6 +197,8 @@ def render_tab_resumen(
         df_forma9=df_forma9_filtered,
         fecha_evaluacion=fecha_evaluacion,
     )
+    
+    st.markdown("<div style='height:30px;'></div>", unsafe_allow_html=True)
 
     # =========================================================================
     # FILA 2 — PERFORMANCE | VIDA ÚTIL | OPERATIVIDAD (Triple Columna 1:1:1)
@@ -225,7 +231,11 @@ def render_tab_resumen(
     # =========================================================================
     # FILA 3 — CAMPAÑA ANUAL (100%)
     # =========================================================================
-    _section_title(f"▸ Campaña {anio_campana}", "#ffbd00")
+    st.markdown("<div style='height:20px;'></div>", unsafe_allow_html=True)
+    
+    with st.container():
+        _section_title(f"▸ Campaña {anio_campana}", "#ffbd00")
+        st.write("") # Fuerza un salto de línea limpio en Streamlit
 
     if 'FECHA_RUN' not in df_bd_filtered.columns:
         st.info("Sin datos de campaña.")
@@ -243,6 +253,8 @@ def render_tab_resumen(
                 st.markdown(_mini_metric("Pozos nuevos", str(len(df_nv)), _CYAN),   unsafe_allow_html=True)
             with m2:
                 st.markdown(_mini_metric("Well Service", str(len(df_ws)), _MAGENTA), unsafe_allow_html=True)
+
+            st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
 
             # Datos para el gráfico
             df_camp['Mes']   = df_camp['FECHA_RUN'].dt.month
@@ -270,6 +282,14 @@ def render_tab_resumen(
             d_ws = df_res['WS'].tolist()    if 'WS'    in df_res.columns else [0]*len(cats)
             d_fl = df_fall.tolist()
 
+            # --- CÁLCULO DE MÉTRICAS ADICIONALES PARA CHART LATERAL ---
+            val_total_corr = len(df_camp)
+            val_nuevos     = len(df_nv)
+            val_ws         = len(df_ws)
+            val_fallas     = df_camp[df_camp['Falla'] == 1].shape[0]
+            val_extraidos  = df_camp[df_camp['FECHA_PULL'].notna()].shape[0]
+            val_activos    = val_total_corr - val_extraidos
+
             opts_camp = {
                 "backgroundColor": "transparent",
                 "tooltip": {
@@ -287,7 +307,7 @@ def render_tab_resumen(
                     "itemGap": 14,
                 },
                 "grid": {
-                    "top": "6%", "left": "2%", "right": "2%",
+                    "top": "15%", "left": "2%", "right": "2%",
                     "bottom": "16%", "containLabel": True,
                 },
                 "xAxis": {
@@ -338,7 +358,44 @@ def render_tab_resumen(
                     }
                 ]
             }
-            components.html(_echarts_html(opts_camp, 145, "chart_campana"), height=150)
+
+            opts_run_stats = {
+                "backgroundColor": "transparent",
+                "title": {
+                    "text": "📊 MÉTRICAS DE EJECUCIÓN",
+                    "left": "center",
+                    "top": 0,
+                    "textStyle": {"color": "#00f2ff", "fontSize": 12, "fontFamily": "Arial, sans-serif", "fontWeight": "bold"}
+                },
+                "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
+                "grid": {"top": "15%", "left": "5%", "right": "15%", "bottom": "10%", "containLabel": True},
+                "xAxis": {"type": "value", "splitLine": {"show": False}, "axisLabel": {"show": False}},
+                "yAxis": {
+                    "type": "category",
+                    "data": ["EXTRAÍDOS", "ACTIVOS", "FALLAS", "WELL SERVICE", "NUEVOS", "CORRIDAS"],
+                    "axisLabel": {"color": "#fff", "fontSize": 9, "fontFamily": "Arial, sans-serif"}
+                },
+                "series": [{
+                    "type": "bar",
+                    "data": [
+                        {"value": val_extraidos, "itemStyle": {"color": "#94a3b8"}},
+                        {"value": val_activos,   "itemStyle": {"color": "#00ff9d"}},
+                        {"value": val_fallas,    "itemStyle": {"color": "#ff1744"}},
+                        {"value": val_ws,        "itemStyle": {"color": "#e040fb"}},
+                        {"value": val_nuevos,    "itemStyle": {"color": "#00e5ff"}},
+                        {"value": val_total_corr,"itemStyle": {"color": "#00ffa3"}}
+                    ],
+                    "label": {"show": True, "position": "right", "color": "#fff", "fontSize": 10, "fontFamily": "Arial, sans-serif"},
+                    "barMaxWidth": 18,
+                    "itemStyle": {"borderRadius": [0, 4, 4, 0]}
+                }]
+            }
+
+            c_left, c_right = st.columns(2)
+            with c_left:
+                components.html(_echarts_html(opts_camp, 250, "chart_campana"), height=270)
+            with c_right:
+                components.html(_echarts_html(opts_run_stats, 250, "chart_run_stats"), height=270)
 
     st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
@@ -359,28 +416,44 @@ def render_tab_resumen(
                     df_bd_filtered,
                     path=hier_cols,
                     color=color_col if color_col else hier_cols[0],
-                    color_continuous_scale=[[0, '#0a0f2e'], [0.35, '#023e8a'],
-                                             [0.7, '#00e5ff'], [1.0, '#e040fb']]
-                    if color_col else None,
+                    color_continuous_scale=[
+                        [0.0, '#060a1e'], [0.2, '#003566'], [0.5, '#0077b6'],
+                        [0.8, '#00f2ff'], [1.0, '#00ffa3']
+                    ] if color_col else None,
                     hover_data={color_col: ':.0f'} if color_col else None,
                 )
                 fig_tree.update_layout(
-                    margin=dict(t=0, l=0, r=0, b=0),
+                    margin=dict(t=30, l=10, r=10, b=10),
                     paper_bgcolor='rgba(0,0,0,0)',
                     plot_bgcolor='rgba(0,0,0,0)',
-                    height=240,
-                    coloraxis_showscale=False,
-                    font_family="Courier New",
-                    font_color="#cfd8dc",
+                    height=600,
+                    coloraxis_showscale=True,
+                    coloraxis_colorbar=dict(
+                        title="DÍAS DE VIDA",
+                        title_font_size=11,
+                        title_font_color="#00f2ff",
+                        thicknessmode="pixels", thickness=15,
+                        lenmode="fraction", len=0.8,
+                        yanchor="middle", y=0.5,
+                        tickfont=dict(size=10, color="#cfd8dc"),
+                        outlinewidth=0
+                    ),
+                    font_family="Arial",
+                    font_color="#ffffff",
                 )
                 fig_tree.update_traces(
                     textinfo="label+value",
-                    textfont_size=11,
-                    marker_line_width=0.8,
-                    marker_line_color='rgba(0,0,0,0.5)',
+                    texttemplate="<span style='color:#00f2ff'><b>%{label}</b></span><br>%{value}",
+                    textfont=dict(size=14, color="white"),
+                    marker=dict(
+                        line=dict(width=1.5, color='rgba(0, 242, 255, 0.4)'),
+                    ),
+                    hovertemplate='<b>%{label}</b><br>Métrica: %{value}<br>Días: %{color:.0f}d'
                 )
-                st.plotly_chart(fig_tree, use_container_width=True,
-                                config={'displayModeBar': False})
+                # Envolver Plotly en un contenedor HUD Premium
+                st.markdown("""<div style="background:#060a1e; border:1px solid rgba(0,242,255,0.15); border-radius:15px; padding:12px; margin-bottom:10px;">""", unsafe_allow_html=True)
+                st.plotly_chart(fig_tree, use_container_width=True, config={'displayModeBar': True, 'scrollZoom': True})
+                st.markdown("</div>", unsafe_allow_html=True)
             except Exception as e:
                 st.warning(f"Treemap no disponible: {e}")
         else:
@@ -398,7 +471,7 @@ def render_tab_resumen(
                 st.info(f"No hay corridas registradas en {anio_campana}.")
             else:
                 st.markdown(
-                    f"<div style='color:#455a72;font-family:\"Courier New\",monospace;"
+                    f"<div style='color:#455a72;font-family:\"Arial\",sans-serif !important;"
                     f"font-size:0.6rem;margin-bottom:6px;letter-spacing:1px;'>"
                     f"Campaña {anio_campana} · {len(df_det)} corridas</div>",
                     unsafe_allow_html=True,

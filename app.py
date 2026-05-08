@@ -25,7 +25,7 @@ COLOR_FUENTE = getattr(tema, 'COLOR_FUENTE', '#E8F5E9')
 # === ESTILOS CSS - DISEÑO IMPACTANTE Y COMPACTO ===
 st.markdown(f"""
 <style>
- @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap');
+
  
  /* ANIMACIONES */
  @keyframes gradientShift {{
@@ -75,7 +75,7 @@ st.markdown(f"""
  }}
  
  .logo-text {{
-  font-family: 'Orbitron', monospace;
+  font-family: 'Arial', sans-serif;
   font-size: 2.5rem;
   font-weight: 900;
   background: linear-gradient(135deg, {COLOR_PRIMARIO}, {COLOR_ACENTO});
@@ -86,7 +86,7 @@ st.markdown(f"""
  }}
  
  .logo-subtitle {{
-  font-family: 'Rajdhani', sans-serif;
+  font-family: 'Arial', sans-serif;
   font-size: 1.1rem;
   color: {COLOR_ACENTO};
   letter-spacing: 3px;
@@ -113,7 +113,7 @@ st.markdown(f"""
  /* BOTONES */
  .stButton > button {{
   padding: 1rem;
-  font-family: 'Rajdhani', sans-serif;
+  font-family: 'Arial', sans-serif;
   font-weight: 700;
   letter-spacing: 2px;
   border-radius: 12px;
@@ -145,7 +145,7 @@ st.markdown(f"""
  }}
  
  .dashboard-title {{
-  font-family: 'Orbitron', monospace;
+  font-family: 'Arial', sans-serif;
   font-size: 2rem;
   font-weight: 900;
   background: linear-gradient(120deg, {COLOR_PRIMARIO}, {COLOR_ACENTO});
@@ -156,7 +156,7 @@ st.markdown(f"""
  }}
  
  .dashboard-subtitle {{
-  font-family: 'Rajdhani', sans-serif;
+  font-family: 'Arial', sans-serif;
   font-size: 1rem;
   margin-top: 0.5rem;
   color: {COLOR_ACENTO};
@@ -191,7 +191,7 @@ st.markdown(f"""
  }}
  
  .module-title {{
-  font-family: 'Orbitron', monospace;
+  font-family: 'Arial', sans-serif;
   font-size: 1.5rem;
   font-weight: 700;
   color: {COLOR_ACENTO};
@@ -200,7 +200,7 @@ st.markdown(f"""
  }}
  
  .module-description {{
-  font-family: 'Rajdhani', sans-serif;
+  font-family: 'Arial', sans-serif;
   font-size: 0.9rem;
   line-height: 1.6;
   color: rgba(232, 245, 233, 0.9);
@@ -212,7 +212,7 @@ st.markdown(f"""
   right: 1rem;
   padding: 0.4rem 0.8rem;
   font-size: 0.7rem;
-  font-family: 'Rajdhani', sans-serif;
+  font-family: 'Arial', sans-serif;
   font-weight: 700;
   letter-spacing: 1px;
   background: linear-gradient(135deg, {COLOR_PRIMARIO}, {COLOR_ACENTO});
@@ -241,7 +241,7 @@ st.markdown(f"""
  .info-icon {{ font-size: 2rem; }}
  
  .info-value {{
-  font-family: 'Orbitron', monospace;
+  font-family: 'Arial', sans-serif;
   font-size: 1.5rem;
   font-weight: 700;
   color: {COLOR_ACENTO};
@@ -249,7 +249,7 @@ st.markdown(f"""
  }}
  
  .info-label {{
-  font-family: 'Rajdhani', sans-serif;
+  font-family: 'Arial', sans-serif;
   font-size: 0.8rem;
   letter-spacing: 1px;
   opacity: 0.8;
@@ -335,7 +335,7 @@ if 'launch_module_path' in st.session_state and st.session_state.get('launch_mod
     launch_name = st.session_state.get('launch_module_name', os.path.splitext(os.path.basename(launch_path))[0])
 
     st.markdown(f"<div style='display:flex; justify-content:space-between; align-items:center;'>"
-                f"<h2 style='color: {COLOR_ACENTO}; margin:0; font-family: \"Orbitron\", monospace;'>EJECUTANDO MÓDULO: {launch_name.upper()}</h2>"
+                f"<h2 style='color: {COLOR_ACENTO}; margin:0; font-family: \"Arial\", sans-serif;'>EJECUTANDO MÓDULO: {launch_name.upper()}</h2>"
                 f"</div>", unsafe_allow_html=True)
 
     if st.button("⬅️ VOLVER AL DASHBOARD", key="btn_return_dashboard"):
@@ -649,8 +649,8 @@ def render_sidebar():
     with st.sidebar:
         st.markdown(f"""
         <div style="text-align:center; padding:10px 0;">
-            <div style="font-family:'Orbitron'; font-weight:900; font-size:1.4rem; color:{COLOR_ACENTO}; margin-bottom:5px;">FRONTERA</div>
-            <div style="font-family:'Rajdhani'; font-size:0.9rem; letter-spacing:2px; opacity:0.8;">ALS SYSTEM</div>
+            <div style="font-family:'Arial', sans-serif; font-weight:900; font-size:1.4rem; color:{COLOR_ACENTO}; margin-bottom:5px;">FRONTERA</div>
+            <div style="font-family:'Arial', sans-serif; font-size:0.9rem; letter-spacing:2px; opacity:0.8;">ALS SYSTEM</div>
         </div>
         """, unsafe_allow_html=True)
         

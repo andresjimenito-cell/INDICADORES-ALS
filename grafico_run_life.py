@@ -110,7 +110,10 @@ def generar_grafico_run_life(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfic
 
     from theme import get_plotly_layout
     layout = get_plotly_layout()
-    layout['title'] = plotly_styled_title(titulo)
+    if titulo:
+        layout['title'] = plotly_styled_title(titulo)
+    else:
+        layout['title'] = None
     layout.update(dict(
         showlegend=True,
         legend=dict(
@@ -124,18 +127,21 @@ def generar_grafico_run_life(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfic
             borderwidth=1
         ),
         xaxis=dict(
-            title=dict(text='<b>TIEMPO</b>', font=dict(size=14, family='Outfit')),
+            title=None,
             tickformat='%Y-%m',
             range=[x_start, x_end],
             gridcolor='rgba(255,255,255,0.05)',
-            linecolor='#135bec'
+            linecolor='#135bec',
+            tickfont=dict(size=9)
         ),
         yaxis=dict(
-            title=dict(text='<b>DÍAS DE VIDA</b>', font=dict(size=14, family='Outfit')),
+            title=None,
             gridcolor='rgba(255,255,255,0.05)',
-            linecolor='#135bec'
+            linecolor='#135bec',
+            tickfont=dict(size=9)
         ),
-        margin=dict(t=100, b=80, l=90, r=90)
+        margin=dict(t=40, b=30, l=35, r=35),
+        height=280
     ))
 
     fig.update_layout(**layout)
@@ -242,7 +248,10 @@ def generar_grafico_pozos_indices(df_bd, df_forma9, fecha_evaluacion, titulo="Gr
 
     from theme import get_plotly_layout
     layout = get_plotly_layout()
-    layout['title'] = plotly_styled_title(titulo)
+    if titulo:
+        layout['title'] = plotly_styled_title(titulo)
+    else:
+        layout['title'] = None
     layout.update(dict(
         showlegend=True,
         barmode='stack',
@@ -257,27 +266,31 @@ def generar_grafico_pozos_indices(df_bd, df_forma9, fecha_evaluacion, titulo="Gr
             borderwidth=1
         ),
         xaxis=dict(
-            title=dict(text='<b>TIEMPO</b>', font=dict(size=14, family='Outfit')),
+            title=None,
             tickformat='%Y-%m',
             range=[x_start, x_end],
             gridcolor='rgba(255,255,255,0.05)',
-            linecolor='#135bec'
+            linecolor='#135bec',
+            tickfont=dict(size=9)
         ),
         yaxis=dict(
-            title=dict(text='<b>CANTIDAD POZOS</b>', font=dict(size=14, family='Outfit')),
+            title=None,
             gridcolor='rgba(255,255,255,0.05)',
-            linecolor='#135bec'
+            linecolor='#135bec',
+            tickfont=dict(size=9)
         ),
         yaxis2=dict(
-            title=dict(text='<b>ÍNDICE DE FALLA</b>', font=dict(size=14, family='Outfit')),
+            title=None,
             overlaying='y',
             side='right',
             range=[0, upper_y2],
-            tickformat='.2%',
+            tickformat='.0%',
             showgrid=False,
-            linecolor='#00f2ff'
+            linecolor='#00f2ff',
+            tickfont=dict(size=9, color='#00f2ff')
         ),
-        margin=dict(t=100, b=80, l=90, r=90)
+        margin=dict(t=40, b=30, l=35, r=35),
+        height=280
     ))
 
     fig.update_layout(**layout)
@@ -324,11 +337,14 @@ def render_premium_echarts_run_life(df_monthly, titulo="TIEMPO DE VIDA DASHBOARD
 
     # Asegurar conversión a string para JSON
     categories = [str(m) for m in df_monthly['Mes'].dt.strftime('%b %Y')]
-    rl_prom = [round(float(x), 2) for x in df_monthly['RunLife_Promedio'].tolist()]
-    rl_gen = [round(float(x), 2) for x in df_monthly.get('RunLife_General', [0]*len(df_monthly)).tolist()]
-    tmef = [round(float(x), 2) for x in df_monthly.get('TMEF_Promedio', [0]*len(df_monthly)).tolist()]
-    rle = [round(float(x), 2) for x in df_monthly.get('RunLife_Efectivo', [0]*len(df_monthly)).tolist()]
-    rle_fallados = [round(float(x), 2) for x in df_monthly.get('RunLife_Efectivo_Fallados', [0]*len(df_monthly)).tolist()]
+    def _safe_list(series):
+        return [round(float(x), 2) if pd.notna(x) else None for x in series.tolist()]
+
+    rl_prom = _safe_list(df_monthly['RunLife_Promedio'])
+    rl_gen = _safe_list(df_monthly.get('RunLife_General', pd.Series([0]*len(df_monthly))))
+    tmef = _safe_list(df_monthly.get('TMEF_Promedio', pd.Series([0]*len(df_monthly))))
+    rle = _safe_list(df_monthly.get('RunLife_Efectivo', pd.Series([0]*len(df_monthly))))
+    rle_fallados = _safe_list(df_monthly.get('RunLife_Efectivo_Fallados', pd.Series([0]*len(df_monthly))))
     
     COLOR_SUCCESS = "#00ff9f" # Verde Eléctrico
     COLOR_TOTAL = "#a6ff00"   # Verde Lima
@@ -340,7 +356,7 @@ def render_premium_echarts_run_life(df_monthly, titulo="TIEMPO DE VIDA DASHBOARD
     echarts_options = {
         "backgroundColor": "transparent",
         "title": {
-            "text": titulo.upper(),
+            "show": bool(titulo), "text": titulo.upper(),
             "left": "center",
             "top": 10,
             "textStyle": {
@@ -379,7 +395,7 @@ def render_premium_echarts_run_life(df_monthly, titulo="TIEMPO DE VIDA DASHBOARD
     container_height = chart_height + 20
 
     html_template = f"""
-    <div id="chart-container-rl" style="position: relative; width:100%; height:{chart_height}px; background: #060a1e; border-radius: 15px; overflow: hidden;">
+    <div id="chart-container-rl" style="position: relative; width:100%; height:{chart_height}px; background: #060a1e; border: 1px solid rgba(0, 242, 255, 0.15); border-radius: 15px; overflow: hidden;">
         <div id="echarts-rl" style="width:100%; height:100%;"></div>
         <button id="zoom-btn-rl" style="
             position: absolute; 
@@ -485,10 +501,10 @@ def render_premium_echarts_pozos(df_monthly, titulo="OPERATIVIDAD DASHBOARD"):
 
     # Asegurar conversión a string para JSON
     categories = [str(m) for m in df_monthly['Mes'].dt.strftime('%b %Y')]
-    pozos_on = df_monthly['Pozos_ON'].tolist()
-    pozos_off = df_monthly['Pozos_OFF'].tolist()
-    if_on = [round(float(x) * 100, 2) if pd.notna(x) else 0 for x in df_monthly.get('Indice_Falla_ON', [])]
-    if_als = [round(float(x) * 100, 2) if pd.notna(x) else 0 for x in df_monthly.get('Indice_Falla_ON_ALS', [])]
+    pozos_on = [int(x) if pd.notna(x) else 0 for x in df_monthly['Pozos_ON'].tolist()]
+    pozos_off = [int(x) if pd.notna(x) else 0 for x in df_monthly['Pozos_OFF'].tolist()]
+    if_on = [round(float(x) * 100, 2) if pd.notna(x) else None for x in df_monthly.get('Indice_Falla_ON', [])]
+    if_als = [round(float(x) * 100, 2) if pd.notna(x) else None for x in df_monthly.get('Indice_Falla_ON_ALS', [])]
     COLOR_ACCENT = "#00f2ff"
     COLOR_DANGER = "#ff0055"
     COLOR_WARNING = "#ffab40"
@@ -496,7 +512,7 @@ def render_premium_echarts_pozos(df_monthly, titulo="OPERATIVIDAD DASHBOARD"):
     echarts_options = {
         "backgroundColor": "transparent",
         "title": {
-            "text": titulo.upper(),
+            "show": bool(titulo), "text": titulo.upper(),
             "left": "center",
             "top": 10,
             "textStyle": {
@@ -545,7 +561,7 @@ def render_premium_echarts_pozos(df_monthly, titulo="OPERATIVIDAD DASHBOARD"):
     container_height = chart_height + 20
 
     html_template = f"""
-    <div id="chart-container-pozos" style="position: relative; width:100%; height:{chart_height}px; background: #060a1e; border-radius: 15px; overflow: hidden;">
+    <div id="chart-container-pozos" style="position: relative; width:100%; height:{chart_height}px; background: #060a1e; border: 1px solid rgba(0, 242, 255, 0.15); border-radius: 15px; overflow: hidden;">
         <div id="echarts-pozos" style="width:100%; height:100%;"></div>
         <button id="zoom-btn-pozos" style="
             position: absolute; 

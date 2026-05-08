@@ -1,7 +1,7 @@
 """
 INDICADORES.py
 ==============
-Orquestador principal — INDICADORES ALS · Frontera Energy.
+Orquestador principal — INDICADORES ALS.
 Layout profesional: header compacto, tabs con identidad visual,
 estado vacío atractivo y filtrado eficiente.
 Refreshed at: 2026-05-07 17:54
@@ -63,7 +63,7 @@ div[data-baseweb="tab-list"] {
     border: 1px solid rgba(0, 217, 255, 0.4) !important;
     border-radius: 10px !important;
     padding: 12px 28px !important;
-    font-family: 'Orbitron', monospace !important;
+    font-family: 'Arial', sans-serif !important;
     font-size: 0.8rem !important;
     font-weight: 800 !important;
     color: #94a3b8 !important;
@@ -92,7 +92,7 @@ div[data-baseweb="tab-border"], div[data-baseweb="tab-highlight"], [data-testid=
 
 /* ── Toast ── */
 div[data-testid="stToast"] {
-    font-family: 'Rajdhani', sans-serif !important;
+    font-family: 'Arial', sans-serif !important;
     font-size: 0.75rem !important;
     letter-spacing: 1px !important;
 }
@@ -116,13 +116,13 @@ div[data-testid="stToast"] {
 }
 .als-empty-icon { font-size: 3rem; opacity: 0.6; }
 .als-empty-title {
-    font-family: 'Orbitron', monospace; font-size: 1rem; font-weight: 700;
+    font-family: 'Arial', sans-serif; font-size: 1rem; font-weight: 700;
     background: linear-gradient(135deg, #00D9FF, #FF00FF);
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     letter-spacing: 2px;
 }
 .als-empty-sub {
-    font-family: 'Rajdhani', sans-serif; font-size: 0.8rem; font-weight: 500;
+    font-family: 'Arial', sans-serif; font-size: 0.8rem; font-weight: 500;
     color: #475569; letter-spacing: 1px; max-width: 420px; line-height: 1.6;
 }
 .als-empty-steps {
@@ -135,7 +135,7 @@ div[data-testid="stToast"] {
     background: rgba(255,255,255,0.02);
     border: 1px solid rgba(0,217,255,0.12);
     border-radius: 8px;
-    font-family: 'Rajdhani', sans-serif; font-size: 0.72rem;
+    font-family: 'Arial', sans-serif; font-size: 0.72rem;
     font-weight: 600; color: #64748B; letter-spacing: 1px;
 }
 .als-step-num {
@@ -143,7 +143,7 @@ div[data-testid="stToast"] {
     background: rgba(0,217,255,0.12);
     border: 1px solid rgba(0,217,255,0.25);
     display: flex; align-items: center; justify-content: center;
-    font-family: 'Orbitron', monospace; font-size: 0.5rem;
+    font-family: 'Arial', sans-serif; font-size: 0.5rem;
     font-weight: 700; color: #00D9FF; flex-shrink: 0;
 }
 </style>
@@ -251,6 +251,7 @@ if st.session_state.get('reporte_runes') is not None:
             filters['selected_activo'],
         )
     with tab_perf:
+        st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
         col_left, col_right = st.columns(2, gap="medium")
         with col_left:
             from tabs.tab_performance import render_tab_performance
@@ -266,6 +267,7 @@ if st.session_state.get('reporte_runes') is not None:
             )
 
     with tab_fallas:
+        st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
         c_fallas, c_indices = st.columns(2, gap="medium")
         with c_fallas:
             from tabs.tab_fallas import render_tab_fallas

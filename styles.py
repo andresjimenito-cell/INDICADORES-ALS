@@ -19,7 +19,7 @@ def _apply_styles_internal():
     """Lógica central de inyección de estilos HUD."""
     st.markdown(f"""
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
         
         /* DataTables HUD Theme Integration */
         @import url('https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css');
@@ -83,7 +83,29 @@ def _apply_styles_internal():
         
         .stApp {{
             background-color: #060a1e !important;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+            font-family: 'Arial', sans-serif !important;
+        }}
+
+        /* --- Sidebar Selectbox Premium Style --- */
+        [data-testid="stSidebar"] .stSelectbox {{
+            margin-top: 0px !important;
+        }}
+        [data-testid="stSidebar"] div[data-testid="stVerticalBlock"] {{
+            gap: 0rem !important;
+        }}
+        [data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] {{
+            background-color: rgba(0, 0, 0, 0.4) !important;
+            border: 1px solid rgba(0, 217, 255, 0.15) !important;
+            border-radius: 8px !important;
+            color: #fff !important;
+        }}
+        [data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"]:hover {{
+            border-color: #00f2ff !important;
+            box-shadow: 0 0 10px rgba(0, 242, 255, 0.1) !important;
+        }}
+        [data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] div {{
+            color: #fff !important;
+            font-size: 0.85rem !important;
         }}
 
         .kpi-card {{
@@ -97,7 +119,7 @@ def _apply_styles_internal():
             text-align: center;
             backdrop-filter: blur(4px);
             margin-bottom: 10px;
-            font-family: 'Inter', sans-serif !important;
+            font-family: 'Arial', sans-serif !important;
         }}
         .kpi-label {{
             font-size: 0.65rem;
@@ -120,7 +142,7 @@ def _apply_styles_internal():
         /* --- DataTables HUD Customization --- */
         .dataTables_wrapper {{
             color: #fff !important;
-            font-family: 'Inter', sans-serif !important;
+            font-family: 'Arial', sans-serif !important;
         }}
         .dataTables_filter input {{
             background: rgba(255,255,255,0.05) !important;
@@ -136,7 +158,7 @@ def _apply_styles_internal():
             background: rgba(0, 242, 255, 0.1) !important;
             border: 1px solid rgba(0, 242, 255, 0.4) !important;
             color: #00f2ff !important;
-            font-family: 'Orbitron', sans-serif !important;
+            font-family: 'Arial', sans-serif !important;
             font-size: 0.65rem !important;
             text-transform: uppercase !important;
             padding: 4px 12px !important;

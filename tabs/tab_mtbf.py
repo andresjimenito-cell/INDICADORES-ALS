@@ -55,14 +55,13 @@ def render_tab_mtbf(
     st.markdown("<br>", unsafe_allow_html=True)
 
     # --- 3. GRÁFICOS DE TENDENCIA (SIDE BY SIDE) ---
-    st.markdown("<h5 style='color:#00f2ff; font-family:Orbitron;'>📅 ANÁLISIS DE LONGEVIDAD & TMEF</h5>", unsafe_allow_html=True)
     
     historico_run_life = generar_historico_run_life(df_bd_filtered, fecha_evaluacion)
     
     col_left, col_right = st.columns(2)
     
     with col_left:
-        st.markdown("<h5>📈 TENDENCIA DE LONGEVIDAD</h5>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-bottom:10px;'></div>", unsafe_allow_html=True)
         if historico_run_life is not None and not historico_run_life.empty:
             historico_run_life['Mes_Str'] = pd.to_datetime(historico_run_life['Mes'], errors='coerce').dt.strftime('%Y-%m')
             months = sorted(historico_run_life['Mes_Str'].unique().tolist())
@@ -85,17 +84,34 @@ def render_tab_mtbf(
 
             echarts_rl = {
                 "backgroundColor": "transparent",
-                "tooltip": {"trigger": "axis"},
-                "legend": {"bottom": 0, "textStyle": {"color": "#ccc"}, "icon": "circle"},
-                "grid": {"left": "3%", "right": "4%", "bottom": "18%", "containLabel": True},
-                "xAxis": [{"type": "category", "data": months, "axisLabel": {"color": "#888"}}],
-                "yAxis": [{"type": "value", "name": "Días", "axisLabel": {"color": "#888"}, "splitLine": {"lineStyle": {"color": "rgba(255,255,255,0.05)"}}}],
+                "title": {
+                    "text": "TENDENCIA DE LONGEVIDAD",
+                    "left": "center",
+                    "top": 0,
+                    "textStyle": {
+                        "color": "#00f2ff",
+                        "fontSize": 13,
+                        "fontFamily": "Arial, sans-serif",
+                        "fontWeight": "bold"
+                    }
+                },
+                "textStyle": {"fontFamily": "Arial, sans-serif"},
+                "tooltip": {
+                    "trigger": "axis",
+                    "backgroundColor": "rgba(6, 10, 30, 0.9)",
+                    "borderColor": "#00f2ff",
+                    "textStyle": {"color": "#fff", "fontFamily": "Arial, sans-serif"}
+                },
+                "legend": {"bottom": 0, "textStyle": {"color": "#ccc", "fontSize": 10, "fontFamily": "Arial, sans-serif"}, "icon": "circle"},
+                "grid": {"left": "3%", "right": "4%", "bottom": "18%", "top": "15%", "containLabel": True},
+                "xAxis": [{"type": "category", "data": months, "axisLabel": {"color": "#888", "fontFamily": "Arial, sans-serif"}}],
+                "yAxis": [{"type": "value", "name": "Días", "axisLabel": {"color": "#888", "fontFamily": "Arial, sans-serif"}, "splitLine": {"lineStyle": {"color": "rgba(255,255,255,0.05)"}}}],
                 "series": series
             }
-            components.html(f'<div id="echarts-rl-trend" style="width:100%; height:350px;"></div><script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script><script>(function(){{var myChart=echarts.init(document.getElementById("echarts-rl-trend"),"dark");myChart.setOption({json.dumps(echarts_rl)});window.addEventListener("resize",function(){{myChart.resize();}});}})();</script>', height=370)
+            components.html(f'<div id="echarts-rl-trend" style="width:100%; height:380px; background:#060a1e; border-radius:15px; overflow:hidden; border:1px solid rgba(0,242,255,0.1);"></div><script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script><script>(function(){{var myChart=echarts.init(document.getElementById("echarts-rl-trend"),"dark");myChart.setOption({json.dumps(echarts_rl)});window.addEventListener("resize",function(){{myChart.resize();}});}})();</script>', height=400)
 
     with col_right:
-        st.markdown("<h5>🏆 LONGEVIDAD POR POZO (TOP 10)</h5>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-bottom:10px;'></div>", unsafe_allow_html=True)
         if not df_bd_filtered.empty:
             df_pozo = df_bd_filtered.groupby('POZO')['RUN LIFE'].mean().reset_index()
             df_pozo.columns = ['POZO', 'VALOR']
@@ -103,10 +119,28 @@ def render_tab_mtbf(
             
             echarts_bar = {
                 "backgroundColor": "transparent",
-                "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
-                "grid": {"left": "3%", "right": "15%", "bottom": "10%", "top": "10%", "containLabel": True},
+                "title": {
+                    "text": "LONGEVIDAD POR POZO (TOP 10)",
+                    "left": "center",
+                    "top": 0,
+                    "textStyle": {
+                        "color": "#00f2ff",
+                        "fontSize": 13,
+                        "fontFamily": "Arial, sans-serif",
+                        "fontWeight": "bold"
+                    }
+                },
+                "textStyle": {"fontFamily": "Arial, sans-serif"},
+                "tooltip": {
+                    "trigger": "axis", 
+                    "axisPointer": {"type": "shadow"},
+                    "backgroundColor": "rgba(6, 10, 30, 0.9)",
+                    "borderColor": "#00f2ff",
+                    "textStyle": {"color": "#fff", "fontFamily": "Arial, sans-serif"}
+                },
+                "grid": {"left": "3%", "right": "15%", "bottom": "10%", "top": "15%", "containLabel": True},
                 "xAxis": {"type": "value", "splitLine": {"show": False}, "axisLabel": {"show": False}},
-                "yAxis": {"type": "category", "data": top_mtbf['POZO'].tolist(), "axisLabel": {"color": "#fff", "fontSize": 10}},
+                "yAxis": {"type": "category", "data": top_mtbf['POZO'].tolist(), "axisLabel": {"color": "#fff", "fontSize": 10, "fontFamily": "Arial, sans-serif"}},
                 "series": [{
                     "type": "bar",
                     "data": top_mtbf['VALOR'].tolist(),
@@ -114,15 +148,15 @@ def render_tab_mtbf(
                         "color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#ff00ff"}, {"offset": 1, "color": "rgba(255, 0, 255, 0.1)"}]},
                         "borderRadius": [0, 5, 5, 0]
                     },
-                    "label": {"show": True, "position": "right", "color": "#ff00ff", "fontFamily": "Orbitron", "formatter": "{c} d"}
+                    "label": {"show": True, "position": "right", "color": "#ff00ff", "fontFamily": "Arial, sans-serif", "formatter": "{c} d"}
                 }]
             }
-            components.html(f'<div id="echarts-mtbf-bar" style="width:100%; height:350px;"></div><script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script><script>(function(){{var myChart=echarts.init(document.getElementById("echarts-mtbf-bar"),"dark");myChart.setOption({json.dumps(echarts_bar)});window.addEventListener("resize",function(){{myChart.resize();}});}})();</script>', height=370)
+            components.html(f'<div id="echarts-mtbf-bar" style="width:100%; height:380px; background:#060a1e; border-radius:15px; overflow:hidden; border:1px solid rgba(0,242,255,0.1);"></div><script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script><script>(function(){{var myChart=echarts.init(document.getElementById("echarts-mtbf-bar"),"dark");myChart.setOption({json.dumps(echarts_bar)});window.addEventListener("resize",function(){{myChart.resize();}});}})();</script>', height=400)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
     # --- 4. DETALLE DE CÁLCULO TMEF (Tabla) ---
-    st.markdown("<h5 style='color:#00f2ff; font-family:Orbitron; margin-bottom:10px;'>ANÁLISIS DE EVENTOS & LONGEVIDAD</h5>", unsafe_allow_html=True)
+    st.markdown("<h5 style='color:#00f2ff; font-family:Arial, sans-serif !important; margin-bottom:10px;'>ANÁLISIS DE EVENTOS & LONGEVIDAD</h5>", unsafe_allow_html=True)
     if step_df is not None:
         render_hud_table(step_df.head(50))
     else:
