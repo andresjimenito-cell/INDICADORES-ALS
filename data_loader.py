@@ -121,32 +121,39 @@ def find_header(file_obj, keywords, max_rows: int = 50):
     Retorna el índice de la fila (int) o None si no se encontró.
     """
     file_obj.seek(0)
-    file_type = file_obj.name.split('.')[-1]
-    for i in range(max_rows):
-        try:
-            if file_type == 'xlsx':
-                temp_df = pd.read_excel(file_obj, nrows=1, header=None, skiprows=i)
-            else:
-                temp_file = io.BytesIO(file_obj.getvalue())
-                temp_df = pd.read_csv(
-                    temp_file, nrows=1, header=None, skiprows=i,
-                    encoding='latin1', on_bad_lines='skip'
-                )
-            normalized_cols = [
-                str(c).upper().strip().replace('.', '').replace('#', '')
-                for c in temp_df.iloc[0].tolist() if pd.notna(c)
-            ]
-            if all(
-                any(keyword.upper().strip() in col for col in normalized_cols)
-                for keyword in keywords
-            ):
-                file_obj.seek(0)
-                return i
+    name = getattr(file_obj, 'name', '')
+    ext = name.split('.')[-1].lower() if '.' in name else ''
+    
+    try:
+        if ext in ['xlsx', 'xlsm', 'xlsb', 'xls']:
+            df_chunk = pd.read_excel(file_obj, header=None, nrows=max_rows)
+        else:
             file_obj.seek(0)
-        except Exception:
+            df_chunk = pd.read_csv(
+                file_obj, header=None, nrows=max_rows, 
+                encoding='latin1', on_bad_lines='skip',
+                sep=None, engine='python'
+            )
+    except Exception as e:
+        print(f"Error en find_header (lectura): {e}")
+        file_obj.seek(0)
+        return None
+
+    def _norm(s):
+        if not isinstance(s, str): s = str(s)
+        return " ".join(re.sub(r'[^A-Z0-9]', ' ', s.upper()).split())
+
+    norm_keywords = [_norm(k) for k in keywords]
+
+    for i, row in df_chunk.iterrows():
+        row_cols = [_norm(c) for c in row.tolist() if pd.notna(c)]
+        if all(any(nk in col for col in row_cols) for nk in norm_keywords):
             file_obj.seek(0)
-            continue
+            return i
+
+    file_obj.seek(0)
     return None
+
 
 
 @st.cache_data
@@ -186,7 +193,7 @@ def cargar_y_limpiar_datos(forma9_file, bd_file):
 
     # --- Limpieza FORMA 9 ---
     df_forma9.columns = [
-        str(col).upper().strip().replace('#', '').replace('.', '').replace('POZO NO', 'POZO')
+        " ".join(re.sub(r'[^A-Z0-9]', ' ', str(col).upper()).split()).replace('POZO NO', 'POZO')
         for col in df_forma9.columns
     ]
     fecha_col_forma9 = next((col for col in df_forma9.columns if 'FECHA' in col), None)
@@ -204,7 +211,7 @@ def cargar_y_limpiar_datos(forma9_file, bd_file):
 
     # --- Limpieza BD ---
     df_bd.columns = [
-        str(col).upper().strip().replace('#', '').replace('.', '')
+        " ".join(re.sub(r'[^A-Z0-9]', ' ', str(col).upper()).split())
         for col in df_bd.columns
     ]
     run_col_bd       = next((col for col in df_bd.columns if 'RUN'             in col), None)
