@@ -215,6 +215,11 @@ if st.session_state.get('reporte_runes') is not None:
 
     # ── Obtener datos calculados ───────────────────────────────────────────
     df_bd_calc    = st.session_state['df_bd_calculated'].copy()
+    
+    # Filtrar 'ECUADOR' (indicado por el usuario que ya no existe)
+    if 'ACTIVO' in df_bd_calc.columns:
+        df_bd_calc = df_bd_calc[df_bd_calc['ACTIVO'].astype(str).str.upper().str.strip() != 'ECUADOR']
+
     df_forma9_calc = st.session_state['df_forma9_calculated'].copy()
     fecha_eval    = st.session_state['fecha_evaluacion_state']
 

@@ -412,8 +412,13 @@ def render_tab_resumen(
 
         if len(hier_cols) >= 2:
             try:
+                # Limpieza robusta para evitar el error 'None entries cannot have not-None children'
+                df_tree = df_bd_filtered.copy()
+                for col in hier_cols:
+                    df_tree[col] = df_tree[col].fillna("DESCONOCIDO").astype(str)
+                
                 fig_tree = px.treemap(
-                    df_bd_filtered,
+                    df_tree,
                     path=hier_cols,
                     color=color_col if color_col else hier_cols[0],
                     color_continuous_scale=[

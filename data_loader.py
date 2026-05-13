@@ -252,6 +252,11 @@ def cargar_y_limpiar_datos(forma9_file, bd_file):
         df_bd['SEVERIDAD'] = np.nan
 
     df_bd.dropna(subset=['FECHA_RUN', 'POZO'], inplace=True)
+
+    # Filtrar 'ECUADOR' ya que el usuario indica que ya no existe
+    if 'ACTIVO' in df_bd.columns:
+        df_bd = df_bd[df_bd['ACTIVO'].astype(str).str.upper().str.strip() != 'ECUADOR'].copy()
+
     return df_forma9, df_bd
 
 
