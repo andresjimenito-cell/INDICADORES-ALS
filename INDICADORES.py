@@ -187,6 +187,8 @@ with col_als:
         df_bd_raw = st.session_state.get('df_bd_calculated')
         if df_bd_raw is not None and not df_bd_raw.empty:
             als_opts = sorted([str(x).strip() for x in df_bd_raw['ALS'].dropna().unique() if str(x).strip() != ''])
+            # Excluir 'ECUADOR'
+            als_opts = [o for o in als_opts if o.upper() != 'ECUADOR']
             als_options = ['ESP'] + als_opts
             
             # Buscamos el índice actual en session state

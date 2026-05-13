@@ -24,6 +24,8 @@ def _unique_options(df_calc: pd.DataFrame, col: str) -> list:
         return ['TODOS']
     try:
         opts = sorted(df_calc[col].dropna().astype(str).unique().tolist())
+        # Excluir 'ECUADOR' de los filtros si el usuario lo solicita
+        opts = [o for o in opts if o.strip().upper() != 'ECUADOR']
         return ['TODOS'] + opts
     except Exception:
         return ['TODOS']
