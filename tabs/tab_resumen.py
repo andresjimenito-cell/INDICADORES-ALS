@@ -400,69 +400,244 @@ def render_tab_resumen(
     st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
     # =========================================================================
-    # FILA 4 — TREEMAP 100%
+    # FILA 4 — MAPA DE ACTIVOS (Multi-Estado por Pozo)
     # =========================================================================
-    _section_title("▸ Mapa de Activos", _CYAN)
+    _section_title("▸ Mapa de Activos — Estado Operacional", _CYAN)
+
+    # Paleta de estados — solo ON/OFF
+    _COLOR_ON   = "#2e7d32"   # Verde oscuro — Encendidos
+    _COLOR_OFF  = "#c62828"   # Rojo oscuro  — Apagados
 
     if df_bd_filtered.empty:
-        st.info("Sin datos para el treemap.")
+        st.info("Sin datos para el mapa de activos.")
     else:
         hier_cols = [c for c in ('ACTIVO', 'BLOQUE', 'CAMPO', 'POZO') if c in df_bd_filtered.columns]
-        color_col = 'RUN LIFE' if 'RUN LIFE' in df_bd_filtered.columns else None
 
-        if len(hier_cols) >= 2:
+        if len(hier_cols) < 2:
+            st.info("Se necesitan al menos 2 columnas jerárquicas (ACTIVO, BLOQUE, CAMPO, POZO).")
+        else:
             try:
-                # Limpieza robusta para evitar el error 'None entries cannot have not-None children'
                 df_tree = df_bd_filtered.copy()
+
+                # ── 1. Limpiar NaN en columnas jerárquicas ─────────────────
                 for col in hier_cols:
-                    df_tree[col] = df_tree[col].fillna("DESCONOCIDO").astype(str)
-                
-                fig_tree = px.treemap(
-                    df_tree,
-                    path=hier_cols,
-                    color=color_col if color_col else hier_cols[0],
-                    color_continuous_scale=[
-                        [0.0, '#060a1e'], [0.2, '#003566'], [0.5, '#0077b6'],
-                        [0.8, '#00f2ff'], [1.0, '#00ffa3']
-                    ] if color_col else None,
-                    hover_data={color_col: ':.0f'} if color_col else None,
+                    df_tree[col] = df_tree[col].fillna("DESCONOCIDO").astype(str).str.strip()
+
+                # ── Normalizar fechas ───────────────────────────────────────
+                fecha_eval_dt = pd.to_datetime(fecha_evaluacion).normalize()
+                df_tree['_RUN_D']  = pd.to_datetime(df_tree['FECHA_RUN'],  errors='coerce').dt.normalize() if 'FECHA_RUN'  in df_tree.columns else pd.NaT
+                df_tree['_PULL_D'] = pd.to_datetime(df_tree['FECHA_PULL'], errors='coerce').dt.normalize() if 'FECHA_PULL' in df_tree.columns else pd.NaT
+                df_tree['_FALL_D'] = pd.to_datetime(df_tree['FECHA_FALLA'],errors='coerce').dt.normalize() if 'FECHA_FALLA' in df_tree.columns else pd.NaT
+
+                run_life_col = 'RUN LIFE' if 'RUN LIFE' in df_tree.columns else None
+
+                # ── Filtrar solo RUNs válidos a fecha de evaluación ────────
+                df_eval = df_tree[df_tree['_RUN_D'].notna() & (df_tree['_RUN_D'] <= fecha_eval_dt)].copy()
+
+                # ── Último RUN por POZO (= estado actual del pozo) ─────────
+                if 'POZO' in df_eval.columns:
+                    df_last = df_eval.sort_values('_RUN_D').groupby('POZO', as_index=False).last()
+                else:
+                    df_last = df_eval.copy()
+
+                # ── Clasificar igual que kpis.py ───────────────────────────
+                # calc_running:    RUN <= fecha_eval AND (no pull OR pull > fecha_eval)
+                # calc_fallados:   RUN <= fecha_eval AND falla <= fecha_eval AND (no pull OR pull > fecha_eval)
+                # calc_operativos: RUN <= fecha_eval AND (no falla OR falla > fecha_eval) AND (no pull OR pull > fecha_eval)
+                m_pull   = df_last['_PULL_D'].notna() & (df_last['_PULL_D'] <= fecha_eval_dt)
+                m_fall   = df_last['_FALL_D'].notna() & (df_last['_FALL_D'] <= fecha_eval_dt) & ~m_pull
+                m_oper   = (df_last['_FALL_D'].isna() | (df_last['_FALL_D'] > fecha_eval_dt)) & \
+                           (df_last['_PULL_D'].isna() | (df_last['_PULL_D'] > fecha_eval_dt))
+
+                # ── ON/OFF: ventana 30 días exactos — IGUAL que kpis.py ────
+                pozos_on_set = set()
+                if df_forma9_filtered is not None and not df_forma9_filtered.empty:
+                    _f9 = df_forma9_filtered.copy()
+                    if 'FECHA_FORMA9' in _f9.columns and 'DIAS TRABAJADOS' in _f9.columns and 'POZO' in _f9.columns:
+                        _f9['FECHA_FORMA9']    = pd.to_datetime(_f9['FECHA_FORMA9'], errors='coerce').dt.normalize()
+                        _f9['DIAS TRABAJADOS'] = pd.to_numeric(_f9['DIAS TRABAJADOS'], errors='coerce').fillna(0)
+                        _f9_eval = _f9[
+                            (_f9['FECHA_FORMA9'] >= (fecha_eval_dt - pd.Timedelta(days=30))) &
+                            (_f9['FECHA_FORMA9'] <= fecha_eval_dt)
+                        ]
+                        pozos_on_set = set(
+                            _f9_eval[_f9_eval['DIAS TRABAJADOS'] > 0]['POZO'].astype(str).str.strip().tolist()
+                        )
+
+                # Asignar estado — solo ON/OFF para pozos operativos en df_bd
+                def _asignar_estado(row):
+                    pozo = str(row.get('POZO', '')).strip() if 'POZO' in row.index else ''
+                    if m_pull.loc[row.name]: return None   # Extraído → excluir del mapa
+                    if m_fall.loc[row.name]: return None   # Fallado → excluir del mapa
+                    if m_oper.loc[row.name]:
+                        return "ON" if pozo in pozos_on_set else "OFF"
+                    return None
+
+                df_last['ESTADO'] = df_last.apply(_asignar_estado, axis=1)
+
+                # Solo pozos operativos (ON o OFF) para el mapa visual
+                df_last_oper = df_last[df_last['ESTADO'].notna()].copy()
+
+                # Propagar estado de vuelta a df_tree (para el treemap con jerarquía)
+                if 'POZO' in df_tree.columns:
+                    pozo_estado = df_last_oper.set_index('POZO')['ESTADO'].to_dict()
+                    df_tree['ESTADO'] = df_tree['POZO'].map(pozo_estado)   # NaN = no operativo
+                else:
+                    df_tree['ESTADO'] = None
+
+                # df_pozo: solo pozos ON/OFF, un registro por celda jerárquica
+                agg_dict = {'ESTADO': ('ESTADO', 'last'), 'N_RUNS': ('ESTADO', 'count')}
+                if run_life_col:
+                    agg_dict['RUN_LIFE'] = (run_life_col, 'mean')
+                df_pozo = (
+                    df_eval.assign(ESTADO=df_eval['POZO'].map(pozo_estado) if 'POZO' in df_eval.columns else None)
+                    .dropna(subset=['ESTADO'])
+                    .sort_values('_RUN_D')
+                    .groupby(hier_cols, as_index=False)
+                    .agg(**agg_dict)
                 )
+                if 'RUN_LIFE' not in df_pozo.columns:
+                    df_pozo['RUN_LIFE'] = 0
+
+                # ── Conteos HUD — MISMA FÓRMULA EXACTA que kpis.py ────────
+                # n_on:  unique POZOs en Forma9 (30 días) con DIAS TRABAJADOS > 0
+                # n_oper: calc_operativos(df_bd) = filas con RUN<=eval, sin falla, sin pull
+                # n_off:  max(0, n_oper - n_on)
+                n_on  = int(len(pozos_on_set))
+                n_oper = int((
+                    (df_tree['_RUN_D'].notna() & (df_tree['_RUN_D'] <= fecha_eval_dt)) &
+                    (df_tree['_FALL_D'].isna()  | (df_tree['_FALL_D'] > fecha_eval_dt)) &
+                    (df_tree['_PULL_D'].isna()  | (df_tree['_PULL_D'] > fecha_eval_dt))
+                ).sum())
+                n_off = max(0, n_oper - n_on)
+                n_tot = n_on + n_off
+
+                # ── HUD: solo 3 tarjetas compactas ───────────────────────────
+                st.markdown(f"""
+                <div style="display:flex; gap:12px; flex-wrap:wrap; margin:10px 0 14px 0;">
+                    <div style="flex:1; min-width:130px; background:rgba(46,125,50,0.12); border:1px solid {_COLOR_ON}88;
+                        border-radius:10px; padding:12px 16px; text-align:center;">
+                        <div style="color:{_COLOR_ON}; font-size:2rem; font-weight:900; font-family:Arial;">{n_on}</div>
+                        <div style="color:#a5d6a7; font-size:0.65rem; letter-spacing:2px; font-family:Arial; margin-top:4px;">🟢 ENCENDIDOS</div>
+                    </div>
+                    <div style="flex:1; min-width:130px; background:rgba(198,40,40,0.12); border:1px solid {_COLOR_OFF}88;
+                        border-radius:10px; padding:12px 16px; text-align:center;">
+                        <div style="color:{_COLOR_OFF}; font-size:2rem; font-weight:900; font-family:Arial;">{n_off}</div>
+                        <div style="color:#ef9a9a; font-size:0.65rem; letter-spacing:2px; font-family:Arial; margin-top:4px;">🔴 APAGADOS</div>
+                    </div>
+                    <div style="flex:1; min-width:130px; background:rgba(0,229,255,0.05); border:1px solid rgba(0,229,255,0.2);
+                        border-radius:10px; padding:12px 16px; text-align:center;">
+                        <div style="color:#00e5ff; font-size:2rem; font-weight:900; font-family:Arial;">{n_tot}</div>
+                        <div style="color:#80deea; font-size:0.65rem; letter-spacing:2px; font-family:Arial; margin-top:4px;">◈ OPERATIVOS</div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                # ── 6. Construir go.Treemap — un pase robusto ─────────────
+                import plotly.graph_objects as go
+
+                # Paleta 15 tonos oscuros distinguibles para BLOQUEs
+                _BP = [
+                    "#0a1628","#1a0828","#091a09","#281408","#082820",
+                    "#280818","#182808","#280d0d","#08083a","#18082a",
+                    "#082818","#202808","#140828","#280a14","#081409",
+                ]
+                _b_uniq = sorted(df_pozo['BLOQUE'].unique()) if 'BLOQUE' in df_pozo.columns else []
+                _b_clr  = {b: _BP[i % len(_BP)] for i, b in enumerate(_b_uniq)}
+
+                S = "|||"   # separador legible para IDs
+                _added = set()
+                _ids, _lbl, _par, _val, _clr, _cdat = [], [], [], [], [], []
+
+                def _add(node_id, label, parent, value, color, cdat):
+                    if node_id not in _added:
+                        _ids.append(node_id); _lbl.append(label)
+                        _par.append(parent);   _val.append(value)
+                        _clr.append(color);    _cdat.append(cdat)
+                        _added.add(node_id)
+
+                for _, row in df_pozo.iterrows():
+                    a = str(row['ACTIVO']) if 'ACTIVO' in df_pozo.columns else ""
+                    b = str(row['BLOQUE']) if 'BLOQUE' in df_pozo.columns else ""
+                    c = str(row['CAMPO'])  if 'CAMPO'  in df_pozo.columns else ""
+                    p = str(row['POZO'])   if 'POZO'   in df_pozo.columns else str(row.name)
+                    estado = str(row.get('ESTADO', ''))
+                    rl = float(row.get('RUN_LIFE', 1) or 1)
+                    nr = int(row.get('N_RUNS', 0) or 0)
+
+                    # — nodo ACTIVO —
+                    if 'ACTIVO' in hier_cols:
+                        _add(f"A{S}{a}", a, "", 0, "#060c16", ["", 0, 0])
+
+                    # — nodo BLOQUE —
+                    if 'BLOQUE' in hier_cols:
+                        par_b = f"A{S}{a}" if 'ACTIVO' in hier_cols else ""
+                        _add(f"B{S}{a}{S}{b}", b, par_b, 0, _b_clr.get(b,"#111827"), ["", 0, 0])
+
+                    # — nodo CAMPO —
+                    if 'CAMPO' in hier_cols:
+                        if   'BLOQUE' in hier_cols: par_c = f"B{S}{a}{S}{b}"
+                        elif 'ACTIVO' in hier_cols: par_c = f"A{S}{a}"
+                        else:                        par_c = ""
+                        _add(f"C{S}{a}{S}{b}{S}{c}", c, par_c, 0, _b_clr.get(b,"#111827"), ["", 0, 0])
+
+                    # — hoja POZO —
+                    if   'CAMPO'  in hier_cols: par_p = f"C{S}{a}{S}{b}{S}{c}"
+                    elif 'BLOQUE' in hier_cols: par_p = f"B{S}{a}{S}{b}"
+                    elif 'ACTIVO' in hier_cols: par_p = f"A{S}{a}"
+                    else:                        par_p = ""
+                    leaf_clr = _COLOR_ON if estado == 'ON' else _COLOR_OFF
+                    _add(f"P{S}{a}{S}{b}{S}{c}{S}{p}", p, par_p,
+                         max(1.0, rl), leaf_clr, [estado, rl, nr])
+
+                fig_tree = go.Figure(go.Treemap(
+                    ids=_ids, labels=_lbl, parents=_par, values=_val,
+                    marker=dict(
+                        colors=_clr,
+                        line=dict(width=1.5, color='#0a0f1a'),
+                        pad=dict(t=18, l=4, r=4, b=4),
+                    ),
+                    customdata=_cdat,
+                    texttemplate="<b>%{label}</b>",
+                    hovertemplate=(
+                        "<b>%{label}</b><br>"
+                        "Estado: %{customdata[0]}<br>"
+                        "Run Life: %{customdata[1]:.0f} días<br>"
+                        "Corridas: %{customdata[2]}<br>"
+                        "<extra></extra>"
+                    ),
+                    textfont=dict(color="#ffffff", size=11),
+                ))
+
                 fig_tree.update_layout(
-                    margin=dict(t=30, l=10, r=10, b=10),
+                    margin=dict(t=10, l=4, r=4, b=4),
                     paper_bgcolor='rgba(0,0,0,0)',
                     plot_bgcolor='rgba(0,0,0,0)',
-                    height=600,
-                    coloraxis_showscale=True,
-                    coloraxis_colorbar=dict(
-                        title="DÍAS DE VIDA",
-                        title_font_size=11,
-                        title_font_color="#00f2ff",
-                        thicknessmode="pixels", thickness=15,
-                        lenmode="fraction", len=0.8,
-                        yanchor="middle", y=0.5,
-                        tickfont=dict(size=10, color="#cfd8dc"),
-                        outlinewidth=0
-                    ),
+                    height=570,
                     font_family="Arial",
                     font_color="#ffffff",
                 )
-                fig_tree.update_traces(
-                    textinfo="label+value",
-                    texttemplate="<span style='color:#00f2ff'><b>%{label}</b></span><br>%{value}",
-                    textfont=dict(size=14, color="white"),
-                    marker=dict(
-                        line=dict(width=1.5, color='rgba(0, 242, 255, 0.4)'),
-                    ),
-                    hovertemplate='<b>%{label}</b><br>Métrica: %{value}<br>Días: %{color:.0f}d'
+
+                # Contenedor HUD Premium
+                st.markdown(
+                    '<div style="background:#050c1a; border:1px solid rgba(0,229,255,0.15);'
+                    ' border-radius:15px; padding:14px; margin-bottom:10px;">',
+                    unsafe_allow_html=True
                 )
-                # Envolver Plotly en un contenedor HUD Premium
-                st.markdown("""<div style="background:#060a1e; border:1px solid rgba(0,242,255,0.15); border-radius:15px; padding:12px; margin-bottom:10px;">""", unsafe_allow_html=True)
                 st.plotly_chart(fig_tree, use_container_width=True, config={'displayModeBar': True, 'scrollZoom': True})
                 st.markdown("</div>", unsafe_allow_html=True)
+
+                # ── 7. Tabla resumen colapsable por estado ─────────────────
+                with st.expander("📋 VER DETALLE POR ESTADO DE POZO", expanded=False):
+                    show_cols = [c for c in (hier_cols + ['ESTADO', 'RUN_LIFE', 'N_RUNS']) if c in df_pozo.columns]
+                    df_show = df_pozo[show_cols].copy()
+                    if 'RUN_LIFE' in df_show.columns:
+                        df_show['RUN_LIFE'] = df_show['RUN_LIFE'].apply(lambda x: f"{x:.0f} d" if pd.notna(x) else "—")
+                    df_show = df_show.sort_values('ESTADO')
+                    render_hud_table(df_show, table_id="tabla_mapa_activos")
+
             except Exception as e:
-                st.warning(f"Treemap no disponible: {e}")
-        else:
-            st.info("Se necesitan al menos 2 columnas jerárquicas (ACTIVO, BLOQUE, CAMPO).")
+                st.warning(f"Mapa de activos no disponible: {e}")
 
     # =========================================================================
     # FILA 5 — DETALLE CAMPAÑA (expandible)
