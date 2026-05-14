@@ -588,7 +588,7 @@ def render_tab_resumen(
                     else:                        par_p = ""
                     leaf_clr = _COLOR_ON if estado == 'ON' else _COLOR_OFF
                     _add(f"P{S}{a}{S}{b}{S}{c}{S}{p}", p, par_p,
-                         max(1.0, rl), leaf_clr, [estado, rl, nr])
+                         1, leaf_clr, [estado, rl, nr])
 
                 fig_tree = go.Figure(go.Treemap(
                     ids=_ids, labels=_lbl, parents=_par, values=_val,
