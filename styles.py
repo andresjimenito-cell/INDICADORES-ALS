@@ -455,6 +455,7 @@ def render_hud_table(df, table_id="hud_table"):
         $(document).ready(function() {{
             $('#{table_id}').DataTable({{
                 "pageLength": 10,
+                "order": [],
                 "language": {{ "url": "https://cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json" }},
                 "dom": 'Bfrtip',
                 "buttons": [
