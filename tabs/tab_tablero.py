@@ -1,15 +1,12 @@
 """
-tabs/tab_tablero.py
-===================
-Tablero Ejecutivo — Dashboard estilo analítico.
-
-Secciones:
-  1. Panel Izquierdo  — KPIs operativos (ALS en fondo, fallados, operativos, activos/inactivos, disponibilidad, uso operativo)
-  2. Panel Central    — Gauge IF (Índice de Falla) + gráfico tendencia anual
-  3. Panel Derecho    — Gauge MTBF + Gauge RunLife + distribución por rangos
+tabs/tab_tablero.py  —  v2 Premium
+===================================
+Tablero Ejecutivo estilo analítico industrial.
+Tres paneles: KPIs operativos | Gauge IF + tendencia | Gauge MTBF/RL + distribución RunLife
+Todos los valores son calculados en tiempo real desde los datos filtrados.
 """
 
-import json
+import json, calendar
 import datetime
 import pandas as pd
 import numpy as np
@@ -18,217 +15,316 @@ import streamlit.components.v1 as components
 
 import mtbf as mtbf_mod
 
+# ── Paleta corporativa Parex ─────────────────────────────────────────────────
+_G   = "#137659"        # Verde principal
+_G2  = "#0a4d34"        # Verde oscuro
+_G3  = "#e8f5ee"        # Verde muy claro (fondo)
+_R   = "#c62828"        # Rojo falla
+_R2  = "#ffebee"        # Rojo claro fondo
+_Y   = "#c09c2e"        # Dorado acento
+_Y2  = "#fdf8ec"        # Dorado fondo
+_T   = "#1f221e"        # Texto oscuro
+_T2  = "#455a72"        # Texto suave
+_W   = "#ffffff"
+_BG  = "#f5f7f6"
 
-# ─────────────────────────────────────────────────────────────────────────────
-# PALETA & CONSTANTES
-# ─────────────────────────────────────────────────────────────────────────────
-
-_G   = "#137659"   # Verde Parex
-_G2  = "#2e7d32"   # Verde oscuro
-_R   = "#c62828"   # Rojo falla
-_Y   = "#c09c2e"   # Dorado/amarillo
-_BG  = "#ffffff"
-_T   = "#1f221e"   # Texto oscuro
-_T2  = "#455a72"   # Texto suave
-_BD  = "rgba(19,118,89,0.15)"
-
-# Metas por defecto (ajustables)
 META_IF   = 7.5
 META_MTBF = 2190
 META_RL   = 1500
+ALS_TIPOS = ['ESP', 'PCP', 'EPCP', 'BM', 'BH']
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# HELPERS
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _css() -> None:
+def _css():
     st.markdown("""
 <style>
-/* ── Tablero: tarjetas ── */
-.tb-card {
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+
+/* ── Contenedor panel ── */
+.tbl-panel {
     background: #ffffff;
-    border: 1px solid rgba(19,118,89,0.18);
-    border-radius: 10px;
-    padding: 10px 14px;
-    margin-bottom: 8px;
-    box-shadow: 0 1px 6px rgba(19,118,89,0.06);
+    border-radius: 16px;
+    border: 1px solid rgba(19,118,89,0.12);
+    box-shadow: 0 4px 20px rgba(19,118,89,0.07), 0 1px 4px rgba(0,0,0,0.04);
+    padding: 16px 18px;
+    height: 100%;
 }
-.tb-kpi-label {
-    font-family: Arial, sans-serif;
+
+/* ── Sección título ── */
+.tbl-sec-title {
+    font-family: 'Inter', Arial, sans-serif;
     font-size: 0.52rem;
+    font-weight: 800;
+    color: #455a72;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    border-left: 3px solid #137659;
+    padding-left: 8px;
+    margin: 14px 0 8px 0;
+}
+
+/* ── KPI grande ── */
+.tbl-kpi-big {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: linear-gradient(135deg, rgba(19,118,89,0.04) 0%, rgba(192,156,46,0.04) 100%);
+    border: 1px solid rgba(19,118,89,0.14);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+}
+.tbl-kpi-icon {
+    font-size: 2.2rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+.tbl-kpi-content { flex: 1; min-width: 0; }
+.tbl-kpi-label {
+    font-family: 'Inter', Arial, sans-serif;
+    font-size: 0.5rem;
     font-weight: 700;
     color: #455a72;
     letter-spacing: 2px;
     text-transform: uppercase;
     margin-bottom: 2px;
 }
-.tb-kpi-value {
-    font-family: Arial, sans-serif;
-    font-size: 2rem;
+.tbl-kpi-value {
+    font-family: 'Inter', Arial, sans-serif;
+    font-size: 2.1rem;
     font-weight: 900;
-    line-height: 1.1;
-}
-.tb-kpi-sub {
-    font-family: Arial, sans-serif;
-    font-size: 0.52rem;
-    color: #455a72;
-    letter-spacing: 1px;
-    margin-top: 2px;
-}
-.tb-mini-row {
-    display: flex;
-    gap: 8px;
-}
-.tb-mini-card {
-    flex: 1;
-    background: #f8faf9;
-    border: 1px solid rgba(19,118,89,0.12);
-    border-radius: 8px;
-    padding: 7px 10px;
-    text-align: center;
-}
-.tb-mini-label {
-    font-family: Arial, sans-serif;
-    font-size: 0.45rem;
-    font-weight: 700;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: #455a72;
-}
-.tb-mini-value {
-    font-family: Arial, sans-serif;
-    font-size: 1.2rem;
-    font-weight: 900;
-}
-.tb-bar-wrap {
-    height: 6px;
-    background: rgba(19,118,89,0.1);
-    border-radius: 3px;
-    margin-top: 4px;
-    overflow: hidden;
-}
-.tb-bar-fill {
-    height: 100%;
-    border-radius: 3px;
-}
-.tb-section-title {
-    font-family: Arial, sans-serif;
-    font-size: 0.55rem;
-    font-weight: 700;
+    line-height: 1;
     color: #137659;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    border-left: 2px solid #137659;
-    padding: 2px 0 2px 8px;
-    margin: 12px 0 8px 0;
 }
-.tb-als-breakdown {
+
+/* ── ALS breakdown pills ── */
+.tbl-pills {
     display: flex;
-    gap: 6px;
+    gap: 5px;
+    margin-top: 8px;
     flex-wrap: wrap;
-    margin-top: 6px;
 }
-.tb-als-pill {
+.tbl-pill {
     display: flex;
     flex-direction: column;
     align-items: center;
-    background: rgba(19,118,89,0.06);
-    border: 1px solid rgba(19,118,89,0.15);
-    border-radius: 6px;
+    background: rgba(19,118,89,0.07);
+    border: 1px solid rgba(19,118,89,0.18);
+    border-radius: 8px;
     padding: 4px 8px;
-    min-width: 48px;
+    min-width: 44px;
+    flex: 1;
 }
-.tb-als-pill-name {
-    font-family: Arial, sans-serif;
+.tbl-pill-name {
+    font-family: 'Inter', Arial, sans-serif;
     font-size: 0.42rem;
-    font-weight: 700;
+    font-weight: 800;
     color: #137659;
     letter-spacing: 1px;
 }
-.tb-als-pill-val {
-    font-family: Arial, sans-serif;
-    font-size: 0.9rem;
+.tbl-pill-val {
+    font-family: 'Inter', Arial, sans-serif;
+    font-size: 1rem;
     font-weight: 900;
     color: #1f221e;
+    line-height: 1.2;
 }
-.tb-als-pill-op {
-    font-family: Arial, sans-serif;
+.tbl-pill-sub {
+    font-family: 'Inter', Arial, sans-serif;
     font-size: 0.38rem;
     color: #455a72;
+    letter-spacing: 0.5px;
+}
+
+/* ── Dos columnas stat ── */
+.tbl-stat-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.tbl-stat-card {
+    flex: 1;
+    border-radius: 10px;
+    padding: 10px 12px;
+    text-align: center;
+    border: 1px solid;
+}
+.tbl-stat-icon {
+    font-size: 1.4rem;
+    line-height: 1;
+    margin-bottom: 3px;
+}
+.tbl-stat-label {
+    font-family: 'Inter', Arial, sans-serif;
+    font-size: 0.44rem;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+}
+.tbl-stat-value {
+    font-family: 'Inter', Arial, sans-serif;
+    font-size: 1.5rem;
+    font-weight: 900;
+    line-height: 1;
+}
+
+/* ── Barra de progreso ── */
+.tbl-prog-wrap {
+    background: rgba(19,118,89,0.07);
+    border-radius: 4px;
+    height: 7px;
+    overflow: hidden;
+    margin-top: 5px;
+}
+.tbl-prog-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.8s ease;
+}
+.tbl-prog-card {
+    background: #f9fbfa;
+    border: 1px solid rgba(19,118,89,0.12);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+}
+.tbl-prog-label {
+    font-family: 'Inter', Arial, sans-serif;
+    font-size: 0.5rem;
+    font-weight: 700;
+    color: #455a72;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+.tbl-prog-value {
+    font-family: 'Inter', Arial, sans-serif;
+    font-size: 1.35rem;
+    font-weight: 900;
+    line-height: 1.2;
+    float: right;
+    margin-top: -1px;
+}
+
+/* ── Gauge card ── */
+.tbl-gauge-card {
+    background: #ffffff;
+    border-radius: 14px;
+    border: 1px solid rgba(19,118,89,0.12);
+    box-shadow: 0 2px 12px rgba(19,118,89,0.06);
+    padding: 4px 4px 0 4px;
+    text-align: center;
+    margin-bottom: 8px;
+}
+.tbl-gauge-title {
+    font-family: 'Inter', Arial, sans-serif;
+    font-size: 0.52rem;
+    font-weight: 800;
+    color: #455a72;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding-top: 8px;
 }
 </style>
 """, unsafe_allow_html=True)
 
 
-def _echarts(opts: dict, height: int, chart_id: str) -> str:
+# ─────────────────────────────────────────────────────────────────────────────
+def _chart_html(opts: dict, height: int, cid: str) -> str:
     return f"""
-<div id="{chart_id}" style="width:100%;height:{height}px;background:#ffffff;border-radius:10px;border:1px solid {_BD};overflow:hidden;"></div>
+<div id="{cid}" style="width:100%;height:{height}px;"></div>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 <script>
 (function(){{
-    var el = document.getElementById('{chart_id}');
-    var chart = echarts.init(el, null, {{renderer:'canvas'}});
-    chart.setOption({json.dumps(opts)});
-    new ResizeObserver(function(){{ chart.resize(); }}).observe(el);
+  var el=document.getElementById('{cid}');
+  var c=echarts.init(el,null,{{renderer:'canvas'}});
+  c.setOption({json.dumps(opts, ensure_ascii=False)});
+  new ResizeObserver(function(){{c.resize();}}).observe(el);
 }})();
 </script>"""
 
 
-def _gauge(value, meta, label, color_bueno, color_malo, max_val, chart_id) -> str:
-    """Gauge tipo velocímetro."""
-    color = color_bueno if value >= meta else color_malo
-    pct   = min(value / max_val, 1.0)
-    opts  = {
-        "backgroundColor": "#ffffff",
+def _gauge_html(value, meta, label, higher_is_better: bool, max_val, cid) -> str:
+    """Gauge con aguja estilo velocímetro, colores según sentido del KPI."""
+    meta_pct = meta / max_val
+    if higher_is_better:
+        arc_colors = [[meta_pct, _R], [1.0, _G]]
+    else:
+        arc_colors = [[meta_pct, _G], [1.0, _R]]
+
+    val_color = _G if (value >= meta if higher_is_better else value <= meta) else _R
+    val_rounded = int(round(value))
+
+    opts = {
+        "backgroundColor": _W,
         "series": [{
             "type": "gauge",
-            "startAngle": 210,
-            "endAngle": -30,
+            "startAngle": 205,
+            "endAngle": -25,
             "min": 0,
             "max": max_val,
-            "splitNumber": 5,
+            "center": ["50%", "62%"],
             "radius": "88%",
-            "center": ["50%", "58%"],
+            "splitNumber": 4,
             "axisLine": {
                 "lineStyle": {
-                    "width": 14,
-                    "color": [
-                        [meta / max_val, _R],
-                        [1.0,            _G],
-                    ]
+                    "width": 18,
+                    "color": arc_colors,
+                    "shadowBlur": 8,
+                    "shadowColor": "rgba(0,0,0,0.08)"
                 }
             },
             "pointer": {
-                "itemStyle": {"color": "#1f221e"},
-                "length": "68%",
-                "width": 4,
+                "itemStyle": {"color": _T},
+                "width": 5,
+                "length": "72%",
+                "offsetCenter": [0, 0],
             },
-            "axisTick":   {"show": False},
-            "splitLine":  {"show": False},
-            "axisLabel":  {"show": False},
+            "axisTick": {
+                "distance": -22,
+                "length": 7,
+                "lineStyle": {"color": "#fff", "width": 2}
+            },
+            "splitLine": {
+                "distance": -28,
+                "length": 14,
+                "lineStyle": {"color": "#fff", "width": 3}
+            },
+            "axisLabel": {
+                "color": _T2,
+                "distance": 30,
+                "fontSize": 8,
+                "fontFamily": "Inter, Arial, sans-serif",
+                "fontWeight": "600",
+            },
+            "anchor": {
+                "show": True,
+                "showAbove": True,
+                "size": 12,
+                "itemStyle": {"borderWidth": 3, "borderColor": _T, "color": _W}
+            },
             "detail": {
                 "valueAnimation": True,
-                "formatter": f"{{value}}",
-                "color":     color,
-                "fontSize":  28,
-                "fontWeight":"900",
-                "fontFamily":"Arial, sans-serif",
-                "offsetCenter": [0, "15%"],
+                "formatter": f"{val_rounded}",
+                "color": val_color,
+                "fontSize": 28,
+                "fontWeight": "900",
+                "fontFamily": "Inter, Arial, sans-serif",
+                "offsetCenter": [0, "22%"],
+                "borderRadius": 6,
             },
             "title": {
                 "show": True,
-                "offsetCenter": [0, "40%"],
+                "offsetCenter": [0, "48%"],
                 "color": _T2,
                 "fontSize": 9,
-                "fontFamily": "Arial, sans-serif",
                 "fontWeight": "700",
-                "formatter": f"Meta {label}: {meta}",
+                "fontFamily": "Inter, Arial, sans-serif",
             },
             "data": [{"value": round(value, 1), "name": f"Meta {label}: {meta}"}],
         }]
     }
-    return _echarts(opts, 200, chart_id)
+    return _chart_html(opts, 200, cid)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -242,265 +338,250 @@ def render_tab_tablero(
     fecha_evaluacion,
     selected_activo,
 ):
-    """Dashboard Ejecutivo — Tablero Analítico."""
-
     _css()
 
-    fecha_eval_dt = pd.to_datetime(fecha_evaluacion)
+    fecha_eval_dt   = pd.to_datetime(fecha_evaluacion)
     fecha_eval_date = fecha_eval_dt.normalize()
-    anio = fecha_eval_dt.year
+    mes_eval        = fecha_eval_dt.month
+    anio_eval       = fecha_eval_dt.year
 
-    # ── Pre-procesar fechas ──────────────────────────────────────────────────
+    # ── Normalizar fechas ────────────────────────────────────────────────────
     for col in ('FECHA_RUN', 'FECHA_FALLA', 'FECHA_PULL'):
         if col in df_bd_filtered.columns:
             df_bd_filtered[col] = pd.to_datetime(df_bd_filtered[col], errors='coerce')
 
-    df_bd_filtered['_RUN']  = df_bd_filtered['FECHA_RUN'].dt.normalize()
-    df_bd_filtered['_FALL'] = df_bd_filtered['FECHA_FALLA'].dt.normalize()
-    df_bd_filtered['_PULL'] = df_bd_filtered['FECHA_PULL'].dt.normalize()
+    df = df_bd_filtered.copy()
+    df['_RUN']  = df['FECHA_RUN'].dt.normalize()
+    df['_FALL'] = df['FECHA_FALLA'].dt.normalize() if 'FECHA_FALLA' in df.columns else pd.NaT
+    df['_PULL'] = df['FECHA_PULL'].dt.normalize()  if 'FECHA_PULL'  in df.columns else pd.NaT
 
-    # ── KPIs base ───────────────────────────────────────────────────────────
-    df_run = df_bd_filtered[
-        (df_bd_filtered['_RUN'] <= fecha_eval_date) &
-        (df_bd_filtered['_PULL'].isna() | (df_bd_filtered['_PULL'] > fecha_eval_date))
-    ]
-    als_fondo    = len(df_run)
-    als_fallados = df_run[df_run['_FALL'].notna() & (df_run['_FALL'] <= fecha_eval_date)].shape[0]
-    als_oper     = als_fondo - als_fallados
+    # ── ALS en fondo ─────────────────────────────────────────────────────────
+    mask_fondo = (df['_RUN'] <= fecha_eval_date) & (df['_PULL'].isna() | (df['_PULL'] > fecha_eval_date))
+    df_fondo = df[mask_fondo]
+    als_fondo = len(df_fondo)
 
-    # Activos (ON) / Inactivos (OFF) — basado en Forma 9 del mes actual
-    mes_eval = fecha_eval_dt.month
-    anio_eval = fecha_eval_dt.year
-    if not df_forma9_filtered.empty and 'FECHA_FORMA9' in df_forma9_filtered.columns:
-        df_f9 = df_forma9_filtered.copy()
-        df_f9['_F9'] = pd.to_datetime(df_f9['FECHA_FORMA9'], errors='coerce').dt.normalize()
-        pozos_on_set = set(df_f9[
-            (df_f9['_F9'].dt.month == mes_eval) &
-            (df_f9['_F9'].dt.year == anio_eval) &
-            (df_f9.get('DIAS TRABAJADOS', pd.Series([1]*len(df_f9))).fillna(0) > 0)
-        ]['POZO'].astype(str).str.strip().unique())
-        pozos_oper_set = set(df_run['POZO'].astype(str).str.strip().unique()) if 'POZO' in df_run.columns else set()
-        activos   = len(pozos_oper_set & pozos_on_set)
-        inactivos = len(pozos_oper_set - pozos_on_set)
-    else:
-        activos   = als_oper
-        inactivos = 0
-
-    total_pozos = activos + inactivos if (activos + inactivos) > 0 else 1
-    disp_oper   = activos / total_pozos * 100
-    uso_oper    = als_oper / max(als_fondo, 1) * 100
+    # ── Fallados y operativos ────────────────────────────────────────────────
+    mask_falla    = df_fondo['_FALL'].notna() & (df_fondo['_FALL'] <= fecha_eval_date)
+    als_fallados  = int(mask_falla.sum())
+    als_operativos = als_fondo - als_fallados
 
     # ── Breakdown por tipo ALS ───────────────────────────────────────────────
-    als_tipos = ['ESP', 'PCP', 'EPCP', 'BM', 'BH']
     als_breakdown = {}
-    if 'ALS' in df_run.columns:
-        for t in als_tipos:
-            sub = df_run[df_run['ALS'].astype(str).str.strip().str.upper() == t]
-            tot = len(sub)
-            fall = sub[sub['_FALL'].notna() & (sub['_FALL'] <= fecha_eval_date)].shape[0]
+    if 'ALS' in df_fondo.columns:
+        for t in ALS_TIPOS:
+            sub  = df_fondo[df_fondo['ALS'].astype(str).str.strip().str.upper() == t]
+            tot  = len(sub)
+            fall = int((sub['_FALL'].notna() & (sub['_FALL'] <= fecha_eval_date)).sum())
             als_breakdown[t] = {'total': tot, 'op': tot - fall}
 
-    # ── IF anual ─────────────────────────────────────────────────────────────
-    _MES_ABR = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
-    if_cats, if_vals, pozos_on_vals = [], [], []
+    # ── Activos / Inactivos (Forma 9) ────────────────────────────────────────
+    activos = inactivos = 0
+    if not df_forma9_filtered.empty and 'FECHA_FORMA9' in df_forma9_filtered.columns:
+        df_f9     = df_forma9_filtered.copy()
+        df_f9['_F9'] = pd.to_datetime(df_f9['FECHA_FORMA9'], errors='coerce').dt.normalize()
+        dias_col  = 'DIAS TRABAJADOS' if 'DIAS TRABAJADOS' in df_f9.columns else None
+        mask_on   = (df_f9['_F9'].dt.month == mes_eval) & (df_f9['_F9'].dt.year == anio_eval)
+        if dias_col:
+            mask_on = mask_on & (df_f9[dias_col].fillna(0) > 0)
+        pozos_on  = set(df_f9[mask_on]['POZO'].astype(str).str.strip().unique())
+        pozos_op  = set(df_fondo['POZO'].astype(str).str.strip().unique()) if 'POZO' in df_fondo.columns else set()
+        activos   = len(pozos_op & pozos_on)
+        inactivos = len(pozos_op - pozos_on)
+    else:
+        activos   = als_operativos
+        inactivos = 0
+
+    total_pozos  = max(activos + inactivos, 1)
+    disp_oper    = activos   / total_pozos * 100
+    uso_oper     = als_operativos / max(als_fondo, 1) * 100
+
+    # ── Serie IF mensual ─────────────────────────────────────────────────────
+    if_cats, if_vals, on_vals, off_vals = [], [], [], []
 
     for m in range(1, mes_eval + 1):
-        import calendar
         last_day  = calendar.monthrange(anio_eval, m)[1]
-        end_m     = pd.Timestamp(year=anio_eval, month=m, day=last_day).normalize()
+        end_m_ts  = pd.Timestamp(year=anio_eval, month=m, day=last_day).normalize()
 
-        fallas_m = df_bd_filtered[
-            (df_bd_filtered['_FALL'].dt.month == m) &
-            (df_bd_filtered['_FALL'].dt.year == anio_eval)
-        ].shape[0]
+        fallas_m  = int(df[
+            (df['_FALL'].dt.month == m) & (df['_FALL'].dt.year == anio_eval)
+        ].shape[0])
 
         on_m = 0
         if not df_forma9_filtered.empty and 'FECHA_FORMA9' in df_forma9_filtered.columns:
             df_f9c = df_forma9_filtered.copy()
             df_f9c['_F9'] = pd.to_datetime(df_f9c['FECHA_FORMA9'], errors='coerce').dt.normalize()
-            on_m = df_f9c[
-                (df_f9c['_F9'].dt.month == m) &
-                (df_f9c['_F9'].dt.year == anio_eval) &
-                (df_f9c.get('DIAS TRABAJADOS', pd.Series([1]*len(df_f9c))).fillna(0) > 0)
-            ]['POZO'].nunique()
+            dias_col2 = 'DIAS TRABAJADOS' if 'DIAS TRABAJADOS' in df_f9c.columns else None
+            mask_m = (df_f9c['_F9'].dt.month == m) & (df_f9c['_F9'].dt.year == anio_eval)
+            if dias_col2:
+                mask_m = mask_m & (df_f9c[dias_col2].fillna(0) > 0)
+            on_m = int(df_f9c[mask_m]['POZO'].nunique())
 
-        if_m = round(fallas_m / max(on_m, 1) * 100, 2)
-        if_cats.append(_MES_ABR[m - 1])
+        # Pozos operativos al fin del mes
+        op_m = int(df[
+            (df['_RUN'] <= end_m_ts) &
+            (df['_FALL'].isna() | (df['_FALL'] > end_m_ts)) &
+            (df['_PULL'].isna() | (df['_PULL'] > end_m_ts))
+        ]['POZO'].nunique()) if 'POZO' in df.columns else 0
+
+        off_m = max(op_m - on_m, 0)
+        if_m  = round(fallas_m / max(on_m, 1) * 100, 2)
+
+        _MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+        if_cats.append(_MESES[m - 1])
         if_vals.append(if_m)
-        pozos_on_vals.append(on_m)
+        on_vals.append(on_m)
+        off_vals.append(off_m)
 
-    if_actual = if_vals[-1] if if_vals else 0
+    if_actual = round(float(if_vals[-1]), 1) if if_vals else 0.0
+    if_max    = max(max(if_vals) * 1.4, META_IF * 2, 20) if if_vals else 30
 
-    # ── MTBF ────────────────────────────────────────────────────────────────
+    # ── MTBF ─────────────────────────────────────────────────────────────────
     try:
         mtbf_val, _ = mtbf_mod.calcular_mtbf(df_bd_filtered, fecha_evaluacion)
-        mtbf_val = round(float(mtbf_val), 0) if mtbf_val else 0
+        mtbf_val = float(mtbf_val) if mtbf_val and not np.isnan(float(mtbf_val)) else 0.0
     except Exception:
-        mtbf_val = 0
+        mtbf_val = 0.0
 
-    # ── RunLife actual (promedio) ────────────────────────────────────────────
-    if 'RUN LIFE' in df_bd_filtered.columns:
-        rl_val = round(df_run['RUN LIFE'].dropna().mean(), 0) if 'RUN LIFE' in df_run.columns else 0
-    elif 'RUN_LIFE' in df_bd_filtered.columns:
-        rl_val = round(df_run['RUN_LIFE'].dropna().mean(), 0) if 'RUN_LIFE' in df_run.columns else 0
-    else:
-        rl_val = 0
-    if pd.isna(rl_val):
-        rl_val = 0
+    # ── RunLife promedio de pozos en fondo ───────────────────────────────────
+    rl_col = next((c for c in ('RUN LIFE', 'RUN_LIFE', 'RUNLIFE') if c in df_fondo.columns), None)
+    rl_val = float(df_fondo[rl_col].dropna().mean()) if rl_col else 0.0
+    if np.isnan(rl_val):
+        rl_val = 0.0
 
-    # ── Distribución RunLife ─────────────────────────────────────────────────
-    rl_col = 'RUN LIFE' if 'RUN LIFE' in df_run.columns else ('RUN_LIFE' if 'RUN_LIFE' in df_run.columns else None)
-    rl_bins  = ['< 2 años', '2 @ 4 años', '4 @ 6 años', '> 6 años']
-    rl_pozos = [0, 0, 0, 0]
-
+    # ── Distribución RunLife (en días) ───────────────────────────────────────
+    rl_bins   = ['< 2 años', '2 – 4 años', '4 – 6 años', '> 6 años']
+    rl_limites = [0, 730, 1460, 2190, 99999]
+    rl_counts  = [0, 0, 0, 0]
     if rl_col:
-        rl_data = df_run[rl_col].dropna()
-        rl_pozos[0] = int((rl_data < 730).sum())
-        rl_pozos[1] = int(((rl_data >= 730) & (rl_data < 1460)).sum())
-        rl_pozos[2] = int(((rl_data >= 1460) & (rl_data < 2190)).sum())
-        rl_pozos[3] = int((rl_data >= 2190).sum())
+        rl_data = df_fondo[rl_col].dropna()
+        for i in range(4):
+            rl_counts[i] = int(((rl_data >= rl_limites[i]) & (rl_data < rl_limites[i+1])).sum())
+
+    mtbf_max = max(mtbf_val * 1.5, META_MTBF * 1.6, 4000)
+    rl_max   = max(rl_val   * 1.5, META_RL   * 1.6, 3000)
 
     # ═════════════════════════════════════════════════════════════════════════
-    # LAYOUT: 3 paneles (izq 28% | centro 38% | der 34%)
+    # LAYOUT 3 PANELES
     # ═════════════════════════════════════════════════════════════════════════
-    st.markdown("<div style='height:4px;'></div>", unsafe_allow_html=True)
-    col_izq, col_mid, col_der = st.columns([1.1, 1.4, 1.3])
+    st.markdown("<div style='height:6px;'></div>", unsafe_allow_html=True)
+    col_l, col_c, col_r = st.columns([1.05, 1.35, 1.25])
 
     # ─────────────────────────────────────────────────────────────────────────
     # PANEL IZQUIERDO — KPIs OPERATIVOS
     # ─────────────────────────────────────────────────────────────────────────
-    with col_izq:
+    with col_l:
 
-        # ── ALS EN FONDO ────────────────────────────────────────────────────
+        # Construir pills de ALS
+        pills_html = "".join([
+            f"""<div class="tbl-pill">
+                  <div class="tbl-pill-name">{t}</div>
+                  <div class="tbl-pill-val">{als_breakdown.get(t,{}).get('total',0)}</div>
+                  <div class="tbl-pill-sub">{als_breakdown.get(t,{}).get('op',0)} op</div>
+                </div>"""
+            for t in ALS_TIPOS
+        ])
+
         st.markdown(f"""
-<div class="tb-card">
-  <div style="display:flex;align-items:center;gap:10px;">
-    <div style="font-size:2rem;opacity:0.7;">🛢️</div>
-    <div style="flex:1;">
-      <div style="display:flex;justify-content:space-between;align-items:flex-end;">
-        <div>
-          <div class="tb-kpi-label">ALS EN FONDO</div>
-          <div class="tb-kpi-value" style="color:{_G};">{als_fondo:,}</div>
-        </div>
-      </div>
-      <div class="tb-als-breakdown">
-        {''.join([
-            f'<div class="tb-als-pill"><div class="tb-als-pill-name">{t}</div><div class="tb-als-pill-val">{als_breakdown.get(t,{}).get("total",0)}</div><div class="tb-als-pill-op">{als_breakdown.get(t,{}).get("op",0)} op</div></div>'
-            for t in als_tipos
-        ])}
-      </div>
+<div class="tbl-panel">
+
+  <!-- ALS EN FONDO -->
+  <div class="tbl-kpi-big">
+    <div class="tbl-kpi-icon">🛢️</div>
+    <div class="tbl-kpi-content">
+      <div class="tbl-kpi-label">ALS EN FONDO</div>
+      <div class="tbl-kpi-value">{als_fondo:,}</div>
+      <div class="tbl-pills">{pills_html}</div>
     </div>
   </div>
-</div>
-""", unsafe_allow_html=True)
 
-        # ── ALS FALLADOS + OPERATIVOS ────────────────────────────────────────
-        st.markdown(f"""
-<div class="tb-mini-row">
-  <div class="tb-mini-card" style="border-left:3px solid {_R};">
-    <div class="tb-mini-label" style="color:{_R};">⚠ ALS FALLADOS</div>
-    <div class="tb-mini-value" style="color:{_R};">{als_fallados:,}</div>
-  </div>
-  <div class="tb-mini-card" style="border-left:3px solid {_G};">
-    <div class="tb-mini-label" style="color:{_G};">✔ ALS OPERATIVOS</div>
-    <div class="tb-mini-value" style="color:{_G};">{als_oper:,}</div>
-  </div>
-</div>
-""", unsafe_allow_html=True)
-
-        st.markdown("<div style='height:6px;'></div>", unsafe_allow_html=True)
-
-        # ── ACTIVOS / INACTIVOS ──────────────────────────────────────────────
-        st.markdown(f"""
-<div class="tb-mini-row">
-  <div class="tb-mini-card" style="border-left:3px solid {_G};">
-    <div style="display:flex;align-items:center;gap:4px;justify-content:center;">
-      <span style="font-size:1rem;">▶</span>
-      <div>
-        <div class="tb-mini-label" style="color:{_G};">ACTIVOS</div>
-        <div class="tb-mini-value" style="color:{_G};">{activos:,}</div>
-      </div>
+  <!-- FALLADOS / OPERATIVOS -->
+  <div class="tbl-stat-row">
+    <div class="tbl-stat-card" style="background:{_R2};border-color:rgba(198,40,40,0.25);">
+      <div class="tbl-stat-icon">⚠️</div>
+      <div class="tbl-stat-label" style="color:{_R};">ALS FALLADOS</div>
+      <div class="tbl-stat-value" style="color:{_R};">{als_fallados:,}</div>
+    </div>
+    <div class="tbl-stat-card" style="background:{_G3};border-color:rgba(19,118,89,0.25);">
+      <div class="tbl-stat-icon">✅</div>
+      <div class="tbl-stat-label" style="color:{_G};">ALS OPERATIVOS</div>
+      <div class="tbl-stat-value" style="color:{_G};">{als_operativos:,}</div>
     </div>
   </div>
-  <div class="tb-mini-card" style="border-left:3px solid {_Y};">
-    <div style="display:flex;align-items:center;gap:4px;justify-content:center;">
-      <span style="font-size:1rem;">⏸</span>
-      <div>
-        <div class="tb-mini-label" style="color:{_Y};">INACTIVOS</div>
-        <div class="tb-mini-value" style="color:{_Y};">{inactivos:,}</div>
-      </div>
+
+  <!-- ACTIVOS / INACTIVOS -->
+  <div class="tbl-stat-row">
+    <div class="tbl-stat-card" style="background:{_G3};border-color:rgba(19,118,89,0.2);">
+      <div class="tbl-stat-icon">▶️</div>
+      <div class="tbl-stat-label" style="color:{_G};">ACTIVOS</div>
+      <div class="tbl-stat-value" style="color:{_G};">{activos:,}</div>
+    </div>
+    <div class="tbl-stat-card" style="background:{_Y2};border-color:rgba(192,156,46,0.25);">
+      <div class="tbl-stat-icon">⏸️</div>
+      <div class="tbl-stat-label" style="color:{_Y};">INACTIVOS</div>
+      <div class="tbl-stat-value" style="color:{_Y};">{inactivos:,}</div>
     </div>
   </div>
-</div>
-""", unsafe_allow_html=True)
 
-        st.markdown("<div style='height:6px;'></div>", unsafe_allow_html=True)
+  <!-- DISPONIBILIDAD OPERACIONAL -->
+  <div class="tbl-prog-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div class="tbl-prog-label">DISPONIBILIDAD OPERACIONAL</div>
+      <div class="tbl-prog-value" style="color:{'#137659' if disp_oper>=75 else ('#c09c2e' if disp_oper>=50 else '#c62828')};">{disp_oper:.0f}%</div>
+    </div>
+    <div class="tbl-prog-wrap">
+      <div class="tbl-prog-fill" style="width:{min(disp_oper,100):.1f}%;background:{'#137659' if disp_oper>=75 else ('#c09c2e' if disp_oper>=50 else '#c62828')};"></div>
+    </div>
+  </div>
 
-        # ── DISPONIBILIDAD OPERACIONAL ───────────────────────────────────────
-        disp_color = _G if disp_oper >= 75 else (_Y if disp_oper >= 50 else _R)
-        st.markdown(f"""
-<div class="tb-card">
-  <div class="tb-kpi-label">DISPONIBILIDAD OPERACIONAL</div>
-  <div style="display:flex;align-items:baseline;gap:6px;">
-    <div class="tb-kpi-value" style="font-size:1.5rem;color:{disp_color};">{disp_oper:.0f}%</div>
+  <!-- USO OPERATIVO -->
+  <div class="tbl-prog-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div class="tbl-prog-label">USO OPERATIVO</div>
+      <div class="tbl-prog-value" style="color:{'#137659' if uso_oper>=60 else ('#c09c2e' if uso_oper>=40 else '#c62828')};">{uso_oper:.0f}%</div>
+    </div>
+    <div class="tbl-prog-wrap">
+      <div class="tbl-prog-fill" style="width:{min(uso_oper,100):.1f}%;background:{'#137659' if uso_oper>=60 else ('#c09c2e' if uso_oper>=40 else '#c62828')};"></div>
+    </div>
   </div>
-  <div class="tb-bar-wrap">
-    <div class="tb-bar-fill" style="width:{min(disp_oper,100):.0f}%;background:{disp_color};"></div>
-  </div>
-</div>
-""", unsafe_allow_html=True)
 
-        # ── USO OPERATIVO ────────────────────────────────────────────────────
-        uso_color = _G if uso_oper >= 60 else (_Y if uso_oper >= 40 else _R)
-        st.markdown(f"""
-<div class="tb-card">
-  <div class="tb-kpi-label">USO OPERATIVO</div>
-  <div style="display:flex;align-items:baseline;gap:6px;">
-    <div class="tb-kpi-value" style="font-size:1.5rem;color:{uso_color};">{uso_oper:.0f}%</div>
-  </div>
-  <div class="tb-bar-wrap">
-    <div class="tb-bar-fill" style="width:{min(uso_oper,100):.0f}%;background:{uso_color};"></div>
-  </div>
 </div>
 """, unsafe_allow_html=True)
 
     # ─────────────────────────────────────────────────────────────────────────
     # PANEL CENTRAL — GAUGE IF + TENDENCIA ANUAL
     # ─────────────────────────────────────────────────────────────────────────
-    with col_mid:
+    with col_c:
+        st.markdown('<div class="tbl-panel">', unsafe_allow_html=True)
 
-        # Gauge IF
-        gauge_if = _gauge(
-            value=if_actual,
-            meta=META_IF,
-            label="IF",
-            color_bueno=_G,
-            color_malo=_R,
-            max_val=max(max(if_vals) * 1.3, META_IF * 2, 20) if if_vals else 30,
-            chart_id="gauge_if"
+        # Gauge IF (menor es mejor → verde izquierda, rojo derecha)
+        st.markdown('<div class="tbl-gauge-card"><div class="tbl-gauge-title">ÍNDICE DE FALLA (IF)</div>', unsafe_allow_html=True)
+        components.html(
+            _gauge_html(if_actual, META_IF, "IF", higher_is_better=False,
+                        max_val=if_max, cid="gauge_if"),
+            height=210, scrolling=False
         )
-        components.html(gauge_if, height=215)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-        # Tendencia IF anual
-        max_if = max(if_vals) if if_vals else 10
+        # Gráfico IF anual — barras (ON/OFF) + línea IF
         opts_if = {
-            "backgroundColor": "#ffffff",
+            "backgroundColor": _W,
             "tooltip": {
                 "trigger": "axis",
-                "backgroundColor": "rgba(255,255,255,0.95)",
-                "borderColor": _BD,
-                "textStyle": {"color": _T, "fontSize": 10},
+                "axisPointer": {"type": "shadow"},
+                "backgroundColor": "rgba(255,255,255,0.97)",
+                "borderColor": "rgba(19,118,89,0.2)",
+                "textStyle": {"color": _T, "fontSize": 11},
             },
             "legend": {
-                "data": ["Pozos ON", "Pozos Off", "IF ALS"],
-                "bottom": 0, "itemHeight": 6,
-                "textStyle": {"color": _T2, "fontSize": 8},
+                "data": ["Pozos ON", "Pozos OFF", "IF (%)"],
+                "bottom": 0, "itemHeight": 7, "itemGap": 12,
+                "textStyle": {"color": _T2, "fontSize": 8, "fontFamily": "Inter, Arial, sans-serif"},
             },
-            "grid": {"top": "8%", "left": "8%", "right": "4%", "bottom": "18%", "containLabel": True},
+            "grid": {"top": "6%", "left": "3%", "right": "8%", "bottom": "22%", "containLabel": True},
             "xAxis": {
                 "type": "category", "data": if_cats,
-                "axisLabel": {"color": _T2, "fontSize": 8},
-                "axisLine": {"lineStyle": {"color": _BD}},
+                "axisLabel": {"color": _T2, "fontSize": 8, "fontFamily": "Inter, Arial, sans-serif"},
+                "axisLine": {"lineStyle": {"color": "rgba(19,118,89,0.15)"}},
                 "axisTick": {"show": False},
             },
             "yAxis": [
@@ -515,74 +596,100 @@ def render_tab_tablero(
                     "nameTextStyle": {"color": _R, "fontSize": 7},
                     "axisLabel": {"color": _R, "fontSize": 7},
                     "splitLine": {"show": False},
+                    "min": 0,
                 }
             ],
             "series": [
                 {
                     "name": "Pozos ON", "type": "bar", "stack": "pozos",
-                    "data": pozos_on_vals, "barMaxWidth": 20,
-                    "itemStyle": {"color": "rgba(19,118,89,0.65)", "borderRadius": [2,2,0,0]},
+                    "data": on_vals, "barMaxWidth": 22,
+                    "itemStyle": {"color": "rgba(19,118,89,0.75)", "borderRadius": [3, 3, 0, 0]},
                 },
                 {
-                    "name": "IF ALS", "type": "line", "yAxisIndex": 1,
+                    "name": "Pozos OFF", "type": "bar", "stack": "pozos",
+                    "data": off_vals, "barMaxWidth": 22,
+                    "itemStyle": {"color": "rgba(198,40,40,0.3)", "borderRadius": [3, 3, 0, 0]},
+                },
+                {
+                    "name": "IF (%)", "type": "line", "yAxisIndex": 1,
                     "data": if_vals, "smooth": True,
-                    "symbol": "circle", "symbolSize": 5,
-                    "lineStyle": {"color": _R, "width": 2},
-                    "itemStyle": {"color": _R, "borderColor": "#fff", "borderWidth": 2},
+                    "symbol": "circle", "symbolSize": 6,
+                    "lineStyle": {"color": _R, "width": 2.5},
+                    "itemStyle": {"color": _R, "borderColor": _W, "borderWidth": 2},
+                    "areaStyle": {"color": "rgba(198,40,40,0.05)"},
                     "markLine": {
                         "silent": True,
                         "lineStyle": {"color": _G, "type": "dashed", "width": 1.5},
-                        "data": [{"yAxis": META_IF, "name": f"Meta {META_IF}"}],
-                        "label": {"formatter": f"Meta {META_IF}", "color": _G, "fontSize": 8},
+                        "data": [{"yAxis": META_IF, "name": f"Meta {META_IF}%"}],
+                        "label": {
+                            "formatter": f"Meta {META_IF}%",
+                            "color": _G, "fontSize": 8,
+                            "fontFamily": "Inter, Arial, sans-serif"
+                        },
                     }
                 }
             ]
         }
-        st.markdown(f"<div class='tb-section-title'>IF EN EL ÚLTIMO AÑO</div>", unsafe_allow_html=True)
-        components.html(_echarts(opts_if, 220, "chart_if_anual"), height=232)
+        st.markdown(f"<div class='tbl-sec-title'>IF EN EL ÚLTIMO AÑO — {anio_eval}</div>", unsafe_allow_html=True)
+        components.html(_chart_html(opts_if, 230, "chart_if_anual"), height=242, scrolling=False)
+        st.markdown('</div>', unsafe_allow_html=True)
 
     # ─────────────────────────────────────────────────────────────────────────
-    # PANEL DERECHO — MTBF + RUNLIFE GAUGES + DISTRIBUCIÓN
+    # PANEL DERECHO — GAUGES MTBF + RL + DISTRIBUCIÓN RUNLIFE
     # ─────────────────────────────────────────────────────────────────────────
-    with col_der:
+    with col_r:
+        st.markdown('<div class="tbl-panel">', unsafe_allow_html=True)
 
         # Dos gauges lado a lado
-        g_col1, g_col2 = st.columns(2)
-        with g_col1:
-            mtbf_max = max(mtbf_val * 1.4, META_MTBF * 1.5, 3000)
+        g1, g2 = st.columns(2)
+        with g1:
+            st.markdown('<div class="tbl-gauge-card"><div class="tbl-gauge-title">MTBF (días)</div>', unsafe_allow_html=True)
             components.html(
-                _gauge(mtbf_val, META_MTBF, "MTBF", _G, _R, mtbf_max, "gauge_mtbf"),
-                height=215
+                _gauge_html(mtbf_val, META_MTBF, "MTBF", higher_is_better=True,
+                            max_val=mtbf_max, cid="gauge_mtbf"),
+                height=210, scrolling=False
             )
-        with g_col2:
-            rl_max = max(rl_val * 1.4, META_RL * 1.5, 2500)
-            components.html(
-                _gauge(rl_val, META_RL, "RL", _G, _R, rl_max, "gauge_rl"),
-                height=215
-            )
+            st.markdown('</div>', unsafe_allow_html=True)
 
-        # Distribución RunLife por rangos
-        rl_colors = [_R, _Y, _G2, _G]
+        with g2:
+            st.markdown('<div class="tbl-gauge-card"><div class="tbl-gauge-title">RUNLIFE (días)</div>', unsafe_allow_html=True)
+            components.html(
+                _gauge_html(rl_val, META_RL, "RL", higher_is_better=True,
+                            max_val=rl_max, cid="gauge_rl"),
+                height=210, scrolling=False
+            )
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        # Gráfico distribución RunLife
+        rl_bar_colors = [_R, _Y, _G2, _G]
+        total_rl = max(sum(rl_counts), 1)
+        rl_pcts  = [round(v / total_rl * 100, 1) for v in rl_counts]
+
         opts_rl = {
-            "backgroundColor": "#ffffff",
+            "backgroundColor": _W,
             "tooltip": {
                 "trigger": "axis",
                 "axisPointer": {"type": "shadow"},
-                "backgroundColor": "rgba(255,255,255,0.95)",
-                "borderColor": _BD,
-                "textStyle": {"color": _T, "fontSize": 10},
+                "backgroundColor": "rgba(255,255,255,0.97)",
+                "borderColor": "rgba(19,118,89,0.2)",
+                "textStyle": {"color": _T, "fontSize": 11},
+                "formatter": (
+                    "function(p){"
+                    "  var b=p[0];"
+                    "  return b.name+'<br/>Pozos: <b>'+b.value+'</b>'"
+                    "}"
+                ),
             },
-            "legend": {
-                "data": ["# Pozos"],
-                "bottom": 0, "itemHeight": 6,
-                "textStyle": {"color": _T2, "fontSize": 8},
-            },
-            "grid": {"top": "8%", "left": "4%", "right": "4%", "bottom": "18%", "containLabel": True},
+            "grid": {"top": "8%", "left": "2%", "right": "4%", "bottom": "22%", "containLabel": True},
             "xAxis": {
                 "type": "category",
                 "data": rl_bins,
-                "axisLabel": {"color": _T2, "fontSize": 7},
-                "axisLine": {"lineStyle": {"color": _BD}},
+                "axisLabel": {
+                    "color": _T2, "fontSize": 7, "interval": 0,
+                    "fontFamily": "Inter, Arial, sans-serif",
+                    "rotate": 15,
+                },
+                "axisLine": {"lineStyle": {"color": "rgba(19,118,89,0.15)"}},
                 "axisTick": {"show": False},
             },
             "yAxis": {
@@ -591,26 +698,24 @@ def render_tab_tablero(
                 "splitLine": {"lineStyle": {"color": "rgba(19,118,89,0.06)", "type": "dashed"}},
             },
             "series": [{
-                "name": "# Pozos",
                 "type": "bar",
                 "data": [
-                    {"value": v, "itemStyle": {"color": c}}
-                    for v, c in zip(rl_pozos, rl_colors)
+                    {"value": v,
+                     "itemStyle": {"color": c, "borderRadius": [5, 5, 0, 0]},
+                     "label": {
+                         "show": True,
+                         "position": "top",
+                         "color": _T,
+                         "fontSize": 10,
+                         "fontWeight": "700",
+                         "fontFamily": "Inter, Arial, sans-serif",
+                         "formatter": f"{v}\n{p}%",
+                     }}
+                    for v, c, p in zip(rl_counts, rl_bar_colors, rl_pcts)
                 ],
-                "barMaxWidth": 40,
-                "label": {
-                    "show": True, "position": "top",
-                    "color": _T, "fontSize": 9, "fontWeight": "700",
-                    "fontFamily": "Arial, sans-serif"
-                },
-                "itemStyle": {"borderRadius": [4, 4, 0, 0]},
-                "markLine": {
-                    "silent": True,
-                    "lineStyle": {"color": _Y, "type": "dashed", "width": 1.5},
-                    "data": [{"type": "average", "name": "Promedio"}],
-                    "label": {"formatter": "Prom", "color": _Y, "fontSize": 8},
-                }
+                "barWidth": "48%",
             }]
         }
-        st.markdown(f"<div class='tb-section-title'>DISTRIBUCIÓN RUNLIFE</div>", unsafe_allow_html=True)
-        components.html(_echarts(opts_rl, 220, "chart_rl_dist"), height=232)
+        st.markdown(f"<div class='tbl-sec-title'>DISTRIBUCIÓN RUNLIFE — POZOS EN FONDO</div>", unsafe_allow_html=True)
+        components.html(_chart_html(opts_rl, 235, "chart_rl"), height=248, scrolling=False)
+        st.markdown('</div>', unsafe_allow_html=True)
