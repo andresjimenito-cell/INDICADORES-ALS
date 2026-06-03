@@ -395,45 +395,81 @@ def render_tab_tablero(
     disp_oper    = activos   / total_pozos * 100
     uso_oper     = als_operativos / max(als_fondo, 1) * 100
 
-    # ── Serie IF mensual ─────────────────────────────────────────────────────
+    # ── Serie IF mensual — fórmula oficial: Fallas ALS (RLE<1500) / Pozos ON ─
+    #    Usa calcular_indice_falla_anual del módulo indice_falla.py
     if_cats, if_vals, on_vals, off_vals = [], [], [], []
+    if_actual = 0.0
 
-    for m in range(1, mes_eval + 1):
-        last_day  = calendar.monthrange(anio_eval, m)[1]
-        end_m_ts  = pd.Timestamp(year=anio_eval, month=m, day=last_day).normalize()
+    try:
+        from indice_falla import calcular_indice_falla_anual
+        _, df_mensual_if = calcular_indice_falla_anual(
+            df_bd_filtered.copy(), df_forma9_filtered.copy(), fecha_evaluacion
+        )
 
-        fallas_m  = int(df[
-            (df['_FALL'].dt.month == m) & (df['_FALL'].dt.year == anio_eval)
-        ].shape[0])
-
-        on_m = 0
-        if not df_forma9_filtered.empty and 'FECHA_FORMA9' in df_forma9_filtered.columns:
-            df_f9c = df_forma9_filtered.copy()
-            df_f9c['_F9'] = pd.to_datetime(df_f9c['FECHA_FORMA9'], errors='coerce').dt.normalize()
-            dias_col2 = 'DIAS TRABAJADOS' if 'DIAS TRABAJADOS' in df_f9c.columns else None
-            mask_m = (df_f9c['_F9'].dt.month == m) & (df_f9c['_F9'].dt.year == anio_eval)
-            if dias_col2:
-                mask_m = mask_m & (df_f9c[dias_col2].fillna(0) > 0)
-            on_m = int(df_f9c[mask_m]['POZO'].nunique())
-
-        # Pozos operativos al fin del mes
-        op_m = int(df[
-            (df['_RUN'] <= end_m_ts) &
-            (df['_FALL'].isna() | (df['_FALL'] > end_m_ts)) &
-            (df['_PULL'].isna() | (df['_PULL'] > end_m_ts))
-        ]['POZO'].nunique()) if 'POZO' in df.columns else 0
-
-        off_m = max(op_m - on_m, 0)
-        if_m  = round(fallas_m / max(on_m, 1) * 100, 2)
-
+        # Filtrar solo los meses del año en evaluación
         _MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
-        if_cats.append(_MESES[m - 1])
-        if_vals.append(if_m)
-        on_vals.append(on_m)
-        off_vals.append(off_m)
+        df_yr = df_mensual_if[
+            df_mensual_if['Mes'].str.startswith(str(anio_eval))
+        ].copy()
 
-    if_actual = round(float(if_vals[-1]), 1) if if_vals else 0.0
-    if_max    = max(max(if_vals) * 1.4, META_IF * 2, 20) if if_vals else 30
+        for _, row in df_yr.iterrows():
+            m_str = row['Mes']           # 'YYYY-MM'
+            m_idx = int(m_str[5:7]) - 1  # 0-based month index
+            if_cats.append(_MESES[m_idx])
+            # Índice mensual: Fallas_ALS_1500 / Pozos_ON  (sin rolling para el chart mensual)
+            on_m   = int(row.get('Pozos ON', 0))
+            fall_m = int(row.get('Fallas_ALS_1500', 0))
+            if_m   = round(fall_m / max(on_m, 1), 4)   # valor entre 0 y 1 aprox
+            if_vals.append(round(if_m, 4))
+            on_vals.append(on_m)
+            off_m  = max(int(row.get('Pozos Operativos', on_m)) - on_m, 0)
+            off_vals.append(off_m)
+
+        # Valor actual: usar el rolling 12-meses más reciente (Indice_Falla_Rolling_ALS_ON_1500)
+        last_row = df_mensual_if[
+            df_mensual_if['Indice_Falla_Rolling_ALS_ON_1500'].notna()
+        ].tail(1)
+        if not last_row.empty:
+            if_actual = round(float(last_row['Indice_Falla_Rolling_ALS_ON_1500'].iloc[0]), 4)
+        elif if_vals:
+            if_actual = if_vals[-1]
+
+    except Exception as _e_if:
+        # Fallback: cálculo simplificado (fallas totales / pozos ON del mes)
+        _MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+        for m in range(1, mes_eval + 1):
+            last_day = calendar.monthrange(anio_eval, m)[1]
+            end_m_ts = pd.Timestamp(year=anio_eval, month=m, day=last_day).normalize()
+            fallas_m = int(df[
+                (df['_FALL'].dt.month == m) & (df['_FALL'].dt.year == anio_eval)
+            ].shape[0])
+            on_m = 0
+            if not df_forma9_filtered.empty and 'FECHA_FORMA9' in df_forma9_filtered.columns:
+                df_f9c = df_forma9_filtered.copy()
+                df_f9c['_F9'] = pd.to_datetime(df_f9c['FECHA_FORMA9'], errors='coerce').dt.normalize()
+                dias_c = 'DIAS TRABAJADOS' if 'DIAS TRABAJADOS' in df_f9c.columns else None
+                mm = (df_f9c['_F9'].dt.month == m) & (df_f9c['_F9'].dt.year == anio_eval)
+                if dias_c:
+                    mm = mm & (df_f9c[dias_c].fillna(0) > 0)
+                on_m = int(df_f9c[mm]['POZO'].nunique())
+            op_m = int(df[
+                (df['_RUN'] <= end_m_ts) &
+                (df['_FALL'].isna() | (df['_FALL'] > end_m_ts)) &
+                (df['_PULL'].isna() | (df['_PULL'] > end_m_ts))
+            ]['POZO'].nunique()) if 'POZO' in df.columns else 0
+            if_cats.append(_MESES[m - 1])
+            if_m = round(fallas_m / max(on_m, 1) / 100, 4)
+            if_vals.append(if_m)
+            on_vals.append(on_m)
+            off_vals.append(max(op_m - on_m, 0))
+        if_actual = if_vals[-1] if if_vals else 0.0
+
+    # Escalar a % si todos son ≤ 1 (la fórmula da ratio, mostramos ×100)
+    if if_vals and max(if_vals) <= 1.5:
+        if_vals   = [round(v * 100, 2) for v in if_vals]
+        if_actual = round(if_actual * 100, 2)
+
+    if_max = max(max(if_vals) * 1.4, META_IF * 2, 20) if if_vals else 30
 
     # ── MTBF ─────────────────────────────────────────────────────────────────
     try:
