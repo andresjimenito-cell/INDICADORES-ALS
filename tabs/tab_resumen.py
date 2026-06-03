@@ -276,7 +276,7 @@ def render_tab_resumen(
             with m2:
                 st.markdown(_mini_metric("WS", str(val_ws), _MAGENTA), unsafe_allow_html=True)
 
-            st.markdown("<div style='height:6px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='height:4px;'></div>", unsafe_allow_html=True)
 
             opts_camp = {
                 "backgroundColor": "#ffffff",
@@ -295,26 +295,25 @@ def render_tab_resumen(
                     "itemGap": 10,
                 },
                 "grid": {
-                    "top": "10%", "left": "2%", "right": "2%",
-                    "bottom": "18%", "containLabel": True,
+                    "top": "8%", "left": "2%", "right": "2%",
+                    "bottom": "20%", "containLabel": True,
                 },
                 "xAxis": {
                     "type": "category",
                     "data": cats,
-                    "axisLabel": {"color": "#1f221e", "fontSize": 8},
+                    "axisLabel": {"color": "#1f221e", "fontSize": 7},
                     "axisLine": {"lineStyle": {"color": "rgba(19,118,89,0.15)"}},
                     "axisTick": {"show": False},
                 },
                 "yAxis": {
                     "type": "value",
-                    "axisLabel": {"color": "#1f221e", "fontSize": 8},
+                    "axisLabel": {"color": "#1f221e", "fontSize": 7},
                     "splitLine": {"lineStyle": {"color": "rgba(19,118,89,0.06)", "type": "dashed"}},
                 },
                 "series": [
                     {
                         "name": "Nuevos", "type": "bar", "stack": "total",
-                        "data": d_nv,
-                        "barMaxWidth": 20,
+                        "data": d_nv, "barMaxWidth": 18,
                         "itemStyle": {
                             "color": {"type": "linear", "x": 0, "y": 0, "x2": 0, "y2": 1,
                                       "colorStops": [
@@ -325,8 +324,7 @@ def render_tab_resumen(
                     },
                     {
                         "name": "Well Service", "type": "bar", "stack": "total",
-                        "data": d_ws,
-                        "barMaxWidth": 20,
+                        "data": d_ws, "barMaxWidth": 18,
                         "itemStyle": {
                             "color": {"type": "linear", "x": 0, "y": 0, "x2": 0, "y2": 1,
                                       "colorStops": [
@@ -337,16 +335,53 @@ def render_tab_resumen(
                     },
                     {
                         "name": "Fallas", "type": "line",
-                        "data": d_fl,
-                        "smooth": True,
-                        "symbol": "circle",
-                        "symbolSize": 5,
+                        "data": d_fl, "smooth": True,
+                        "symbol": "circle", "symbolSize": 5,
                         "lineStyle": {"width": 2, "color": "#c62828"},
                         "itemStyle": {"color": "#c62828", "borderWidth": 2, "borderColor": "#fff"}
                     }
                 ]
             }
-            components.html(_echarts_html(opts_camp, 230, "chart_campana"), height=245)
+
+            opts_run_stats = {
+                "backgroundColor": "#ffffff",
+                "title": {
+                    "text": "📊 EJECUCIÓN",
+                    "left": "center", "top": 2,
+                    "textStyle": {"color": "#137659", "fontSize": 9, "fontFamily": "Arial, sans-serif", "fontWeight": "bold"}
+                },
+                "tooltip": {
+                    "trigger": "axis",
+                    "axisPointer": {"type": "shadow"},
+                    "backgroundColor": "rgba(255,255,255,0.95)",
+                    "borderColor": "rgba(19,118,89,0.15)",
+                    "textStyle": {"color": "#1f221e"}
+                },
+                "grid": {"top": "18%", "left": "3%", "right": "18%", "bottom": "8%", "containLabel": True},
+                "xAxis": {"type": "value", "splitLine": {"show": False}, "axisLabel": {"show": False}},
+                "yAxis": {
+                    "type": "category",
+                    "data": ["EXTRAÍDOS", "ACTIVOS", "FALLAS", "WS", "NUEVOS", "TOTAL"],
+                    "axisLabel": {"color": "#455a72", "fontSize": 7, "fontFamily": "Arial, sans-serif"}
+                },
+                "series": [{
+                    "type": "bar",
+                    "data": [
+                        {"value": val_extraidos,   "itemStyle": {"color": "#94a3b8"}},
+                        {"value": val_activos,     "itemStyle": {"color": "#137659"}},
+                        {"value": val_fallas,      "itemStyle": {"color": "#c62828"}},
+                        {"value": val_ws,          "itemStyle": {"color": "#c09c2e"}},
+                        {"value": val_nuevos,      "itemStyle": {"color": "#8fbc8f"}},
+                        {"value": val_total_corr,  "itemStyle": {"color": "#5b8c5a"}}
+                    ],
+                    "label": {"show": True, "position": "right", "color": "#1f221e", "fontSize": 8, "fontFamily": "Arial, sans-serif"},
+                    "barMaxWidth": 12,
+                    "itemStyle": {"borderRadius": [0, 4, 4, 0]}
+                }]
+            }
+
+            components.html(_echarts_html(opts_camp,     165, "chart_campana"),    height=178)
+            components.html(_echarts_html(opts_run_stats, 155, "chart_run_stats"), height=168)
 
     st.markdown("<div style='height:6px;'></div>", unsafe_allow_html=True)
 
