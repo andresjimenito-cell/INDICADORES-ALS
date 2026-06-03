@@ -14,7 +14,7 @@ import streamlit as st
 # ─────────────────────────────────────────────────────────────────────────────
 try:
     st.set_page_config(
-        page_title="INDICADORES ALS | FRONTERA",
+        page_title="INDICADORES ALS | PAREX RESOURCES (FRONTERA)",
         page_icon="🛡️",
         layout="wide",
         initial_sidebar_state="expanded",
@@ -39,6 +39,7 @@ from tabs.tab_performance import render_tab_performance
 from tabs.tab_mtbf import render_tab_mtbf
 from tabs.tab_fallas import render_tab_fallas
 from tabs.tab_indices import render_tab_indices
+from tabs.tab_tablero import render_tab_tablero
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ESTILOS GLOBALES + CSS PROPIO DEL ORQUESTADOR
@@ -246,11 +247,21 @@ if st.session_state.get('reporte_runes') is not None:
 
     # ── NAVEGACIÓN (TABS ESTILIZADOS COMO BOTTOM BAR) ─────────────────────
     # Los estilos en styles.py se encargan de mover estos tabs a la parte inferior.
-    tab_resumen, tab_perf, tab_fallas = st.tabs([
-        "◈ RESUMEN", 
-        "⚡ PERFORMANCE", 
+    tab_tablero, tab_resumen, tab_perf, tab_fallas = st.tabs([
+        "🗂 TABLERO",
+        "◈ RESUMEN",
+        "⚡ PERFORMANCE",
         "⚠ FALLAS · ÍNDICES"
     ])
+
+    with tab_tablero:
+        render_tab_tablero(
+            df_bd_calc,
+            df_forma9_filtered,
+            reporte_runes,
+            fecha_eval,
+            filters['selected_activo'],
+        )
 
     with tab_resumen:
         render_tab_resumen(
