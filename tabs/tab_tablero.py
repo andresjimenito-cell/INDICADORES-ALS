@@ -656,6 +656,9 @@ def render_tab_tablero(
         components.html(col2_html, height=480, scrolling=False)
 
     with col_r:
+        rl_bar_colors = [_R, _Y, _G2, _G]
+        total_rl = max(sum(rl_counts), 1)
+        rl_pcts  = [round(v / total_rl * 100, 1) for v in rl_counts]
         col3_html = f"""
 <!DOCTYPE html>
 <html>
