@@ -329,9 +329,9 @@ def render_tab_tablero(
     except Exception:
         mtbf_val = 0.0
 
-    # ── RunLife promedio de pozos en fondo ───────────────────────────────────
-    rl_col = next((c for c in ('RUN LIFE', 'RUN_LIFE', 'RUNLIFE') if c in df_fondo.columns), None)
-    rl_val = float(df_fondo[rl_col].dropna().mean()) if rl_col else 0.0
+    # ── RunLife promedio (tiempo de vida total) ──────────────────────────────
+    rl_col = next((c for c in ('RUN LIFE', 'RUN_LIFE', 'RUNLIFE') if c in df_bd_filtered.columns), None)
+    rl_val = float(df_bd_filtered[rl_col].dropna().mean()) if rl_col else 0.0
     if np.isnan(rl_val):
         rl_val = 0.0
 
