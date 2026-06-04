@@ -15,18 +15,18 @@ import tema
 
 _colors = get_colors()
 # Usar Magenta Neon como color principal para KPIs
-COLOR_PRINCIPAL = getattr(tema, 'COLOR_MAGENTA_NEON', '#C82B96')
+COLOR_PRINCIPAL = getattr(tema, 'COLOR_PRINCIPAL', '#137659')
 _bg_raw = _colors.get('background', None)
 if isinstance(_bg_raw, str) and _bg_raw.strip().lower() in ('#ffffff', 'white'):
     COLOR_FONDO_OSCURO = None
 else:
-    COLOR_FONDO_OSCURO = _bg_raw or '#1a1a2e'
-COLOR_FONDO_CONTENEDOR = _colors.get('container_bg', 'rgba(25, 25, 40, 0.7)')
+    COLOR_FONDO_OSCURO = '#f5f7f6'
+COLOR_FONDO_CONTENEDOR = '#ffffff'
 COLOR_SOMBRA = 'transparent'
 
 # Colores adicionales específicos locales
-COLOR_TEXTO_DATOS = _colors.get('muted', '#b3f0cc')
-COLOR_TEXTO_PRINCIPAL = _colors.get('text_on_primary', _colors.get('text', '#ffffff'))
+COLOR_TEXTO_DATOS = '#475569'
+COLOR_TEXTO_PRINCIPAL = '#1f221e'
 
 def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resumen_df=None, mtbf_global=None, mtbf_als=None, df_forma9=None, fecha_evaluacion=None):
     # El filtro de comparativa ahora se gestiona desde el header global.
@@ -140,11 +140,32 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
                 return str(row['Valor'].values[0])
         return "N/D"
         
+    from indice_falla import calcular_indice_falla_anual
     if_on = get_if_val(indice_resumen_df, 'Índice de Falla ON')
-    if_als_on = get_if_val(indice_resumen_df, 'Índice de Falla ALS ON', selected_als)
+    
+    try:
+        if selected_als and selected_als != 'TODOS':
+            if df_forma9 is not None:
+                df_forma9_copy = df_forma9.copy()
+                if 'SISTEMA ALS' in df_forma9_copy.columns:
+                    df_forma9_copy = df_forma9_copy.rename(columns={'SISTEMA ALS': 'ALS'})
+                if 'ALS' in df_forma9_copy.columns:
+                    df_forma9_als = df_forma9_copy[df_forma9_copy['ALS'] == selected_als].copy()
+                else:
+                    df_forma9_als = df_forma9_copy
+            else:
+                df_forma9_als = None
+                
+            indice_resumen_df_als, _ = calcular_indice_falla_anual(df_bd_als, df_forma9_als, fecha_evaluacion)
+            if_als_on = get_if_val(indice_resumen_df_als, 'Índice de Falla ALS ON')
+        else:
+            if_als_on = get_if_val(indice_resumen_df, 'Índice de Falla ALS ON')
+    except Exception:
+        if_als_on = "N/D"
+        
     if_label = f"TOTAL ON: {if_on}\n{selected_als} ON: {if_als_on}"
 
-    def format_card_val(text, als_color="#FFDE31"):
+    def format_card_val(text, als_color="#137659"):
         parts = text.split("\n")
         total_val = parts[0].replace("TOTAL: ", "").replace("TOTAL ON: ", "")
         als_label = parts[1].split(":")[0] if len(parts) > 1 else ""
@@ -152,24 +173,24 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
         
         return f"""
             <div style="margin-top: 2px; text-align: center;">
-                <div style="font-size: 0.55rem; color: #94a3b8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Global</div>
-                <div style="font-size: 1.15rem; font-weight: 800; color: #ffffff; line-height: 1;">{total_val}</div>
+                <div style="font-size: 0.55rem; color: #475569; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Global</div>
+                <div style="font-size: 1.15rem; font-weight: 800; color: #1f221e; line-height: 1;">{total_val}</div>
                 <div style="margin-top: 4px;"></div>
-                <div style="font-size: 0.55rem; color: #94a3b8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">{als_label}</div>
+                <div style="font-size: 0.55rem; color: #475569; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">{als_label}</div>
                 <div style="font-size: 0.85rem; font-weight: 700; color: {als_color}; line-height: 1;">{als_val}</div>
             </div>
         """
 
     cards_data = [
-        {"title": "Corridas", "icon": "↻", "val": run_label, "color": "#00e5ff"},
-        {"title": "Operativos", "icon": "◈", "val": operativos_label, "color": "#00e676"},
-        {"title": "Activos ON", "icon": "⚡", "val": on_label, "color": "#FFDE31"},
-        {"title": "Apagados OFF", "icon": "🔌", "val": off_label, "color": "#94a3b8"},
-        {"title": "Fallados", "icon": "◉", "val": fallado_label, "color": "#ff1744"},
-        {"title": "Índice Falla", "icon": "⚠️", "val": if_label, "color": "#ff3e3e"},
-        {"title": "MTBF", "icon": "⏱️", "val": mtbf_label, "color": "#00cfff"},
-        {"title": "Run Life", "icon": "⏳", "val": rl_label, "color": "#bc13fe"},
-        {"title": "RL Efectivo", "icon": "✅", "val": rle_label, "color": "#00ffa3"},
+        {"title": "Corridas", "icon": "↻", "val": run_label, "color": "#137659"},
+        {"title": "Operativos", "icon": "◈", "val": operativos_label, "color": "#095139"},
+        {"title": "Activos ON", "icon": "⚡", "val": on_label, "color": "#c09c2e"},
+        {"title": "Apagados OFF", "icon": "🔌", "val": off_label, "color": "#5b5c55"},
+        {"title": "Fallados", "icon": "◉", "val": fallado_label, "color": "#d32f2f"},
+        {"title": "Índice Falla", "icon": "⚠️", "val": if_label, "color": "#d32f2f"},
+        {"title": "MTBF", "icon": "⏱️", "val": mtbf_label, "color": "#137659"},
+        {"title": "Run Life", "icon": "⏳", "val": rl_label, "color": "#c09c2e"},
+        {"title": "RL Efectivo", "icon": "✅", "val": rle_label, "color": "#095139"},
     ]
 
     cards_html = ""
@@ -188,7 +209,7 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
 
     html_content = f"""
 <!DOCTYPE html>
-<html class="dark">
+<html class="light">
 <head>
     <meta charset="utf-8"/>
     <style>
@@ -208,8 +229,8 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
         }}
 
         .kpi-card-premium {{
-            background: linear-gradient(135deg, rgba(8, 12, 28, 0.95), rgba(4, 8, 20, 0.98));
-            border: 1px solid rgba(0, 242, 255, 0.25);
+            background: linear-gradient(135deg, #ffffff, #f9fafb);
+            border: 1px solid rgba(19, 118, 89, 0.15);
             border-radius: 12px;
             padding: 10px 8px;
             display: flex;
@@ -220,7 +241,7 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
             min-width: 0;
             height: 155px;
             transition: all 0.25s ease-out;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
             position: relative;
             overflow: hidden;
         }}
@@ -229,14 +250,14 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
             content: "";
             position: absolute;
             top: 0; left: 0; right: 0; height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            background: linear-gradient(90deg, transparent, rgba(19,118,89,0.1), transparent);
         }}
 
         .kpi-card-premium:hover {{
-            background: linear-gradient(135deg, rgba(15, 23, 42, 1), rgba(8, 12, 28, 1));
+            background: linear-gradient(135deg, #f3f4f6, #ffffff);
             transform: translateY(-3px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.7), 0 0 10px rgba(0,242,255,0.1);
-            border-color: rgba(0, 242, 255, 0.35);
+            box-shadow: 0 10px 25px rgba(19,118,89,0.05), 0 0 10px rgba(19,118,89,0.05);
+            border-color: rgba(19, 118, 89, 0.3);
         }}
 
         .kpi-icon-container {{

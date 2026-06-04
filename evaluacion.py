@@ -400,7 +400,7 @@ try:
 except Exception:
     st.markdown(
         "<div style='text-align:center; margin-top:8px;'>"
-        "<img src='https://www.fronteraenergy.ca/wp-content/uploads/2023/05/logo-frontera-white.png' width='250'/>"
+        "<img src='https://companieslogo.com/img/orig/PXT.TO_BIG.D-d6c3b981.png?t=1720244493' width='250'/>"
         "</div>",
         unsafe_allow_html=True
     )

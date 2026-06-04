@@ -31,17 +31,22 @@ def calcular_mtbf(df_bd, fecha_evaluacion, col_life='RUN LIFE @ FALLA', col_indi
     
     # Asegurar que las columnas existen
     if col_life not in df.columns:
-        # Fallback a RUN LIFE si no existe (probablemente en df_bd_filtered inicial)
-        if 'RUN LIFE' in df.columns and col_life == 'RUN LIFE @ FALLA':
+        if col_life == 'RUN LIFE @ FALLA' and 'RUN LIFE FALLA' in df.columns:
+            col_life = 'RUN LIFE FALLA'
+        elif 'RUN LIFE' in df.columns and col_life == 'RUN LIFE @ FALLA':
             col_life = 'RUN LIFE'
         else:
             return 0, pd.DataFrame()
 
     df['FECHA_RUN'] = pd.to_datetime(df['FECHA_RUN'], errors='coerce')
     df['FECHA_FALLA'] = pd.to_datetime(df['FECHA_FALLA'], errors='coerce')
+    df['FECHA_PULL'] = pd.to_datetime(df.get('FECHA_PULL'), errors='coerce')
     
     # Filtrar solo por fecha de evaluación
     df = df[df['FECHA_RUN'] <= pd.to_datetime(fecha_evaluacion)]
+    
+    # Filtrar solo registros que hayan terminado (tienen fecha de falla o fecha de pull)
+    df = df[df['FECHA_FALLA'].notna() | df['FECHA_PULL'].notna()]
     
     # Filtrar solo registros con tiempo de vida válido
     df = df[df[col_life].notna()]
@@ -122,22 +127,28 @@ def mostrar_mtbf(mtbf_global, mtbf_por_pozo, mtbf_efectivo=None, df_bd=None, fec
             
             if res_graf:
                 df_res_graf = pd.DataFrame(res_graf).sort_values('TMEF', ascending=True)
-                
                 echarts_options_val = {
                     "backgroundColor": "transparent",
-                    "title": {"text": f"COMPARATIVA TMEF", "left": "center", "textStyle": {"color": "#fff", "fontSize": 14, "fontFamily": "Outfit"}},
-                    "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
+                    "title": {"text": f"COMPARATIVA TMEF", "left": "center", "textStyle": {"color": "#137659", "fontSize": 14, "fontFamily": "Outfit"}},
+                    "tooltip": {
+                        "trigger": "axis", 
+                        "axisPointer": {"type": "shadow"},
+                        "backgroundColor": "rgba(255, 255, 255, 0.95)",
+                        "borderColor": "#137659",
+                        "borderWidth": 1,
+                        "textStyle": {"color": "#1f221e"}
+                    },
                     "grid": {"left": "3%", "right": "10%", "bottom": "3%", "top": "15%", "containLabel": True},
-                    "xAxis": {"type": "value", "axisLabel": {"color": "#888"}, "splitLine": {"lineStyle": {"color": "rgba(255,255,255,0.05)"}}},
-                    "yAxis": {"type": "category", "data": df_res_graf['Categoria'].tolist(), "axisLabel": {"color": "#fff"}},
+                    "xAxis": {"type": "value", "axisLabel": {"color": "#475569"}, "splitLine": {"lineStyle": {"color": "rgba(19, 118, 89, 0.05)"}}},
+                    "yAxis": {"type": "category", "data": df_res_graf['Categoria'].tolist(), "axisLabel": {"color": "#1f221e"}},
                     "series": [{
                         "name": "TMEF", "type": "bar", "data": df_res_graf['TMEF'].tolist(),
                         "itemStyle": {
                             "color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0,
-                                      "colorStops": [{"offset": 0, "color": "#135bec"}, {"offset": 1, "color": "#00f2ff"}]},
+                                      "colorStops": [{"offset": 0, "color": "#c09c2e"}, {"offset": 1, "color": "rgba(192, 156, 46, 0.1)"}]},
                             "borderRadius": [0, 10, 10, 0]
                         },
-                        "label": {"show": True, "position": "right", "color": "#fff"}
+                        "label": {"show": True, "position": "right", "color": "#1f221e"}
                     }]
                 }
                 
@@ -146,7 +157,7 @@ def mostrar_mtbf(mtbf_global, mtbf_por_pozo, mtbf_efectivo=None, df_bd=None, fec
                 <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
                 <script>
                     (function() {{
-                        var myChart = echarts.init(document.getElementById('echarts-mtbf-val'), 'dark');
+                        var myChart = echarts.init(document.getElementById('echarts-mtbf-val'), null);
                         myChart.setOption({json.dumps(echarts_options_val)});
                         window.addEventListener('resize', function() {{ myChart.resize(); }});
                     }})();
@@ -206,7 +217,7 @@ def render_premium_echarts_mtbf(df_hist, titulo="TMEF HISTÓRICO POR CAMPO"):
     
     series = []
     color_seq = [
-        '#00f2ff', '#135bec', '#b200cc', '#00ff99', '#ffde31', '#ff4b4b', '#ffab40'
+        '#137659', '#c09c2e', '#095139', '#5b5c55', '#a28834', '#d32f2f', '#d2b48c'
     ]
     
     for i, cat in enumerate(categorias):
@@ -228,23 +239,30 @@ def render_premium_echarts_mtbf(df_hist, titulo="TMEF HISTÓRICO POR CAMPO"):
         "title": {
             "text": titulo,
             "left": "center",
-            "textStyle": {"color": "#fff", "fontSize": 14, "fontFamily": "Outfit", "fontWeight": "900"}
+            "textStyle": {"color": "#137659", "fontSize": 14, "fontFamily": "Outfit", "fontWeight": "900"}
         },
-        "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
-        "legend": {"data": categorias, "bottom": 0, "textStyle": {"color": "#ccc", "fontSize": 10}},
+        "tooltip": {
+            "trigger": "axis", 
+            "axisPointer": {"type": "shadow"},
+            "backgroundColor": "rgba(255, 255, 255, 0.95)",
+            "borderColor": "#137659",
+            "borderWidth": 1,
+            "textStyle": {"color": "#1f221e"}
+        },
+        "legend": {"data": categorias, "bottom": 0, "textStyle": {"color": "#475569", "fontSize": 10}},
         "grid": {"left": "3%", "right": "4%", "bottom": "15%", "top": "15%", "containLabel": True},
-        "xAxis": [{"type": "category", "data": months, "axisLabel": {"color": "#888", "fontSize": 10}}],
-        "yAxis": [{"type": "value", "name": "Días", "axisLabel": {"color": "#888"}, "splitLine": {"lineStyle": {"color": "rgba(255,255,255,0.05)"}}}],
+        "xAxis": [{"type": "category", "data": months, "axisLabel": {"color": "#475569", "fontSize": 10}}],
+        "yAxis": [{"type": "value", "name": "Días", "axisLabel": {"color": "#475569"}, "splitLine": {"lineStyle": {"color": "rgba(19, 118, 89, 0.05)"}}}],
         "color": color_seq,
         "series": series
     }
     
     html_content = f"""
-    <div id="echarts-mtbf" style="width:100%; height:400px;"></div>
+    <div id="echarts-mtbf" style="width:100%; height:400px; background:#ffffff; border-radius:15px; border:1px solid rgba(19, 118, 89, 0.15);"></div>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <script>
         (function() {{
-            var myChart = echarts.init(document.getElementById('echarts-mtbf'), 'dark');
+            var myChart = echarts.init(document.getElementById('echarts-mtbf'), null);
             myChart.setOption({json.dumps(echarts_options)});
             window.addEventListener('resize', function() {{ myChart.resize(); }});
         }})();

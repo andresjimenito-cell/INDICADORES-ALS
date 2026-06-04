@@ -247,6 +247,8 @@ def generar_resumen_mensual(df_bd, df_forma9, fecha_evaluacion):
         'Pozos ON': 'Pozos_ON',
         'Indice_Falla_Rolling_ON': 'Indice_Falla_ON', # <-- Se usa el Rolling para el gráfico
         'Indice_Falla_Rolling_ALS_ON': 'Indice_Falla_ON_ALS', # <-- Se usa el Rolling para el gráfico
+        'Indice_Falla_Rolling_ON_1500': 'Indice_Falla_ON_1500',
+        'Indice_Falla_Rolling_ALS_ON_1500': 'Indice_Falla_ON_ALS_1500',
     })
     
     # Filtrar solo donde tenemos datos de índices (donde la ventana rolling de 12 meses ya se ha llenado)
@@ -257,7 +259,8 @@ def generar_resumen_mensual(df_bd, df_forma9, fecha_evaluacion):
         'Mes', 'Pozos_Operativos', 'Pozos_ON', 'Pozos_OFF', 
         'RunLife_Promedio', 'RunLife_General', 'TMEF_Promedio', 
         'RunLife_Efectivo', 'RunLife_Efectivo_Fallados', 
-        'Indice_Falla_ON', 'Indice_Falla_ON_ALS'
+        'Indice_Falla_ON', 'Indice_Falla_ON_ALS',
+        'Indice_Falla_ON_1500', 'Indice_Falla_ON_ALS_1500'
     ]
     return df_final[final_cols].sort_values('Mes').reset_index(drop=True)
 
@@ -272,7 +275,7 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
         return None, df_monthly
 
     # Normalizar índices defensivamente (Lógica intacta)
-    for col in ['Indice_Falla_ON', 'Indice_Falla_ON_ALS']:
+    for col in ['Indice_Falla_ON', 'Indice_Falla_ON_ALS', 'Indice_Falla_ON_1500', 'Indice_Falla_ON_ALS_1500']:
         if col in df_monthly.columns:
             df_monthly[col] = pd.to_numeric(df_monthly[col], errors='coerce')
             max_val = df_monthly[col].max(skipna=True)
@@ -388,7 +391,6 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
         hovertemplate='<b>[TMEF]</b><br>DÍAS: %{y:.2f}<extra></extra>'
     ))
 
-    # 4. Índices de Falla
     fig.add_trace(go.Scatter(
         x=df_monthly['Mes'], 
         y=df_monthly['Indice_Falla_ON'], 
@@ -410,11 +412,36 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
         hovertemplate='<b>[IF_ALS_ON]</b><br>ÍNDICE: %{y:.2%}<extra></extra>'
     ))
 
+    if 'Indice_Falla_ON_1500' in df_monthly.columns:
+        fig.add_trace(go.Scatter(
+            x=df_monthly['Mes'], 
+            y=df_monthly['Indice_Falla_ON_1500'], 
+            name='ÍNDICE FALLA RLE < 1500', 
+            mode='lines+markers', 
+            marker=dict(symbol='triangle-up', size=8, color='#ff00ff'), 
+            line=dict(width=3, color='#ff00ff', dash='dash'),
+            yaxis='y2',
+            hovertemplate='<b>[IF_ON_1500]</b><br>ÍNDICE: %{y:.2%}<extra></extra>'
+        ))
+    if 'Indice_Falla_ON_ALS_1500' in df_monthly.columns:
+        fig.add_trace(go.Scatter(
+            x=df_monthly['Mes'], 
+            y=df_monthly['Indice_Falla_ON_ALS_1500'], 
+            name='ÍNDICE FALLA ALS RLE < 1500', 
+            mode='lines+markers', 
+            marker=dict(symbol='triangle-up-open', size=8, color='#ff66ff'), 
+            line=dict(width=3, color='#ff66ff', dash='dash'),
+            yaxis='y2',
+            hovertemplate='<b>[IF_ALS_ON_1500]</b><br>ÍNDICE: %{y:.2%}<extra></extra>'
+        ))
+
     # --- LAYOUT (HUD SIMÉTRICO) ---
 
     max_indice = max(
         float(np.nanmax(df_monthly['Indice_Falla_ON'].replace([np.inf, -np.inf], np.nan).fillna(0))) if 'Indice_Falla_ON' in df_monthly.columns else 0,
-        float(np.nanmax(df_monthly['Indice_Falla_ON_ALS'].replace([np.inf, -np.inf], np.nan).fillna(0))) if 'Indice_Falla_ON_ALS' in df_monthly.columns else 0
+        float(np.nanmax(df_monthly['Indice_Falla_ON_ALS'].replace([np.inf, -np.inf], np.nan).fillna(0))) if 'Indice_Falla_ON_ALS' in df_monthly.columns else 0,
+        float(np.nanmax(df_monthly['Indice_Falla_ON_1500'].replace([np.inf, -np.inf], np.nan).fillna(0))) if 'Indice_Falla_ON_1500' in df_monthly.columns else 0,
+        float(np.nanmax(df_monthly['Indice_Falla_ON_ALS_1500'].replace([np.inf, -np.inf], np.nan).fillna(0))) if 'Indice_Falla_ON_ALS_1500' in df_monthly.columns else 0
     )
     upper_y2 = max(0.01, max_indice * 1.01)
 
@@ -500,11 +527,11 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
 
     
     # Colores del tema HUD Premium
-    COLOR_PRIMARY = "#135bec" # Azul Tech
-    COLOR_ACCENT = "#00f2ff"  # Cyan Neón
-    COLOR_SUCCESS = "#00ff9d" # Verde Esmeralda Neón (Tiempo Vida)
-    COLOR_DANGER = "#ff00ff"  # Magenta Neón (Indice Falla)
-    COLOR_WARNING = "#ffab40" # Naranja Neón (Indice Falla ALS)
+    COLOR_PRIMARY = "#137659"
+    COLOR_ACCENT = "#095139"  
+    COLOR_SUCCESS = "#137659" 
+    COLOR_DANGER = "#d32f2f"  
+    COLOR_WARNING = "#c09c2e" 
 
     def _safe_list(series):
         return [round(float(x), 2) if pd.notna(x) else None for x in series.tolist()]
@@ -519,7 +546,8 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
     
     if_on = [round(float(x) * 100, 2) if pd.notna(x) else None for x in df_monthly['Indice_Falla_ON'].tolist()] if 'Indice_Falla_ON' in df_monthly.columns else []
     if_als = [round(float(x) * 100, 2) if pd.notna(x) else None for x in df_monthly['Indice_Falla_ON_ALS'].tolist()] if 'Indice_Falla_ON_ALS' in df_monthly.columns else []
-
+    if_on_1500 = [round(float(x) * 100, 2) if pd.notna(x) else None for x in df_monthly['Indice_Falla_ON_1500'].tolist()] if 'Indice_Falla_ON_1500' in df_monthly.columns else []
+    if_als_1500 = [round(float(x) * 100, 2) if pd.notna(x) else None for x in df_monthly['Indice_Falla_ON_ALS_1500'].tolist()] if 'Indice_Falla_ON_ALS_1500' in df_monthly.columns else []
 
     echarts_options = {
         "backgroundColor": "transparent",
@@ -529,27 +557,25 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
             "left": "center",
             "top": 10,
             "textStyle": {
-                "color": "#00f2ff",
+                "color": "#137659",
                 "fontSize": 14,
                 "fontFamily": "Arial, sans-serif",
-                "fontWeight": "bold",
-                "textShadowBlur": 8,
-                "textShadowColor": "rgba(0, 242, 255, 0.4)"
+                "fontWeight": "bold"
             }
         },
         "textStyle": {"fontFamily": "Arial, sans-serif"},
         "tooltip": {
             "trigger": "axis",
-            "backgroundColor": "rgba(6, 10, 30, 0.9)",
-            "borderColor": "#00f2ff",
+            "backgroundColor": "rgba(255, 255, 255, 0.95)",
+            "borderColor": "#137659",
             "borderWidth": 1,
-            "textStyle": {"color": "#fff", "fontSize": 12, "fontFamily": "Arial, sans-serif"},
+            "textStyle": {"color": "#1f221e", "fontSize": 12, "fontFamily": "Arial, sans-serif"},
             "axisPointer": {"type": "cross", "label": {"backgroundColor": "#6a7985"}}
         },
         "legend": {
-            "data": ["Pozos ON", "Pozos OFF", "T. Vida Prom", "T. Vida Total", "T. Vida Efectivo", "T. V. Efec. Fallados", "TMEF", "Ind. Falla ON", "Ind. Falla ALS"],
+            "data": ["Pozos ON", "Pozos OFF", "T. Vida Prom", "T. Vida Total", "T. Vida Efectivo", "T. V. Efec. Fallados", "TMEF", "Ind. Falla ON", "Ind. Falla ALS", "Ind. Falla ON <1500", "Ind. Falla ALS <1500"],
             "bottom": 0,
-            "textStyle": {"color": "#ccc", "fontSize": 10, "fontFamily": "Arial, sans-serif"},
+            "textStyle": {"color": "#475569", "fontSize": 10, "fontFamily": "Arial, sans-serif"},
             "icon": "circle",
             "itemGap": 15
         },
@@ -565,8 +591,8 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
                 "type": "category",
                 "boundaryGap": True,
                 "data": categories,
-                "axisLine": {"lineStyle": {"color": "rgba(255,255,255,0.1)"}},
-                "axisLabel": {"color": "#888", "fontSize": 10, "fontFamily": "Arial, sans-serif"}
+                "axisLine": {"lineStyle": {"color": "rgba(19, 118, 89, 0.15)"}},
+                "axisLabel": {"color": "#475569", "fontSize": 10, "fontFamily": "Arial, sans-serif"}
             }
         ],
         "yAxis": [
@@ -574,9 +600,9 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
                 "type": "value",
                 "name": "POZOS / DÍAS",
                 "position": "left",
-                "splitLine": {"lineStyle": {"color": "rgba(255,255,255,0.05)"}},
+                "splitLine": {"lineStyle": {"color": "rgba(19, 118, 89, 0.05)"}},
                 "axisLine": {"show": True, "lineStyle": {"color": COLOR_PRIMARY}},
-                "axisLabel": {"color": "#888", "fontFamily": "Arial, sans-serif"}
+                "axisLabel": {"color": "#475569", "fontFamily": "Arial, sans-serif"}
             },
             {
                 "type": "value",
@@ -584,7 +610,7 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
                 "position": "right",
                 "splitLine": {"show": False},
                 "axisLine": {"show": True, "lineStyle": {"color": COLOR_DANGER}},
-                "axisLabel": {"color": "#888", "formatter": "{value} %", "fontFamily": "Arial, sans-serif"}
+                "axisLabel": {"color": "#475569", "formatter": "{value} %", "fontFamily": "Arial, sans-serif"}
             }
         ],
         "series": [
@@ -596,7 +622,7 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
                 "itemStyle": {
                     "color": {
                         "type": "linear", "x": 0, "y": 0, "x2": 0, "y2": 1,
-                        "colorStops": [{"offset": 0, "color": COLOR_ACCENT}, {"offset": 1, "color": "rgba(0, 242, 255, 0.1)"}]
+                        "colorStops": [{"offset": 0, "color": COLOR_ACCENT}, {"offset": 1, "color": "rgba(19, 118, 89, 0.1)"}]
                     },
                     "borderRadius": [4, 4, 0, 0]
                 },
@@ -607,7 +633,7 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
                 "type": "bar",
                 "stack": "Total",
                 "itemStyle": {
-                    "color": "#ff4d4d", 
+                    "color": "#5b5c55", 
                     "opacity": 0.4,
                     "decal": {
                         "symbol": "rect",
@@ -633,32 +659,32 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
                 "name": "T. Vida Total",
                 "type": "line",
                 "smooth": True,
-                "lineStyle": {"width": 2, "type": "dashed", "color": "#a6ff00"},
-                "itemStyle": {"color": "#a6ff00"},
+                "lineStyle": {"width": 2, "type": "dashed", "color": "#095139"},
+                "itemStyle": {"color": "#095139"},
                 "data": rl_gen
             },
             {
                 "name": "T. Vida Efectivo",
                 "type": "line",
                 "smooth": True,
-                "lineStyle": {"width": 2, "type": "dotted", "color": "#FFF700"},
-                "itemStyle": {"color": "#FFF700"},
+                "lineStyle": {"width": 2, "type": "dotted", "color": "#c09c2e"},
+                "itemStyle": {"color": "#c09c2e"},
                 "data": rle
             },
             {
                 "name": "T. V. Efec. Fallados",
                 "type": "line",
                 "smooth": True,
-                "lineStyle": {"width": 2, "type": "dotted", "color": "#00CCFF"},
-                "itemStyle": {"color": "#00CCFF"},
+                "lineStyle": {"width": 2, "type": "dotted", "color": "#a28834"},
+                "itemStyle": {"color": "#a28834"},
                 "data": rle_fallados
             },
             {
                 "name": "TMEF",
                 "type": "line",
                 "smooth": True,
-                "lineStyle": {"width": 1, "type": "dashed", "color": "#ccc"},
-                "itemStyle": {"color": "#ccc"},
+                "lineStyle": {"width": 1, "type": "dashed", "color": "#5b5c55"},
+                "itemStyle": {"color": "#5b5c55"},
                 "data": tmef
             },
             {
@@ -668,12 +694,12 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
                 "smooth": True,
                 "symbol": "diamond",
                 "symbolSize": 10,
-                "lineStyle": {"width": 4, "color": COLOR_DANGER, "shadowBlur": 10, "shadowColor": COLOR_DANGER},
+                "lineStyle": {"width": 4, "color": COLOR_DANGER},
                 "itemStyle": {"color": COLOR_DANGER},
                 "areaStyle": {
                     "color": {
                         "type": "linear", "x": 0, "y": 0, "x2": 0, "y2": 1,
-                        "colorStops": [{"offset": 0, "color": "rgba(255, 0, 85, 0.2)"}, {"offset": 1, "color": "transparent"}]
+                        "colorStops": [{"offset": 0, "color": "rgba(211, 47, 47, 0.1)"}, {"offset": 1, "color": "transparent"}]
                     }
                 },
                 "data": if_on
@@ -688,6 +714,28 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
                 "lineStyle": {"width": 3, "color": COLOR_WARNING},
                 "itemStyle": {"color": COLOR_WARNING},
                 "data": if_als
+            },
+            {
+                "name": "Ind. Falla ON <1500",
+                "type": "line",
+                "yAxisIndex": 1,
+                "smooth": True,
+                "symbol": "triangle",
+                "symbolSize": 8,
+                "lineStyle": {"width": 3, "type": "dashed", "color": "#c09c2e"},
+                "itemStyle": {"color": "#c09c2e"},
+                "data": if_on_1500
+            },
+            {
+                "name": "Ind. Falla ALS <1500",
+                "type": "line",
+                "yAxisIndex": 1,
+                "smooth": True,
+                "symbol": "triangle",
+                "symbolSize": 6,
+                "lineStyle": {"width": 2, "type": "dashed", "color": "#d32f2f"},
+                "itemStyle": {"color": "#d32f2f"},
+                "data": if_als_1500
             }
         ]
     }
@@ -696,16 +744,16 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
     container_height = chart_height + 20
 
     html_template = f"""
-    <div id="chart-container" style="position: relative; width:100%; height:{chart_height}px; background: #060a1e; border: 1px solid rgba(0, 242, 255, 0.15); border-radius: 15px; overflow: hidden;">
+    <div id="chart-container" style="position: relative; width:100%; height:{chart_height}px; background: #ffffff; border: 1px solid rgba(19, 118, 89, 0.15); border-radius: 15px; overflow: hidden;">
         <div id="echarts-main" style="width:100%; height:100%;"></div>
         <button id="zoom-btn" style="
             position: absolute; 
             top: 8px; 
             right: 8px; 
             z-index: 1000; 
-            background: rgba(15, 23, 42, 0.8); 
-            border: 1px solid rgba(0, 242, 255, 0.2); 
-            color: #475569; 
+            background: #ffffff; 
+            border: 1px solid rgba(19, 118, 89, 0.2); 
+            color: #1f221e; 
             padding: 2px 8px; 
             border-radius: 4px; 
             cursor: pointer; 
@@ -726,7 +774,7 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
             var container = document.getElementById('chart-container');
             var chartDom = document.getElementById('echarts-main');
             var zoomBtn = document.getElementById('zoom-btn');
-            var myChart = echarts.init(chartDom, 'dark');
+            var myChart = echarts.init(chartDom, null);
             var option = {json.dumps(echarts_options)};
             
             myChart.setOption(option);

@@ -41,13 +41,13 @@ def render_tab_mtbf(
         # --- 2. KPI GRID SUPERIOR (4 COLUMNS) ---
         k1, k2, k3, k4 = st.columns(4)
         with k1:
-            st.markdown(f'<div class="kpi-card"><div class="kpi-icon">🕒</div><div class="kpi-label">TMEF GLOBAL</div><div class="kpi-value" style="color:#00f2ff;">{mtbf_global:.0f} d</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="kpi-card"><div class="kpi-icon">🕒</div><div class="kpi-label">TMEF GLOBAL</div><div class="kpi-value" style="color:#137659;">{mtbf_global:.0f} d</div></div>', unsafe_allow_html=True)
         with k2:
-            st.markdown(f'<div class="kpi-card"><div class="kpi-icon">🛡️</div><div class="kpi-label">TMEF EFECTIVO</div><div class="kpi-value" style="color:#00ff9d;">{mtbf_efectivo_global:.0f} d</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="kpi-card"><div class="kpi-icon">🛡️</div><div class="kpi-label">TMEF EFECTIVO</div><div class="kpi-value" style="color:#095139;">{mtbf_efectivo_global:.0f} d</div></div>', unsafe_allow_html=True)
         with k3:
-            st.markdown(f'<div class="kpi-card"><div class="kpi-icon">💎</div><div class="kpi-label">RL PROMEDIO</div><div class="kpi-value" style="color:#ffbd00;">{rl_total:.0f} d</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="kpi-card"><div class="kpi-icon">💎</div><div class="kpi-label">RL PROMEDIO</div><div class="kpi-value" style="color:#c09c2e;">{rl_total:.0f} d</div></div>', unsafe_allow_html=True)
         with k4:
-            st.markdown(f'<div class="kpi-card"><div class="kpi-icon">⚡</div><div class="kpi-label">RL EFECTIVO</div><div class="kpi-value" style="color:#ff00ff;">{rl_efec:.0f} d</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="kpi-card"><div class="kpi-icon">⚡</div><div class="kpi-label">RL EFECTIVO</div><div class="kpi-value" style="color:#137659;">{rl_efec:.0f} d</div></div>', unsafe_allow_html=True)
 
     except Exception as e:
         st.warning(f"Error en análisis MTBF: {e}")
@@ -68,7 +68,7 @@ def render_tab_mtbf(
             
             activos = sorted(df_bd_filtered['ACTIVO'].unique().tolist()) if 'ACTIVO' in df_bd_filtered.columns else ['GLOBAL']
             series = []
-            colors = ['#00f2ff', '#ff00ff', '#00ff9d', '#ffbd00', '#7000ff']
+            colors = ['#137659', '#c09c2e', '#095139', '#5b5c55', '#a28834']
             for i, act in enumerate(activos):
                 df_act = historico_run_life[historico_run_life['ACTIVO'] == act] if 'ACTIVO' in historico_run_life.columns else historico_run_life
                 data_act = [round(float(df_act[df_act['Mes_Str'] == m]['Tiempo Op. Promedio'].values[0]), 1) if len(df_act[df_act['Mes_Str'] == m]) > 0 else 0 for m in months]
@@ -89,7 +89,7 @@ def render_tab_mtbf(
                     "left": "center",
                     "top": 0,
                     "textStyle": {
-                        "color": "#00f2ff",
+                        "color": "#137659",
                         "fontSize": 13,
                         "fontFamily": "Arial, sans-serif",
                         "fontWeight": "bold"
@@ -98,17 +98,17 @@ def render_tab_mtbf(
                 "textStyle": {"fontFamily": "Arial, sans-serif"},
                 "tooltip": {
                     "trigger": "axis",
-                    "backgroundColor": "rgba(6, 10, 30, 0.9)",
-                    "borderColor": "#00f2ff",
-                    "textStyle": {"color": "#fff", "fontFamily": "Arial, sans-serif"}
+                    "backgroundColor": "rgba(255, 255, 255, 0.95)",
+                    "borderColor": "#137659",
+                    "textStyle": {"color": "#1f221e", "fontFamily": "Arial, sans-serif"}
                 },
-                "legend": {"bottom": 0, "textStyle": {"color": "#ccc", "fontSize": 10, "fontFamily": "Arial, sans-serif"}, "icon": "circle"},
+                "legend": {"bottom": 0, "textStyle": {"color": "#475569", "fontSize": 10, "fontFamily": "Arial, sans-serif"}, "icon": "circle"},
                 "grid": {"left": "3%", "right": "4%", "bottom": "18%", "top": "15%", "containLabel": True},
-                "xAxis": [{"type": "category", "data": months, "axisLabel": {"color": "#888", "fontFamily": "Arial, sans-serif"}}],
-                "yAxis": [{"type": "value", "name": "Días", "axisLabel": {"color": "#888", "fontFamily": "Arial, sans-serif"}, "splitLine": {"lineStyle": {"color": "rgba(255,255,255,0.05)"}}}],
+                "xAxis": [{"type": "category", "data": months, "axisLabel": {"color": "#475569", "fontFamily": "Arial, sans-serif"}}],
+                "yAxis": [{"type": "value", "name": "Días", "axisLabel": {"color": "#475569", "fontFamily": "Arial, sans-serif"}, "splitLine": {"lineStyle": {"color": "rgba(19, 118, 89, 0.05)"}}}],
                 "series": series
             }
-            components.html(f'<div id="echarts-rl-trend" style="width:100%; height:380px; background:#060a1e; border-radius:15px; overflow:hidden; border:1px solid rgba(0,242,255,0.1);"></div><script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script><script>(function(){{var myChart=echarts.init(document.getElementById("echarts-rl-trend"),"dark");myChart.setOption({json.dumps(echarts_rl)});window.addEventListener("resize",function(){{myChart.resize();}});}})();</script>', height=400)
+            components.html(f'<div id="echarts-rl-trend" style="width:100%; height:380px; background:#ffffff; border-radius:15px; overflow:hidden; border:1px solid rgba(19, 118, 89, 0.15);"></div><script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script><script>(function(){{var myChart=echarts.init(document.getElementById("echarts-rl-trend"),null);myChart.setOption({json.dumps(echarts_rl)});window.addEventListener("resize",function(){{myChart.resize();}});}})();</script>', height=400)
 
     with col_right:
         st.markdown("<div style='margin-bottom:10px;'></div>", unsafe_allow_html=True)
@@ -124,7 +124,7 @@ def render_tab_mtbf(
                     "left": "center",
                     "top": 0,
                     "textStyle": {
-                        "color": "#00f2ff",
+                        "color": "#137659",
                         "fontSize": 13,
                         "fontFamily": "Arial, sans-serif",
                         "fontWeight": "bold"
@@ -134,29 +134,29 @@ def render_tab_mtbf(
                 "tooltip": {
                     "trigger": "axis", 
                     "axisPointer": {"type": "shadow"},
-                    "backgroundColor": "rgba(6, 10, 30, 0.9)",
-                    "borderColor": "#00f2ff",
-                    "textStyle": {"color": "#fff", "fontFamily": "Arial, sans-serif"}
+                    "backgroundColor": "rgba(255, 255, 255, 0.95)",
+                    "borderColor": "#137659",
+                    "textStyle": {"color": "#1f221e", "fontFamily": "Arial, sans-serif"}
                 },
                 "grid": {"left": "3%", "right": "15%", "bottom": "10%", "top": "15%", "containLabel": True},
                 "xAxis": {"type": "value", "splitLine": {"show": False}, "axisLabel": {"show": False}},
-                "yAxis": {"type": "category", "data": top_mtbf['POZO'].tolist(), "axisLabel": {"color": "#fff", "fontSize": 10, "fontFamily": "Arial, sans-serif"}},
+                "yAxis": {"type": "category", "data": top_mtbf['POZO'].tolist(), "axisLabel": {"color": "#1f221e", "fontSize": 10, "fontFamily": "Arial, sans-serif"}},
                 "series": [{
                     "type": "bar",
                     "data": top_mtbf['VALOR'].tolist(),
                     "itemStyle": {
-                        "color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#ff00ff"}, {"offset": 1, "color": "rgba(255, 0, 255, 0.1)"}]},
+                        "color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#c09c2e"}, {"offset": 1, "color": "rgba(192, 156, 46, 0.1)"}]},
                         "borderRadius": [0, 5, 5, 0]
                     },
-                    "label": {"show": True, "position": "right", "color": "#ff00ff", "fontFamily": "Arial, sans-serif", "formatter": "{c} d"}
+                    "label": {"show": True, "position": "right", "color": "#c09c2e", "fontFamily": "Arial, sans-serif", "formatter": "{c} d"}
                 }]
             }
-            components.html(f'<div id="echarts-mtbf-bar" style="width:100%; height:380px; background:#060a1e; border-radius:15px; overflow:hidden; border:1px solid rgba(0,242,255,0.1);"></div><script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script><script>(function(){{var myChart=echarts.init(document.getElementById("echarts-mtbf-bar"),"dark");myChart.setOption({json.dumps(echarts_bar)});window.addEventListener("resize",function(){{myChart.resize();}});}})();</script>', height=400)
+            components.html(f'<div id="echarts-mtbf-bar" style="width:100%; height:380px; background:#ffffff; border-radius:15px; overflow:hidden; border:1px solid rgba(19, 118, 89, 0.15);"></div><script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script><script>(function(){{var myChart=echarts.init(document.getElementById("echarts-mtbf-bar"),null);myChart.setOption({json.dumps(echarts_bar)});window.addEventListener("resize",function(){{myChart.resize();}});}})();</script>', height=400)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
     # --- 4. DETALLE DE CÁLCULO TMEF (Tabla) ---
-    st.markdown("<h5 style='color:#00f2ff; font-family:Arial, sans-serif !important; margin-bottom:10px;'>ANÁLISIS DE EVENTOS & LONGEVIDAD</h5>", unsafe_allow_html=True)
+    st.markdown("<h5 style='color:#137659; font-family:Arial, sans-serif !important; margin-bottom:10px;'>ANÁLISIS DE EVENTOS & LONGEVIDAD</h5>", unsafe_allow_html=True)
     if step_df is not None:
         render_hud_table(step_df.head(50))
     else:

@@ -56,29 +56,28 @@ _HEADER_CSS = """
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 3px 14px;
+    padding: 6px 14px;
     background: linear-gradient(90deg,
-        rgba(0,217,255,0.06) 0%,
-        rgba(10,15,35,0.55) 40%,
-        rgba(255,0,255,0.04) 100%
+        rgba(19, 118, 89, 0.08) 0%,
+        rgba(255, 255, 255, 0.95) 50%,
+        rgba(192, 156, 46, 0.08) 100%
     );
-    border: 1px solid rgba(0,217,255,0.1);
+    border: 1px solid rgba(19, 118, 89, 0.2);
     border-radius: 8px;
     margin-bottom: 0px;
     position: relative;
     overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
 }
-
-/* ... (resto igual) ... */
 
 /* ── Logo / ícono ── */
 .als-logo-wrap {
     flex-shrink: 0;
     width: 28px; height: 28px;
-    border: 1px solid rgba(0,217,255,0.3);
+    border: 1px solid rgba(19, 118, 89, 0.3);
     border-radius: 6px;
     display: flex; align-items: center; justify-content: center;
-    background: rgba(0,217,255,0.08);
+    background: rgba(19, 118, 89, 0.08);
     font-size: 1rem;
 }
 
@@ -89,7 +88,7 @@ _HEADER_CSS = """
     font-weight: 900;
     font-size: 0.85rem;
     letter-spacing: 2px;
-    background: linear-gradient(135deg, #00D9FF 0%, #FF00FF 100%);
+    background: linear-gradient(135deg, #137659 0%, #c09c2e 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -109,7 +108,7 @@ _HEADER_CSS = """
 /* ── Separador vertical ── */
 .als-vdivider {
     width: 1px; height: 22px;
-    background: linear-gradient(180deg, transparent, rgba(0,217,255,0.25), transparent);
+    background: linear-gradient(180deg, transparent, rgba(19, 118, 89, 0.25), transparent);
     flex-shrink: 0;
 }
 
@@ -125,8 +124,8 @@ _HEADER_CSS = """
 }
 .als-date-value {
     font-family: 'Arial', sans-serif !important;
-    font-size: 0.7rem; font-weight: 500;
-    color: #00D9FF;
+    font-size: 0.7rem; font-weight: 600;
+    color: #137659;
     letter-spacing: 1px;
 }
 
@@ -140,10 +139,11 @@ _HEADER_CSS = """
 .als-kpi-chip {
     display: flex; flex-direction: column; align-items: center;
     padding: 2px 8px;
-    background: rgba(255,255,255,0.02);
-    border: 1px solid rgba(255,255,255,0.05);
+    background: #ffffff;
+    border: 1px solid rgba(19, 118, 89, 0.12);
     border-radius: 6px;
     min-width: 50px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
 }
 .als-kpi-chip-label {
     font-family: 'Arial', sans-serif !important;
@@ -164,8 +164,8 @@ _HEADER_CSS = """
 }
 .als-live-dot span {
     width: 6px; height: 6px; border-radius: 50%;
-    background: #00ff9d;
-    box-shadow: 0 0 6px #00ff9d;
+    background: #137659;
+    box-shadow: 0 0 6px rgba(19, 118, 89, 0.6);
     animation: pulse-dot 2s ease-in-out infinite;
     display: inline-block;
 }
@@ -176,7 +176,7 @@ _HEADER_CSS = """
 .als-live-text {
     font-family: 'Arial', sans-serif !important;
     font-size: 0.5rem; font-weight: 700;
-    color: #00ff9d; letter-spacing: 2px; text-transform: uppercase;
+    color: #137659; letter-spacing: 2px; text-transform: uppercase;
 }
 
 /* ── Quitar padding extra de Streamlit sobre el header ── */
@@ -264,9 +264,9 @@ def render_header(titulo_pagina: str = "INDICADORES ALS", fecha_eval=None):
         chips_html = (
             f'<div class="als-kpi-row">'
             f'  <div class="als-vdivider"></div>'
-            + chip("TOTAL",    str(total),    "#00D9FF")
-            + chip("ON",       str(activos),  "#00FF9D")
-            + chip("FALLAS",   str(fallados), "#FF3E3E")
+            + chip("TOTAL",    str(total),    "#137659")
+            + chip("ON",       str(activos),  "#095139")
+            + chip("FALLAS",   str(fallados), "#c09c2e")
             + f'</div>'
         )
 
@@ -288,7 +288,7 @@ def render_header(titulo_pagina: str = "INDICADORES ALS", fecha_eval=None):
   <!-- Título -->
   <div class="als-title-block">
     <p class="als-title">{titulo_pagina}</p>
-    <p class="als-subtitle">ALS · Artificial Lift Systems · Frontera Energy</p>
+    <p class="als-subtitle">ALS · Artificial Lift Systems · Parex Resources (Frontera)</p>
   </div>
 
   <!-- Separador -->

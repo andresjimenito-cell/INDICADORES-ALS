@@ -1,6 +1,6 @@
 """
-tabs/tab_tablero.py  —  v3 Premium Dashboard
-============================================
+tabs/tab_tablero.py  —  v3.1 Premium Dashboard
+==============================================
 Tablero Ejecutivo de Alto Impacto con estética industrial.
 Presenta 3 columnas simétricas con tarjetas premium y visualizaciones en ECharts:
 1. Resumen de Operaciones (KPIs con pills, estados y barras de progreso).
@@ -258,7 +258,7 @@ def render_tab_tablero(
     disp_oper    = activos   / total_pozos * 100
     uso_oper     = als_operativos / max(als_fondo, 1) * 100
 
-    # ── Serie IF mensual — fórmula oficial: Fallas ALS (RLE<1500) / Pozos ON ─
+    # ── Serie IF mensual — fórmula oficial: Indice_Falla_Rolling_ALS_ON_1500 ─
     if_cats, if_vals, on_vals, off_vals = [], [], [], []
     if_actual = 0.0
 
@@ -278,18 +278,16 @@ def render_tab_tablero(
             m_idx = int(m_str[5:7]) - 1  # 0-based month index
             if_cats.append(_MESES[m_idx])
             on_m   = int(row.get('Pozos ON', 0))
-            fall_m = int(row.get('Fallas_ALS_1500', 0))
-            if_m   = round(fall_m / max(on_m, 1), 4)
-            if_vals.append(round(if_m, 4))
+            # Usar el índice rodante oficial en porcentaje real (multiplicado por 100)
+            if_roll = float(row.get('Indice_Falla_Rolling_ALS_ON_1500', 0.0)) * 100.0
+            if_vals.append(if_roll)
             on_vals.append(on_m)
             off_m  = max(int(row.get('Pozos Operativos', on_m)) - on_m, 0)
             off_vals.append(off_m)
 
-        last_row = df_mensual_if[
-            df_mensual_if['Indice_Falla_Rolling_ALS_ON_1500'].notna()
-        ].tail(1)
+        last_row = df_mensual_if.tail(1)
         if not last_row.empty:
-            if_actual = round(float(last_row['Indice_Falla_Rolling_ALS_ON_1500'].iloc[0]), 4)
+            if_actual = float(last_row['Indice_Falla_Rolling_ALS_ON_1500'].iloc[0]) * 100.0
         elif if_vals:
             if_actual = if_vals[-1]
 
@@ -316,15 +314,11 @@ def render_tab_tablero(
                 (df['_PULL'].isna() | (df['_PULL'] > end_m_ts))
             ]['POZO'].nunique()) if 'POZO' in df.columns else 0
             if_cats.append(_MESES[m - 1])
-            if_m = round(fallas_m / max(on_m, 1) / 100, 4)
+            if_m = (fallas_m / max(on_m, 1)) * 100.0
             if_vals.append(if_m)
             on_vals.append(on_m)
             off_vals.append(max(op_m - on_m, 0))
         if_actual = if_vals[-1] if if_vals else 0.0
-
-    if if_vals and max(if_vals) <= 1.5:
-        if_vals   = [round(v * 100, 2) for v in if_vals]
-        if_actual = round(if_actual * 100, 2)
 
     if_max = max(max(if_vals) * 1.3, META_IF * 2, 20) if if_vals else 20
 
@@ -442,7 +436,6 @@ def render_tab_tablero(
     # COLUMNA 2: GAUGE IF + TENDENCIA ANUAL (COMPONENTE HTML UNIFICADO)
     # ─────────────────────────────────────────────────────────────────────────
     with col_c:
-        # Generar HTML embebido con ECharts
         col2_html = f"""
 <!DOCTYPE html>
 <html>
@@ -498,7 +491,6 @@ def render_tab_tablero(
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <script>
         (function() {{
-            // --- GAUGE OPTION ---
             var value = {if_actual};
             var meta = {META_IF};
             var maxVal = {if_max};
@@ -515,53 +507,53 @@ def render_tab_tablero(
                     endAngle: -20,
                     min: 0,
                     max: maxVal,
-                    center: ["50%", "60%"],
-                    radius: "95%",
+                    center: ["50%", "52%"],
+                    radius: "80%",
                     splitNumber: 4,
                     axisLine: {{
                         lineStyle: {{
-                            width: 14,
+                            width: 8,
                             color: arcColors
                         }}
                     }},
                     pointer: {{
                         itemStyle: {{ color: "{_T}" }},
-                        width: 4,
-                        length: "68%"
+                        width: 3,
+                        length: "65%"
                     }},
                     axisTick: {{
-                        distance: -16,
-                        length: 5,
-                        lineStyle: {{ color: "#fff", width: 1.5 }}
+                        distance: -12,
+                        length: 4,
+                        lineStyle: {{ color: "#fff", width: 1 }}
                     }},
                     splitLine: {{
-                        distance: -20,
-                        length: 10,
-                        lineStyle: {{ color: "#fff", width: 2.5 }}
+                        distance: -15,
+                        length: 8,
+                        lineStyle: {{ color: "#fff", width: 2 }}
                     }},
                     axisLabel: {{
                         color: "{_T2}",
-                        distance: 22,
-                        fontSize: 8,
+                        distance: 12,
+                        fontSize: 9,
                         fontWeight: "600"
                     }},
                     anchor: {{
                         show: true,
                         showAbove: true,
-                        size: 8,
-                        itemStyle: {{ borderWidth: 2, borderColor: "{_T}", color: "#fff" }}
+                        size: 6,
+                        itemStyle: {{ borderWidth: 1.5, borderColor: "{_T}", color: "#fff" }}
                     }},
                     detail: {{
                         valueAnimation: true,
-                        formatter: function(val) {{ return val.toFixed(1) + "%"; }},
+                        formatter: function(val) {{ return val.toFixed(2) + "%"; }},
                         color: valColor,
-                        fontSize: 24,
+                        fontSize: 18,
                         fontWeight: "900",
-                        offsetCenter: [0, "25%"]
+                        offsetCenter: [0, "32%"]
                     }},
                     title: {{
                         show: true,
-                        offsetCenter: [0, "52%"],
+                        offsetCenter: [0, "62%"],
                         color: "{_T2}",
                         fontSize: 9,
                         fontWeight: "700"
@@ -656,7 +648,6 @@ def render_tab_tablero(
             var chartT = echarts.init(document.getElementById('chart_if_anual'));
             chartT.setOption(trendOpt);
 
-            // Responsive
             window.addEventListener('resize', function() {{
                 chartG.resize();
                 chartT.resize();
@@ -760,25 +751,25 @@ def render_tab_tablero(
                     endAngle: -20,
                     min: 0,
                     max: mtbfMax,
-                    center: ["50%", "60%"],
-                    radius: "95%",
+                    center: ["50%", "52%"],
+                    radius: "80%",
                     splitNumber: 3,
-                    axisLine: {{ lineStyle: {{ width: 10, color: mtbfColors }} }},
-                    pointer: {{ itemStyle: {{ color: "{_T}" }}, width: 3, length: "68%" }},
+                    axisLine: {{ lineStyle: {{ width: 8, color: mtbfColors }} }},
+                    pointer: {{ itemStyle: {{ color: "{_T}" }}, width: 3, length: "65%" }},
                     axisTick: {{ distance: -12, length: 4, lineStyle: {{ color: "#fff", width: 1 }} }},
                     splitLine: {{ distance: -15, length: 8, lineStyle: {{ color: "#fff", width: 2 }} }},
-                    axisLabel: {{ color: "{_T2}", distance: 16, fontSize: 8, fontWeight: "600" }},
+                    axisLabel: {{ color: "{_T2}", distance: 12, fontSize: 9, fontWeight: "600" }},
                     anchor: {{ show: true, size: 6, itemStyle: {{ borderWidth: 1.5, borderColor: "{_T}", color: "#fff" }} }},
                     detail: {{
                         valueAnimation: true,
-                        formatter: function(val) {{ return Math.round(val) + " d"; }},
+                        formatter: function(val) {{ return val.toFixed(1) + " d"; }},
                         color: mtbfColor,
                         fontSize: 16,
                         fontWeight: "900",
-                        offsetCenter: [0, "25%"]
+                        offsetCenter: [0, "32%"]
                     }},
-                    title: {{ show: true, offsetCenter: [0, "52%"], color: "{_T2}", fontSize: 8, fontWeight: "700" }},
-                    data: [{{ value: mtbfVal, name: "MTBF (días)\\nMeta: " + mtbfMeta }}]
+                    title: {{ show: true, offsetCenter: [0, "62%"], color: "{_T2}", fontSize: 8, fontWeight: "700" }},
+                    data: [{{ value: mtbfVal, name: "MTBF\\nMeta: " + mtbfMeta }}]
                 }}]
             }};
             
@@ -802,25 +793,25 @@ def render_tab_tablero(
                     endAngle: -20,
                     min: 0,
                     max: rlMax,
-                    center: ["50%", "60%"],
-                    radius: "95%",
+                    center: ["50%", "52%"],
+                    radius: "80%",
                     splitNumber: 3,
-                    axisLine: {{ lineStyle: {{ width: 10, color: rlColors }} }},
-                    pointer: {{ itemStyle: {{ color: "{_T}" }}, width: 3, length: "68%" }},
+                    axisLine: {{ lineStyle: {{ width: 8, color: rlColors }} }},
+                    pointer: {{ itemStyle: {{ color: "{_T}" }}, width: 3, length: "65%" }},
                     axisTick: {{ distance: -12, length: 4, lineStyle: {{ color: "#fff", width: 1 }} }},
                     splitLine: {{ distance: -15, length: 8, lineStyle: {{ color: "#fff", width: 2 }} }},
-                    axisLabel: {{ color: "{_T2}", distance: 16, fontSize: 8, fontWeight: "600" }},
+                    axisLabel: {{ color: "{_T2}", distance: 12, fontSize: 9, fontWeight: "600" }},
                     anchor: {{ show: true, size: 6, itemStyle: {{ borderWidth: 1.5, borderColor: "{_T}", color: "#fff" }} }},
                     detail: {{
                         valueAnimation: true,
-                        formatter: function(val) {{ return Math.round(val) + " d"; }},
+                        formatter: function(val) {{ return val.toFixed(1) + " d"; }},
                         color: rlColor,
                         fontSize: 16,
                         fontWeight: "900",
-                        offsetCenter: [0, "25%"]
+                        offsetCenter: [0, "32%"]
                     }},
-                    title: {{ show: true, offsetCenter: [0, "52%"], color: "{_T2}", fontSize: 8, fontWeight: "700" }},
-                    data: [{{ value: rlVal, name: "RunLife (días)\\nMeta: " + rlMeta }}]
+                    title: {{ show: true, offsetCenter: [0, "62%"], color: "{_T2}", fontSize: 8, fontWeight: "700" }},
+                    data: [{{ value: rlVal, name: "RunLife\\nMeta: " + rlMeta }}]
                 }}]
             }};
             
@@ -869,7 +860,6 @@ def render_tab_tablero(
             var chartDist = echarts.init(document.getElementById('chart_rl'));
             chartDist.setOption(distOpt);
 
-            // Responsive
             window.addEventListener('resize', function() {{
                 chartMTBF.resize();
                 chartRL.resize();

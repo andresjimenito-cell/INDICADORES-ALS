@@ -245,6 +245,12 @@ def cargar_y_limpiar_datos(forma9_file, bd_file):
     df_bd['FECHA_PULL']      = pd.to_datetime(df_bd['FECHA_PULL'],  errors='coerce')
     df_bd['INDICADOR_MTBF']  = pd.to_numeric(df_bd['INDICADOR_MTBF'], errors='coerce').fillna(0)
 
+    # Considerar 'ALS fondo' en la columna 'RAZON PULL NUEVA CATEGORIZACION' como falla atribuida a ALS (INDICADOR_MTBF = 1)
+    razon_col = 'RAZON PULL NUEVA CATEGORIZACION'
+    if razon_col in df_bd.columns:
+        cond_als_fondo = df_bd[razon_col].astype(str).str.strip().str.upper() == 'ALS FONDO'
+        df_bd.loc[cond_als_fondo, 'INDICADOR_MTBF'] = 1
+
     if 'SEVERIDAD' in df_bd.columns:
         df_bd['SEVERIDAD'] = pd.to_numeric(df_bd['SEVERIDAD'], errors='coerce').fillna(0)
     else:

@@ -9,17 +9,17 @@ import tema
 
 # === CONFIGURACIÓN DE PÁGINA ===
 st.set_page_config(
-    page_title="🚀 Sistema Frontera Energy",
+    page_title="🚀 Sistema Parex Resources (Frontera)",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
 # === COLORES Y TEMA (Usando `tema.py`) ===
-COLOR_PRIMARIO = getattr(tema, 'COLOR_PRINCIPAL', '#FF00FF')
-COLOR_ACENTO = getattr(tema, 'COLOR_DASH_CYAN', getattr(tema, 'COLOR_AZUL_CIBER', '#00D9FF'))
-COLOR_FONDO_OSCURO = getattr(tema, 'COLOR_FONDO_OSCURO', '#0A0E27')
-COLOR_SOMBRA = getattr(tema, 'COLOR_GLOW_SUAVE', 'rgba(0, 255, 153, 0.12)')
-COLOR_FUENTE = getattr(tema, 'COLOR_FUENTE', '#E8F5E9')
+COLOR_PRIMARIO = getattr(tema, 'COLOR_PRINCIPAL', '#137659')
+COLOR_ACENTO = getattr(tema, 'COLOR_DASH_GOLD', '#c09c2e')
+COLOR_FONDO_OSCURO = '#f5f7f6'
+COLOR_SOMBRA = 'rgba(19, 118, 89, 0.1)'
+COLOR_FUENTE = '#1f221e'
 
 # === ESTILOS CSS - DISEÑO IMPACTANTE Y COMPACTO ===
 st.markdown(f"""
@@ -44,15 +44,16 @@ st.markdown(f"""
  }}
  
  @keyframes glow {{
-        0%, 100% {{ box-shadow: 0 0 10px rgba(120, 0, 80, 0.12); }}
-        50% {{ box-shadow: 0 0 14px rgba(120, 0, 80, 0.16); }}
+        0%, 100% {{ box-shadow: 0 0 10px rgba(19, 118, 89, 0.08); }}
+        50% {{ box-shadow: 0 0 14px rgba(19, 118, 89, 0.12); }}
  }}
  
  /* FONDO */
  .stApp {{
-    background: linear-gradient(135deg, #0E1117 0%, #131723 40%, #0d1117 50%);
+    background: linear-gradient(135deg, #f5f7f6 0%, #eaf4ef 40%, #ffffff 100%);
     background-size: 150% 150%;
     animation: gradientShift 45s ease infinite;
+    color: #1f221e !important;
  }}
  
  /* COMPACTACIÓN */
@@ -86,49 +87,59 @@ st.markdown(f"""
  .logo-subtitle {{
   font-family: 'Arial', sans-serif;
   font-size: 1.1rem;
-  color: {COLOR_ACENTO};
+  color: {COLOR_PRIMARIO};
   letter-spacing: 3px;
   margin-top: 0.5rem;
  }}
  
  /* INPUTS */
  .stTextInput > div > div > input {{
-  background: rgba(10, 14, 39, 0.9) !important;
-    border: 2px solid rgba(170, 0, 255, 0.26) !important;
+  background: #ffffff !important;
+    border: 2px solid rgba(19, 118, 89, 0.2) !important;
   border-radius: 12px;
   padding: 1rem;
-  color: {COLOR_FUENTE} !important;
+  color: #1f221e !important;
   transition: all 0.3s ease;
  }}
  
  .stTextInput > div > div > input:focus {{
-  border-color: {COLOR_ACENTO} !important;
-    box-shadow: 0 0 8px rgba(170, 0, 255, 0.16);
+  border-color: {COLOR_PRIMARIO} !important;
+    box-shadow: 0 0 8px rgba(19, 118, 89, 0.15);
  }}
  
- /* BOTONES */
- .stButton > button {{
-  padding: 1rem;
-  font-family: 'Arial', sans-serif;
-  font-weight: 700;
-  letter-spacing: 2px;
-  border-radius: 12px;
-    background: linear-gradient(135deg, rgba(120, 0, 80, 0.16), rgba(90, 0, 170, 0.14));
-        border: 2px solid rgba(120, 0, 80, 0.18);
-        box-shadow: 0 3px 8px rgba(120, 0, 80, 0.12);
-  transition: all 0.3s ease;
+ /* FORM CONTENEDOR LOGIN */
+ div[data-testid="stForm"] {{
+    background-color: #ffffff !important;
+    border: 1px solid rgba(19, 118, 89, 0.15) !important;
+    border-radius: 16px !important;
+    padding: 20px !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05) !important;
  }}
  
- .stButton > button:hover {{
-  transform: translateY(-3px);
-    box-shadow: 0 6px 18px rgba(120, 0, 80, 0.12);
-  border-color: {COLOR_ACENTO};
- }}
+  /* BOTONES */
+  .stButton > button, .stFormSubmitButton > button, button[data-testid="stFormSubmitButton"] {{
+   padding: 1rem;
+   font-family: 'Arial', sans-serif;
+   font-weight: 700;
+   letter-spacing: 2px;
+   border-radius: 12px;
+    background: linear-gradient(135deg, #137659, #095139) !important;
+        border: none !important;
+        color: #ffffff !important;
+        box-shadow: 0 3px 8px rgba(19, 118, 89, 0.2) !important;
+   transition: all 0.3s ease;
+  }}
+  
+  .stButton > button:hover, .stFormSubmitButton > button:hover, button[data-testid="stFormSubmitButton"]:hover {{
+   transform: translateY(-3px) !important;
+     box-shadow: 0 6px 18px rgba(19, 118, 89, 0.3) !important;
+   background: linear-gradient(135deg, #095139, #137659) !important;
+  }}
  
     /* DASHBOARD HEADER */
  .dashboard-header {{
-    background: linear-gradient(135deg, rgba(120, 0, 80, 0.02), rgba(90, 0, 170, 0.08));
-        border: 2px solid rgba(120, 0, 80, 0.16);
+    background: linear-gradient(135deg, rgba(19, 118, 89, 0.02), rgba(192, 156, 46, 0.08));
+        border: 2px solid rgba(19, 118, 89, 0.16);
     border-radius: 20px;
     padding: 1.5rem 2rem;
     margin-bottom: 1.5rem;
@@ -151,22 +162,22 @@ st.markdown(f"""
   font-family: 'Arial', sans-serif;
   font-size: 1rem;
   margin-top: 0.5rem;
-  color: {COLOR_ACENTO};
+  color: {COLOR_PRIMARIO};
   letter-spacing: 2px;
  }}
  
  /* EXPANDER */
  .stExpander {{
-    border: 2px solid rgba(120, 0, 80, 0.18);
+    border: 2px solid rgba(19, 118, 89, 0.18);
   border-radius: 12px;
-  background: rgba(10, 14, 39, 0.6);
+  background: #ffffff;
  }}
  
  /* SEPARADORES */
  hr {{
   border: none;
   height: 2px;
-  background: linear-gradient(90deg, transparent, {COLOR_ACENTO}, transparent);
+  background: linear-gradient(90deg, transparent, {COLOR_PRIMARIO}, transparent);
   margin: 1.5rem 0;
  }}
  
@@ -304,19 +315,19 @@ def show_login():
     with col2:
         st.markdown("""
         <div class="logo-container">
-            <div class="logo-text">ACCESO SEGURO</div>
-            <div class="logo-subtitle">SISTEMA FRONTERA ENERGY</div>
+             <div class="logo-text">ACCESO SEGURO</div>
+             <div class="logo-subtitle">SISTEMA PAREX RESOURCES (FRONTERA)</div>
         </div>
         """, unsafe_allow_html=True)
         
         try:
             from ui_helpers import get_logo_img_tag
-            logo_html = get_logo_img_tag(width=200, style='filter: drop-shadow(0 0 15px rgba(0,141,255,0.9));')
+            logo_html = get_logo_img_tag(width=200, style='filter: drop-shadow(0 0 10px rgba(19,118,89,0.3));')
             st.markdown(f"<div style='text-align:center; margin-bottom: 1.5rem;'>{logo_html}</div>", unsafe_allow_html=True)
         except Exception:
             st.markdown(
                 "<div style='text-align:center; margin-bottom: 1.5rem;'>"
-                "<img src='https://www.fronteraenergy.ca/wp-content/uploads/2023/05/logo-frontera-white.png' width='200'/>"
+                "<img src='https://images.teamtailor-cdn.com/images/s3/teamtailor-production/logotype-v3/image_uploads/ec3d9ca8-2f80-424a-89a1-bf6345ecb37f/original.png' width='200'/>"
                 "</div>",
                 unsafe_allow_html=True
             )
@@ -342,8 +353,8 @@ def show_login():
 
         
         st.markdown("""
-        <div style='text-align: center; margin-top: 1.5rem; opacity: 0.5;'>
-            <small>Sistema de Monitoreo & Control AJM | © Frontera Energy</small>
+        <div style='text-align: center; margin-top: 1.5rem; opacity: 0.7; color: #475569;'>
+            <small>Sistema de Monitoreo & Control AJM | © Parex Resources (Frontera)</small>
         </div>
         """, unsafe_allow_html=True)
 

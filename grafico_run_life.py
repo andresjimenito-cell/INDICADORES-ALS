@@ -345,13 +345,15 @@ def render_premium_echarts_run_life(df_monthly, titulo="TIEMPO DE VIDA DASHBOARD
     tmef = _safe_list(df_monthly.get('TMEF_Promedio', pd.Series([0]*len(df_monthly))))
     rle = _safe_list(df_monthly.get('RunLife_Efectivo', pd.Series([0]*len(df_monthly))))
     rle_fallados = _safe_list(df_monthly.get('RunLife_Efectivo_Fallados', pd.Series([0]*len(df_monthly))))
+    if_on_1500 = [round(float(x) * 100, 2) if pd.notna(x) else None for x in df_monthly.get('Indice_Falla_ON_1500', [])]
+    if_als_1500 = [round(float(x) * 100, 2) if pd.notna(x) else None for x in df_monthly.get('Indice_Falla_ON_ALS_1500', [])]
     
-    COLOR_SUCCESS = "#00ff9f" # Verde Eléctrico
-    COLOR_TOTAL = "#a6ff00"   # Verde Lima
-    COLOR_EFECTIVO = "#FFF700" # Amarillo
-    COLOR_EFECTIVO_FALLADOS = "#00CCFF" # Cyan
-    COLOR_TMEF = "#E6E6E6"     # Gris/Blanco
-    COLOR_ACCENT = "#00f2ff"
+    COLOR_SUCCESS = "#137659" 
+    COLOR_TOTAL = "#095139"   
+    COLOR_EFECTIVO = "#c09c2e" 
+    COLOR_EFECTIVO_FALLADOS = "#a28834" 
+    COLOR_TMEF = "#5b5c55"     
+    COLOR_ACCENT = "#137659"
 
     echarts_options = {
         "backgroundColor": "transparent",
@@ -360,51 +362,54 @@ def render_premium_echarts_run_life(df_monthly, titulo="TIEMPO DE VIDA DASHBOARD
             "left": "center",
             "top": 10,
             "textStyle": {
-                "color": "#00f2ff",
+                "color": "#137659",
                 "fontSize": 14,
                 "fontFamily": "Arial, sans-serif",
-                "fontWeight": "bold",
-                "textShadowBlur": 8,
-                "textShadowColor": "rgba(0, 242, 255, 0.4)"
+                "fontWeight": "bold"
             }
         },
         "textStyle": {"fontFamily": "Arial, sans-serif"},
         "tooltip": {
             "trigger": "axis",
-            "backgroundColor": "rgba(6, 10, 30, 0.9)",
-            "borderColor": "#00f2ff",
-            "textStyle": {"color": "#fff", "fontFamily": "Arial, sans-serif"}
+            "backgroundColor": "rgba(255, 255, 255, 0.95)",
+            "borderColor": "#137659",
+            "textStyle": {"color": "#1f221e", "fontFamily": "Arial, sans-serif"}
         },
         "legend": {
-            "data": ["T. Vida Promed", "T. Vida Total", "T. Vida Efectivo", "T. V. Efec. Fallado", "TMEF"],
+            "data": ["T. Vida Promed", "T. Vida Total", "T. Vida Efectivo", "T. V. Efec. Fallado", "TMEF", "Ind. Falla ON <1500", "Ind. Falla ALS <1500"],
             "bottom": 0,
-            "textStyle": {"color": "#ccc", "fontSize": 10, "fontFamily": "Arial, sans-serif"}
+            "textStyle": {"color": "#475569", "fontSize": 10, "fontFamily": "Arial, sans-serif"}
         },
         "grid": {"left": "3%", "right": "4%", "bottom": "15%", "top": "18%", "containLabel": True},
-        "xAxis": [{"type": "category", "data": categories, "axisLabel": {"color": "#888", "fontSize": 10, "fontFamily": "Arial, sans-serif"}}],
-        "yAxis": [{"type": "value", "name": "DÍAS", "axisLabel": {"color": "#888", "fontFamily": "Arial, sans-serif"}}],
+        "xAxis": [{"type": "category", "data": categories, "axisLabel": {"color": "#475569", "fontSize": 10, "fontFamily": "Arial, sans-serif"}}],
+        "yAxis": [
+            {"type": "value", "name": "DÍAS", "axisLabel": {"color": "#475569", "fontFamily": "Arial, sans-serif"}},
+            {"type": "value", "name": "INDICE %", "position": "right", "axisLabel": {"color": "#475569", "formatter": "{value}%", "fontFamily": "Arial, sans-serif"}}
+        ],
         "series": [
             {"name": "T. Vida Promed", "type": "line", "smooth": True, "lineStyle": {"width": 3, "color": COLOR_SUCCESS}, "itemStyle": {"color": COLOR_SUCCESS}, "data": rl_prom},
             {"name": "T. Vida Total", "type": "line", "smooth": True, "lineStyle": {"width": 2, "type": "dashed", "color": COLOR_TOTAL}, "itemStyle": {"color": COLOR_TOTAL}, "data": rl_gen},
             {"name": "T. Vida Efectivo", "type": "line", "smooth": True, "lineStyle": {"width": 2, "type": "dotted", "color": COLOR_EFECTIVO}, "itemStyle": {"color": COLOR_EFECTIVO}, "data": rle},
             {"name": "T. V. Efec. Fallado", "type": "line", "smooth": True, "lineStyle": {"width": 2, "type": "dotted", "color": COLOR_EFECTIVO_FALLADOS}, "itemStyle": {"color": COLOR_EFECTIVO_FALLADOS}, "data": rle_fallados},
-            {"name": "TMEF", "type": "line", "smooth": True, "lineStyle": {"width": 1, "type": "dashed", "color": COLOR_TMEF}, "itemStyle": {"color": COLOR_TMEF}, "data": tmef}
+            {"name": "TMEF", "type": "line", "smooth": True, "lineStyle": {"width": 1, "type": "dashed", "color": COLOR_TMEF}, "itemStyle": {"color": COLOR_TMEF}, "data": tmef},
+            {"name": "Ind. Falla ON <1500", "type": "line", "yAxisIndex": 1, "smooth": True, "lineStyle": {"width": 2, "type": "dashed", "color": "#c09c2e"}, "itemStyle": {"color": "#c09c2e"}, "data": if_on_1500},
+            {"name": "Ind. Falla ALS <1500", "type": "line", "yAxisIndex": 1, "smooth": True, "lineStyle": {"width": 2, "type": "dashed", "color": "#d32f2f"}, "itemStyle": {"color": "#d32f2f"}, "data": if_als_1500}
         ]
     }
     chart_height = 400
     container_height = chart_height + 20
 
     html_template = f"""
-    <div id="chart-container-rl" style="position: relative; width:100%; height:{chart_height}px; background: #060a1e; border: 1px solid rgba(0, 242, 255, 0.15); border-radius: 15px; overflow: hidden;">
+    <div id="chart-container-rl" style="position: relative; width:100%; height:{chart_height}px; background: #ffffff; border: 1px solid rgba(19, 118, 89, 0.15); border-radius: 15px; overflow: hidden;">
         <div id="echarts-rl" style="width:100%; height:100%;"></div>
         <button id="zoom-btn-rl" style="
             position: absolute; 
             top: 8px; 
             right: 8px; 
             z-index: 1000; 
-            background: rgba(15, 23, 42, 0.8); 
-            border: 1px solid rgba(0, 242, 255, 0.2); 
-            color: #475569; 
+            background: #ffffff; 
+            border: 1px solid rgba(19, 118, 89, 0.2); 
+            color: #1f221e; 
             padding: 2px 8px; 
             border-radius: 4px; 
             cursor: pointer; 
@@ -425,7 +430,7 @@ def render_premium_echarts_run_life(df_monthly, titulo="TIEMPO DE VIDA DASHBOARD
             var container = document.getElementById('chart-container-rl');
             var chartDom = document.getElementById('echarts-rl');
             var zoomBtn = document.getElementById('zoom-btn-rl');
-            var myChart = echarts.init(chartDom, 'dark');
+            var myChart = echarts.init(chartDom, null);
             var option = {json.dumps(echarts_options)};
             
             myChart.setOption(option);
@@ -505,9 +510,11 @@ def render_premium_echarts_pozos(df_monthly, titulo="OPERATIVIDAD DASHBOARD"):
     pozos_off = [int(x) if pd.notna(x) else 0 for x in df_monthly['Pozos_OFF'].tolist()]
     if_on = [round(float(x) * 100, 2) if pd.notna(x) else None for x in df_monthly.get('Indice_Falla_ON', [])]
     if_als = [round(float(x) * 100, 2) if pd.notna(x) else None for x in df_monthly.get('Indice_Falla_ON_ALS', [])]
-    COLOR_ACCENT = "#00f2ff"
-    COLOR_DANGER = "#ff0055"
-    COLOR_WARNING = "#ffab40"
+    if_on_1500 = [round(float(x) * 100, 2) if pd.notna(x) else None for x in df_monthly.get('Indice_Falla_ON_1500', [])]
+    if_als_1500 = [round(float(x) * 100, 2) if pd.notna(x) else None for x in df_monthly.get('Indice_Falla_ON_ALS_1500', [])]
+    COLOR_ACCENT = "#137659"
+    COLOR_DANGER = "#d32f2f"
+    COLOR_WARNING = "#c09c2e"
 
     echarts_options = {
         "backgroundColor": "transparent",
@@ -516,22 +523,20 @@ def render_premium_echarts_pozos(df_monthly, titulo="OPERATIVIDAD DASHBOARD"):
             "left": "center",
             "top": 10,
             "textStyle": {
-                "color": "#00f2ff",
+                "color": "#137659",
                 "fontSize": 14,
                 "fontFamily": "Arial, sans-serif",
-                "fontWeight": "bold",
-                "textShadowBlur": 8,
-                "textShadowColor": "rgba(0, 242, 255, 0.4)"
+                "fontWeight": "bold"
             }
         },
         "textStyle": {"fontFamily": "Arial, sans-serif"},
-        "tooltip": {"trigger": "axis", "backgroundColor": "rgba(6, 10, 30, 0.9)", "borderColor": COLOR_ACCENT, "textStyle": {"color": "#fff", "fontFamily": "Arial, sans-serif"}},
-        "legend": {"data": ["Pozos ON", "Pozos OFF", "Ind. Falla ON", "Ind. Falla ALS"], "bottom": 0, "textStyle": {"color": "#ccc", "fontSize": 10, "fontFamily": "Arial, sans-serif"}},
+        "tooltip": {"trigger": "axis", "backgroundColor": "rgba(255, 255, 255, 0.95)", "borderColor": COLOR_ACCENT, "textStyle": {"color": "#1f221e", "fontFamily": "Arial, sans-serif"}},
+        "legend": {"data": ["Pozos ON", "Pozos OFF", "Ind. Falla ON", "Ind. Falla ALS", "Ind. Falla ON <1500", "Ind. Falla ALS <1500"], "bottom": 0, "textStyle": {"color": "#475569", "fontSize": 10, "fontFamily": "Arial, sans-serif"}},
         "grid": {"left": "3%", "right": "4%", "bottom": "15%", "top": "18%", "containLabel": True},
-        "xAxis": [{"type": "category", "data": categories, "axisLabel": {"color": "#888", "fontSize": 10, "fontFamily": "Arial, sans-serif"}}],
+        "xAxis": [{"type": "category", "data": categories, "axisLabel": {"color": "#475569", "fontSize": 10, "fontFamily": "Arial, sans-serif"}}],
         "yAxis": [
-            {"type": "value", "name": "POZOS", "axisLabel": {"color": "#888", "fontFamily": "Arial, sans-serif"}},
-            {"type": "value", "name": "INDICE %", "position": "right", "axisLabel": {"color": "#888", "formatter": "{value}%", "fontFamily": "Arial, sans-serif"}}
+            {"type": "value", "name": "POZOS", "axisLabel": {"color": "#475569", "fontFamily": "Arial, sans-serif"}},
+            {"type": "value", "name": "INDICE %", "position": "right", "axisLabel": {"color": "#475569", "formatter": "{value}%", "fontFamily": "Arial, sans-serif"}}
         ],
         "series": [
             {"name": "Pozos ON", "type": "bar", "stack": "total", "itemStyle": {"color": COLOR_ACCENT}, "data": pozos_on},
@@ -540,7 +545,7 @@ def render_premium_echarts_pozos(df_monthly, titulo="OPERATIVIDAD DASHBOARD"):
                 "type": "bar", 
                 "stack": "total", 
                 "itemStyle": {
-                    "color": "#ff4d4d",
+                    "color": "#5b5c55",
                     "opacity": 0.4,
                     "decal": {
                         "symbol": "rect",
@@ -553,7 +558,9 @@ def render_premium_echarts_pozos(df_monthly, titulo="OPERATIVIDAD DASHBOARD"):
                 "data": pozos_off
             },
             {"name": "Ind. Falla ON", "type": "line", "yAxisIndex": 1, "smooth": True, "lineStyle": {"width": 3, "color": COLOR_DANGER}, "itemStyle": {"color": COLOR_DANGER}, "data": if_on},
-            {"name": "Ind. Falla ALS", "type": "line", "yAxisIndex": 1, "smooth": True, "lineStyle": {"width": 2, "color": COLOR_WARNING}, "itemStyle": {"color": COLOR_WARNING}, "data": if_als}
+            {"name": "Ind. Falla ALS", "type": "line", "yAxisIndex": 1, "smooth": True, "lineStyle": {"width": 2, "color": COLOR_WARNING}, "itemStyle": {"color": COLOR_WARNING}, "data": if_als},
+            {"name": "Ind. Falla ON <1500", "type": "line", "yAxisIndex": 1, "smooth": True, "lineStyle": {"width": 2, "type": "dashed", "color": "#c09c2e"}, "itemStyle": {"color": "#c09c2e"}, "data": if_on_1500},
+            {"name": "Ind. Falla ALS <1500", "type": "line", "yAxisIndex": 1, "smooth": True, "lineStyle": {"width": 2, "type": "dashed", "color": "#d32f2f"}, "itemStyle": {"color": "#d32f2f"}, "data": if_als_1500}
         ]
     }
 
@@ -561,16 +568,16 @@ def render_premium_echarts_pozos(df_monthly, titulo="OPERATIVIDAD DASHBOARD"):
     container_height = chart_height + 20
 
     html_template = f"""
-    <div id="chart-container-pozos" style="position: relative; width:100%; height:{chart_height}px; background: #060a1e; border: 1px solid rgba(0, 242, 255, 0.15); border-radius: 15px; overflow: hidden;">
+    <div id="chart-container-pozos" style="position: relative; width:100%; height:{chart_height}px; background: #ffffff; border: 1px solid rgba(19, 118, 89, 0.15); border-radius: 15px; overflow: hidden;">
         <div id="echarts-pozos" style="width:100%; height:100%;"></div>
         <button id="zoom-btn-pozos" style="
             position: absolute; 
             top: 8px; 
             right: 8px; 
             z-index: 1000; 
-            background: rgba(15, 23, 42, 0.8); 
-            border: 1px solid rgba(0, 242, 255, 0.2); 
-            color: #475569; 
+            background: #ffffff; 
+            border: 1px solid rgba(19, 118, 89, 0.2); 
+            color: #1f221e; 
             padding: 2px 8px; 
             border-radius: 4px; 
             cursor: pointer; 
@@ -591,7 +598,7 @@ def render_premium_echarts_pozos(df_monthly, titulo="OPERATIVIDAD DASHBOARD"):
             var container = document.getElementById('chart-container-pozos');
             var chartDom = document.getElementById('echarts-pozos');
             var zoomBtn = document.getElementById('zoom-btn-pozos');
-            var myChart = echarts.init(chartDom, 'dark');
+            var myChart = echarts.init(chartDom, null);
             var option = {json.dumps(echarts_options)};
             
             myChart.setOption(option);

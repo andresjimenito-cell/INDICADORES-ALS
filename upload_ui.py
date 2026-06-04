@@ -96,7 +96,7 @@ def render_upload_section():
             "🗓️ FECHA EVALUACIÓN",
             value=default_date,
             key="fecha_eval",
-            max_value=default_date,
+            max_value=datetime.now().date(),
         )
         
         st.markdown(f"""

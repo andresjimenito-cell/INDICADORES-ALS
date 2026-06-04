@@ -45,13 +45,25 @@ def render_tab_fallas(df_bd_filtered, fecha_evaluacion):
 
     k1, k2, k3, k4 = st.columns(4)
     with k1:
-        st.markdown(f'<div class="kpi-card"><div class="kpi-icon">🚨</div><div class="kpi-label">TOTAL EVENTOS</div><div class="kpi-value" style="color:#ff00ff;">{total_fallas_rango}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="kpi-card"><div class="kpi-icon">🚨</div><div class="kpi-label">TOTAL EVENTOS</div><div class="kpi-value" style="color:#137659;">{total_fallas_rango}</div></div>', unsafe_allow_html=True)
     with k2:
-        st.markdown(f'<div class="kpi-card"><div class="kpi-icon">⚙️</div><div class="kpi-label">FALLAS ALS</div><div class="kpi-value" style="color:#00f2ff;">{fallas_als}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="kpi-card"><div class="kpi-icon">⚙️</div><div class="kpi-label">FALLAS ALS</div><div class="kpi-value" style="color:#095139;">{fallas_als}</div></div>', unsafe_allow_html=True)
     with k3:
-        st.markdown(f'<div class="kpi-card"><div class="kpi-icon">🔥</div><div class="kpi-label">I. SEVERIDAD</div><div class="kpi-value" style="color:#ffbd00;">{idx_sev:.2f}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="kpi-card"><div class="kpi-icon">🔥</div><div class="kpi-label">I. SEVERIDAD</div><div class="kpi-value" style="color:#c09c2e;">{idx_sev:.2f}</div></div>', unsafe_allow_html=True)
+    try:
+        from indice_falla import calcular_indice_falla_anual
+        df_forma9_f = st.session_state.get('df_forma9_calculated')
+        if df_forma9_f is not None and df_bd_filtered is not None:
+            df_forma9_f_filtered = df_forma9_f[df_forma9_f['POZO'].isin(df_bd_filtered['POZO'])]
+            resumen_df, _ = calcular_indice_falla_anual(df_bd_filtered, df_forma9_f_filtered, fecha_evaluacion)
+            val_rle_1500 = resumen_df[resumen_df['Indicador'] == 'Índice de Falla ALS ON RLE < 1500']['Valor'].values[0]
+        else:
+            val_rle_1500 = "0.00%"
+    except Exception:
+        val_rle_1500 = "0.00%"
+
     with k4:
-        st.markdown(f'<div class="kpi-card"><div class="kpi-icon">🤖</div><div class="kpi-label">MODELO IA</div><div class="kpi-value" style="color:#00ff9d;">READY</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="kpi-card"><div class="kpi-icon">⏳</div><div class="kpi-label">I.F. ALS &lt; 1500</div><div class="kpi-value" style="color:#137659;">{val_rle_1500}</div></div>', unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -79,7 +91,7 @@ def render_tab_fallas(df_bd_filtered, fecha_evaluacion):
             tipos = sorted(df_det['Clasif'].unique().tolist())
             
             series = []
-            colors = {'Infantil': '#ff4b4b', 'Prematura': '#ffbd00', 'En Garantía': '#00f2ff', 'Sin Garantía': '#7000ff'}
+            colors = {'Infantil': '#d32f2f', 'Prematura': '#c09c2e', 'En Garantía': '#137659', 'Sin Garantía': '#5b5c55'}
             for et in etapas:
                 data = [int(conteo[(conteo['Etapa'] == et) & (conteo['Clasif'] == t)]['Cant'].values[0]) if len(conteo[(conteo['Etapa'] == et) & (conteo['Clasif'] == t)]) > 0 else 0 for t in tipos]
                 series.append({
@@ -94,7 +106,7 @@ def render_tab_fallas(df_bd_filtered, fecha_evaluacion):
                     "left": "center",
                     "top": 0,
                     "textStyle": {
-                        "color": "#00f2ff",
+                        "color": "#137659",
                         "fontSize": 13,
                         "fontFamily": "Arial, sans-serif",
                         "fontWeight": "bold"
@@ -104,17 +116,17 @@ def render_tab_fallas(df_bd_filtered, fecha_evaluacion):
                 "tooltip": {
                     "trigger": "axis", 
                     "axisPointer": {"type": "shadow"},
-                    "backgroundColor": "rgba(6, 10, 30, 0.9)",
-                    "borderColor": "#00f2ff",
-                    "textStyle": {"color": "#fff", "fontFamily": "Arial, sans-serif"}
+                    "backgroundColor": "rgba(255, 255, 255, 0.95)",
+                    "borderColor": "#137659",
+                    "textStyle": {"color": "#1f221e", "fontFamily": "Arial, sans-serif"}
                 },
-                "legend": {"bottom": 0, "textStyle": {"color": "#ccc", "fontSize": 10, "fontFamily": "Arial, sans-serif"}, "icon": "circle"},
+                "legend": {"bottom": 0, "textStyle": {"color": "#475569", "fontSize": 10, "fontFamily": "Arial, sans-serif"}, "icon": "circle"},
                 "grid": {"left": "3%", "right": "4%", "bottom": "20%", "top": "15%", "containLabel": True},
-                "xAxis": [{"type": "category", "data": tipos, "axisLabel": {"color": "#888", "rotate": 35, "fontSize": 9, "fontFamily": "Arial, sans-serif"}}],
-                "yAxis": [{"type": "value", "axisLabel": {"color": "#888", "fontFamily": "Arial, sans-serif"}, "splitLine": {"lineStyle": {"color": "rgba(255,255,255,0.05)"}}}],
+                "xAxis": [{"type": "category", "data": tipos, "axisLabel": {"color": "#475569", "rotate": 35, "fontSize": 9, "fontFamily": "Arial, sans-serif"}}],
+                "yAxis": [{"type": "value", "axisLabel": {"color": "#475569", "fontFamily": "Arial, sans-serif"}, "splitLine": {"lineStyle": {"color": "rgba(19, 118, 89, 0.05)"}}}],
                 "series": series
             }
-            components.html(f'<div id="echarts-fallas-dist" style="width:100%; height:380px; background:#060a1e; border-radius:15px; overflow:hidden; border:1px solid rgba(0,242,255,0.1);"></div><script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script><script>(function(){{var myChart=echarts.init(document.getElementById("echarts-fallas-dist"),"dark");myChart.setOption({json.dumps(echarts_dist)});window.addEventListener("resize",function(){{myChart.resize();}});}})();</script>', height=400)
+            components.html(f'<div id="echarts-fallas-dist" style="width:100%; height:380px; background:#ffffff; border-radius:15px; overflow:hidden; border:1px solid rgba(19, 118, 89, 0.15);"></div><script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script><script>(function(){{var myChart=echarts.init(document.getElementById("echarts-fallas-dist"),null);myChart.setOption({json.dumps(echarts_dist)});window.addEventListener("resize",function(){{myChart.resize();}});}})();</script>', height=400)
 
     with col_right:
         st.markdown("<div style='margin-bottom:10px;'></div>", unsafe_allow_html=True)
@@ -129,7 +141,7 @@ def render_tab_fallas(df_bd_filtered, fecha_evaluacion):
                     "left": "center",
                     "top": 0,
                     "textStyle": {
-                        "color": "#00f2ff",
+                        "color": "#137659",
                         "fontSize": 13,
                         "fontFamily": "Arial, sans-serif",
                         "fontWeight": "bold"
@@ -138,23 +150,23 @@ def render_tab_fallas(df_bd_filtered, fecha_evaluacion):
                 "textStyle": {"fontFamily": "Arial, sans-serif"},
                 "tooltip": {
                     "trigger": "item",
-                    "backgroundColor": "rgba(6, 10, 30, 0.9)",
-                    "borderColor": "#00f2ff",
-                    "textStyle": {"color": "#fff", "fontFamily": "Arial, sans-serif"}
+                    "backgroundColor": "rgba(255, 255, 255, 0.95)",
+                    "borderColor": "#137659",
+                    "textStyle": {"color": "#1f221e", "fontFamily": "Arial, sans-serif"}
                 },
-                "legend": {"orient": "vertical", "right": 10, "top": "center", "textStyle": {"color": "#ccc", "fontSize": 10, "fontFamily": "Arial, sans-serif"}},
+                "legend": {"orient": "vertical", "right": 10, "top": "center", "textStyle": {"color": "#475569", "fontSize": 10, "fontFamily": "Arial, sans-serif"}},
                 "series": [{
                     "type": "pie",
                     "radius": ["40%", "70%"],
                     "center": ["40%", "50%"],
                     "avoidLabelOverlap": False,
-                    "itemStyle": {"borderRadius": 10, "borderColor": "#060a1e", "borderWidth": 2},
+                    "itemStyle": {"borderRadius": 10, "borderColor": "#ffffff", "borderWidth": 2},
                     "label": {"show": False},
-                    "emphasis": {"label": {"show": True, "fontSize": 14, "fontWeight": "bold", "color": "#fff", "fontFamily": "Arial, sans-serif"}},
+                    "emphasis": {"label": {"show": True, "fontSize": 14, "fontWeight": "bold", "color": "#1f221e", "fontFamily": "Arial, sans-serif"}},
                     "data": pie_list
                 }]
             }
-            components.html(f'<div id="echarts-fallas-pie" style="width:100%; height:380px; background:#060a1e; border-radius:15px; overflow:hidden; border:1px solid rgba(0,242,255,0.1);"></div><script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script><script>(function(){{var myChart=echarts.init(document.getElementById("echarts-fallas-pie"),"dark");myChart.setOption({json.dumps(echarts_pie)});window.addEventListener("resize",function(){{myChart.resize();}});}})();</script>', height=400)
+            components.html(f'<div id="echarts-fallas-pie" style="width:100%; height:380px; background:#ffffff; border-radius:15px; overflow:hidden; border:1px solid rgba(19, 118, 89, 0.15);"></div><script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script><script>(function(){{var myChart=echarts.init(document.getElementById("echarts-fallas-pie"),null);myChart.setOption({json.dumps(echarts_pie)});window.addEventListener("resize",function(){{myChart.resize();}});}})();</script>', height=400)
 
     st.markdown("<br>", unsafe_allow_html=True)
     
