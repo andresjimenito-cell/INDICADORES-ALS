@@ -132,10 +132,14 @@ def render_tab_fallas(df_bd_filtered, fecha_evaluacion):
         st.markdown("<div style='margin-bottom:10px;'></div>", unsafe_allow_html=True)
         if not df_det.empty:
             pie_data = df_det['Clasif'].value_counts().reset_index()
-            pie_list = [{"name": r['Clasif'], "value": int(r['count'])} for _, r in pie_data.iterrows()]
+            # Compatible columns resolution for different pandas versions
+            col_name = 'count' if 'count' in pie_data.columns else (pie_data.columns[1] if len(pie_data.columns) > 1 else 'Clasif')
+            col_label = 'Clasif' if 'Clasif' in pie_data.columns else pie_data.columns[0]
+            pie_list = [{"name": str(r[col_label]), "value": int(r[col_name])} for _, r in pie_data.iterrows()]
             
             echarts_pie = {
                 "backgroundColor": "transparent",
+                "color": ["#137659", "#c09c2e", "#095139", "#5b5c55", "#a28834", "#d32f2f", "#d2b48c"],
                 "title": {
                     "text": "CAUSA RAÍZ (ANÁLISIS IA)",
                     "left": "center",
