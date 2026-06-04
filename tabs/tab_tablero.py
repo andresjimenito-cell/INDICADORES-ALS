@@ -1,11 +1,11 @@
 """
-tabs/tab_tablero.py  —  v3.2 Premium Dashboard
-==============================================
+tabs/tab_tablero.py  —  v4.0 Super Premium Dashboard
+===================================================
 Tablero Ejecutivo de Alto Impacto con estética industrial.
-Presenta 3 columnas simétricas con tarjetas premium y visualizaciones en ECharts:
-1. Resumen de Operaciones (KPIs con pills, estados y barras de progreso).
-2. Índice de Falla (Gauge IF < 1500 RLE + Tendencia Anual en un solo componente HTML).
-3. Desempeño y Vida Útil (Gauges MTBF/RunLife + Distribución de RunLife en un solo componente HTML).
+Presenta una vista resumen completa distribuida en dos filas:
+- FILA 1: Tres columnas simétricas de 480px de altura (Resumen Operativo | Gauge IF + Tendencia | Gauges MTBF/RL + Distribución).
+- FILA 2: Dos columnas simétricas de 360px de altura (Causa Raíz de Fallas IA | Evolución de Operatividad vs Eventos Históricos).
+Todos los datos provienen en tiempo real de los filtros aplicados.
 """
 
 import json, calendar
@@ -16,6 +16,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 import mtbf as mtbf_mod
+from calculations import clasificar_razon_ia
 
 # ── Paleta Corporativa Parex ─────────────────────────────────────────────────
 _G   = "#137659"        # Verde principal
@@ -237,7 +238,7 @@ def render_tab_tablero(
             fall = int((sub['_FALL'].notna() & (sub['_FALL'] <= fecha_eval_date)).sum())
             als_breakdown[t] = {'total': tot, 'op': tot - fall}
 
-    # ── Activos / Inactivos (Forma 9) ────────────────────────────────────────
+    # ── Activos / Inactivos (Fórmula corregida idéntica al Resumen) ────────────
     activos = inactivos = 0
     if not df_forma9_filtered.empty and 'FECHA_FORMA9' in df_forma9_filtered.columns:
         df_f9     = df_forma9_filtered.copy()
@@ -247,9 +248,9 @@ def render_tab_tablero(
         if dias_col:
             mask_on = mask_on & (df_f9[dias_col].fillna(0) > 0)
         pozos_on  = set(df_f9[mask_on]['POZO'].astype(str).str.strip().unique())
-        pozos_op  = set(df_fondo['POZO'].astype(str).str.strip().unique()) if 'POZO' in df_fondo.columns else set()
-        activos   = len(pozos_op & pozos_on)
-        inactivos = len(pozos_op - pozos_on)
+        
+        activos   = len(pozos_on)
+        inactivos = max(0, als_operativos - activos)
     else:
         activos   = als_operativos
         inactivos = 0
@@ -346,15 +347,52 @@ def render_tab_tablero(
     mtbf_max = max(mtbf_val * 1.4, META_MTBF * 1.5, 3000)
     rl_max   = max(rl_val   * 1.4, META_RL   * 1.5, 2500)
 
+    # ── Causa Raíz de Fallas (Análisis IA) de los últimos 365 días ────────────
+    fallas_detalles = []
+    limit_365 = fecha_eval_dt - datetime.timedelta(days=365)
+    if 'FECHA_FALLA' in df_bd_filtered.columns:
+        df_recent_fallas = df_bd_filtered[
+            df_bd_filtered['FECHA_FALLA'].notna() &
+            (df_bd_filtered['FECHA_FALLA'] >= limit_365) &
+            (df_bd_filtered['FECHA_FALLA'] <= fecha_eval_dt)
+        ]
+        for _, run in df_recent_fallas.iterrows():
+            razon = run.get('RAZON ESPECIFICA PULL', '')
+            fallas_detalles.append({
+                'Clasif': clasificar_razon_ia(razon) if razon else 'Otros'
+            })
+    df_det_fallas = pd.DataFrame(fallas_detalles)
+    
+    pie_list = []
+    if not df_det_fallas.empty:
+        pie_data = df_det_fallas['Clasif'].value_counts().reset_index()
+        pie_list = [{"name": str(r['Clasif']), "value": int(r['count'])} for _, r in pie_data.iterrows()]
+    else:
+        pie_list = [{"name": "Sin Fallas", "value": 0}]
+
+    # ── Evolución Histórica de Operatividad vs Eventos ───────────────────────
+    hist_meses = []
+    hist_operativos = []
+    hist_eventos = []
+    
+    try:
+        df_yr_hist = df_mensual_if[df_mensual_if['Mes'].str.startswith(str(anio_eval))].copy()
+        hist_meses = [_MESES[int(m[5:7])-1] for m in df_yr_hist['Mes']]
+        hist_operativos = [int(v) for v in df_yr_hist['Pozos Operativos']]
+        hist_eventos = [int(v) for v in df_yr_hist['Fallas Totales']]
+    except Exception:
+        hist_meses = if_cats
+        hist_operativos = on_vals
+        hist_eventos = [0] * len(if_cats)
+
     # ═════════════════════════════════════════════════════════════════════════
-    # LAYOUT DE 3 COLUMNAS SIMÉTRICAS
+    # RENDERIZADO DEL LAYOUT GENERAL
     # ═════════════════════════════════════════════════════════════════════════
+    
+    # ── FILA 1 ──
     st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
     col_l, col_c, col_r = st.columns([1, 1.25, 1.25], gap="medium")
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # COLUMNA 1: KPIs OPERATIVOS (RENDERIZADO HTML COMPLETO)
-    # ─────────────────────────────────────────────────────────────────────────
     with col_l:
         pills_html = "".join([
             f"""<div class="tbl-pill-box">
@@ -431,9 +469,6 @@ def render_tab_tablero(
 </div>
 """, unsafe_allow_html=True)
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # COLUMNA 2: GAUGE IF + TENDENCIA ANUAL (COMPONENTE HTML UNIFICADO)
-    # ─────────────────────────────────────────────────────────────────────────
     with col_c:
         col2_html = f"""
 <!DOCTYPE html>
@@ -479,11 +514,7 @@ def render_tab_tablero(
 <body>
     <div class="tbl-panel">
         <div class="tbl-sec-title">Índice de Falla (IF &lt; 1500 ALS)</div>
-        
-        <!-- Contenedor del Gauge -->
         <div id="gauge_if" class="chart-container" style="height: 195px;"></div>
-        
-        <!-- Contenedor de la Tendencia -->
         <div id="chart_if_anual" class="chart-container" style="height: 225px;"></div>
     </div>
 
@@ -509,26 +540,12 @@ def render_tab_tablero(
                     center: ["50%", "52%"],
                     radius: "80%",
                     splitNumber: 4,
-                    axisLine: {{
-                        lineStyle: {{
-                            width: 8,
-                            color: arcColors
-                        }}
-                    }},
-                    pointer: {{
-                        itemStyle: {{ color: "{_T}" }},
-                        width: 3,
-                        length: "65%"
-                    }},
+                    axisLine: {{ lineStyle: {{ width: 8, color: arcColors }} }},
+                    pointer: {{ itemStyle: {{ color: "{_T}" }}, width: 3, length: "65%" }},
                     axisTick: {{ show: false }},
                     splitLine: {{ show: false }},
                     axisLabel: {{ show: false }},
-                    anchor: {{
-                        show: true,
-                        showAbove: true,
-                        size: 6,
-                        itemStyle: {{ borderWidth: 1.5, borderColor: "{_T}", color: "#fff" }}
-                    }},
+                    anchor: {{ show: true, showAbove: true, size: 6, itemStyle: {{ borderWidth: 1.5, borderColor: "{_T}", color: "#fff" }} }},
                     detail: {{
                         valueAnimation: true,
                         formatter: function(val) {{ return val.toFixed(2) + "%"; }},
@@ -537,13 +554,7 @@ def render_tab_tablero(
                         fontWeight: "900",
                         offsetCenter: [0, "32%"]
                     }},
-                    title: {{
-                        show: true,
-                        offsetCenter: [0, "65%"],
-                        color: "{_T2}",
-                        fontSize: 9,
-                        fontWeight: "700"
-                    }},
+                    title: {{ show: true, offsetCenter: [0, "65%"], color: "{_T2}", fontSize: 9, fontWeight: "700" }},
                     data: [{{ value: value, name: "Meta IF: <= " + meta + "%" }}]
                 }}]
             }};
@@ -551,7 +562,6 @@ def render_tab_tablero(
             var chartG = echarts.init(document.getElementById('gauge_if'));
             chartG.setOption(gaugeOpt);
 
-            // --- TREND OPTION ---
             var trendOpt = {{
                 backgroundColor: "transparent",
                 tooltip: {{
@@ -645,14 +655,7 @@ def render_tab_tablero(
 """
         components.html(col2_html, height=480, scrolling=False)
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # COLUMNA 3: GAUGES MTBF + RUNLIFE + DISTRIBUCIÓN (COMPONENTE HTML UNIFICADO)
-    # ─────────────────────────────────────────────────────────────────────────
     with col_r:
-        rl_bar_colors = [_R, _Y, _G2, _G]
-        total_rl = max(sum(rl_counts), 1)
-        rl_pcts  = [round(v / total_rl * 100, 1) for v in rl_counts]
-
         col3_html = f"""
 <!DOCTYPE html>
 <html>
@@ -706,21 +709,16 @@ def render_tab_tablero(
 <body>
     <div class="tbl-panel">
         <div class="tbl-sec-title">Desempeño (MTBF &amp; RunLife)</div>
-        
-        <!-- Dos Gauges lado a lado -->
         <div class="gauges-row">
             <div id="gauge_mtbf" class="gauge-col"></div>
             <div id="gauge_rl" class="gauge-col"></div>
         </div>
-        
-        <!-- Distribución RunLife -->
         <div id="chart_rl" class="chart-container" style="height: 225px;"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <script>
         (function() {{
-            // --- GAUGE MTBF ---
             var mtbfVal = {mtbf_val};
             var mtbfMeta = {META_MTBF};
             var mtbfMax = {mtbf_max};
@@ -762,7 +760,6 @@ def render_tab_tablero(
             var chartMTBF = echarts.init(document.getElementById('gauge_mtbf'));
             chartMTBF.setOption(mtbfOpt);
 
-            // --- GAUGE RUNLIFE ---
             var rlVal = {rl_val};
             var rlMeta = {META_RL};
             var rlMax = {rl_max};
@@ -804,7 +801,6 @@ def render_tab_tablero(
             var chartRL = echarts.init(document.getElementById('gauge_rl'));
             chartRL.setOption(rlOpt);
 
-            // --- BAR CHART RUNLIFE DISTRIBUTION ---
             var distOpt = {{
                 backgroundColor: "transparent",
                 tooltip: {{
@@ -857,3 +853,213 @@ def render_tab_tablero(
 </html>
 """
         components.html(col3_html, height=480, scrolling=False)
+
+    # ── FILA 2: APARTADOS COMPLEMENTARIOS COMPLETOS ──
+    st.markdown("<div style='height:16px;'></div>", unsafe_allow_html=True)
+    col_b1, col_b2 = st.columns([1, 1], gap="medium")
+
+    # Fila 2 Columna 1: Causa Raíz de Fallas (Análisis IA)
+    with col_b1:
+        col2_b1_html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        body {{
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }}
+        .tbl-panel-b {{
+            background: #ffffff;
+            border-radius: 16px;
+            border: 1.5px solid rgba(19,118,89,0.2);
+            box-shadow: 0 4px 20px rgba(19,118,89,0.08);
+            padding: 16px;
+            height: 360px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }}
+        .tbl-sec-title {{
+            font-size: 13px;
+            font-weight: 800;
+            color: #137659;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border-left: 4px solid #137659;
+            padding-left: 8px;
+            margin-bottom: 5px;
+        }}
+    </style>
+</head>
+<body>
+    <div class="tbl-panel-b">
+        <div class="tbl-sec-title">Causa Raíz de Fallas (Análisis IA)</div>
+        <div id="chart_fallas_pie" style="width:100%; height:300px;"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script>
+        (function() {{
+            var chartDom = document.getElementById('chart_fallas_pie');
+            var myChart = echarts.init(chartDom);
+            var option = {{
+                backgroundColor: "transparent",
+                tooltip: {{
+                    trigger: "item",
+                    backgroundColor: "rgba(255, 255, 255, 0.96)",
+                    borderColor: "rgba(19,118,89,0.15)",
+                    textStyle: {{ color: "{_T}", fontSize: 10 }}
+                }},
+                legend: {{
+                    orient: "vertical",
+                    right: "10%",
+                    top: "center",
+                    textStyle: {{ color: "{_T2}", fontSize: 9, fontFamily: "Inter, sans-serif" }}
+                }},
+                series: [{{
+                    type: "pie",
+                    radius: ["40%", "70%"],
+                    center: ["40%", "50%"],
+                    avoidLabelOverlap: false,
+                    itemStyle: {{ borderRadius: 8, borderColor: "#ffffff", borderWidth: 2 }},
+                    label: {{ show: false }},
+                    emphasis: {{
+                        label: {{ show: true, fontSize: 11, fontWeight: "bold", fontFamily: "Inter, sans-serif" }}
+                    }},
+                    data: {json.dumps(pie_list)}
+                }}],
+                color: ["{_G}", "{_Y}", "#095139", "{_R}", "#5b5c55", "#a28834", "#d32f2f"]
+            }};
+            myChart.setOption(option);
+            window.addEventListener('resize', function() {{ myChart.resize(); }});
+        }})();
+    </script>
+</body>
+</html>
+"""
+        components.html(col2_b1_html, height=360, scrolling=False)
+
+    # Fila 2 Columna 2: Evolución de Operatividad vs Eventos
+    with col_b2:
+        col2_b2_html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        body {{
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }}
+        .tbl-panel-b {{
+            background: #ffffff;
+            border-radius: 16px;
+            border: 1.5px solid rgba(19,118,89,0.2);
+            box-shadow: 0 4px 20px rgba(19,118,89,0.08);
+            padding: 16px;
+            height: 360px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }}
+        .tbl-sec-title {{
+            font-size: 13px;
+            font-weight: 800;
+            color: #137659;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border-left: 4px solid #137659;
+            padding-left: 8px;
+            margin-bottom: 5px;
+        }}
+    </style>
+</head>
+<body>
+    <div class="tbl-panel-b">
+        <div class="tbl-sec-title">Histórico de Operatividad vs Eventos ({anio_eval})</div>
+        <div id="chart_op_hist" style="width:100%; height:300px;"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script>
+        (function() {{
+            var chartDom = document.getElementById('chart_op_hist');
+            var myChart = echarts.init(chartDom);
+            var option = {{
+                backgroundColor: "transparent",
+                tooltip: {{
+                    trigger: "axis",
+                    axisPointer: {{ type: "cross" }},
+                    backgroundColor: "rgba(255, 255, 255, 0.96)",
+                    borderColor: "rgba(19,118,89,0.15)",
+                    textStyle: {{ color: "{_T}", fontSize: 10 }}
+                }},
+                legend: {{
+                    data: ["Pozos Operativos", "Fallas Totales"],
+                    bottom: 0,
+                    textStyle: {{ color: "{_T2}", fontSize: 9, fontFamily: "Inter, sans-serif" }}
+                }},
+                grid: {{ top: "15%", left: "3%", right: "8%", bottom: "15%", containLabel: true }},
+                xAxis: {{
+                    type: "category",
+                    data: {json.dumps(hist_meses)},
+                    axisLabel: {{ color: "{_T2}", fontSize: 8 }},
+                    axisLine: {{ lineStyle: {{ color: "rgba(19,118,89,0.15)" }} }},
+                    axisTick: {{ show: false }}
+                }},
+                yAxis: [
+                    {{
+                        type: "value",
+                        name: "Pozos",
+                        nameTextStyle: {{ color: "{_T2}", fontSize: 8 }},
+                        axisLabel: {{ color: "{_T2}", fontSize: 8 }},
+                        splitLine: {{ lineStyle: {{ color: "rgba(19,118,89,0.06)", type: "dashed" }} }}
+                    }},
+                    {{
+                        type: "value",
+                        name: "Eventos",
+                        nameTextStyle: {{ color: "{_R}", fontSize: 8 }},
+                        axisLabel: {{ color: "{_R}", fontSize: 8 }},
+                        splitLine: {{ show: false }}
+                    }}
+                ],
+                series: [
+                    {{
+                        name: "Pozos Operativos",
+                        type: "line",
+                        smooth: true,
+                        data: {json.dumps(hist_operativos)},
+                        lineStyle: {{ color: "{_G}", width: 3 }},
+                        itemStyle: {{ color: "{_G}", borderColor: "#fff", borderWidth: 2 }},
+                        areaStyle: {{ color: "rgba(19, 118, 89, 0.1)" }}
+                    }},
+                    {{
+                        name: "Fallas Totales",
+                        type: "bar",
+                        yAxisIndex: 1,
+                        data: {json.dumps(hist_eventos)},
+                        barMaxWidth: 16,
+                        itemStyle: {{ color: "rgba(198, 40, 40, 0.8)", borderRadius: [4, 4, 0, 0] }}
+                    }}
+                ]
+            }};
+            myChart.setOption(option);
+            window.addEventListener('resize', function() {{ myChart.resize(); }});
+        }})();
+    </script>
+</body>
+</html>
+"""
+        components.html(col2_b2_html, height=360, scrolling=False)
