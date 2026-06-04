@@ -247,12 +247,11 @@ if st.session_state.get('reporte_runes') is not None:
 
     # ── NAVEGACIÓN (TABS ESTILIZADOS COMO BOTTOM BAR) ─────────────────────
     # Los estilos en styles.py se encargan de mover estos tabs a la parte inferior.
-    tab_tablero, tab_resumen, tab_perf, tab_fallas, tab_indices = st.tabs([
+    tab_tablero, tab_resumen, tab_perf, tab_fallas = st.tabs([
         "🗂 TABLERO",
         "◈ RESUMEN",
         "⚡ PERFORMANCE",
-        "⚠ FALLAS",
-        "📊 ÍNDICES",
+        "⚠ FALLAS · ÍNDICES",
     ])
 
     with tab_tablero:
@@ -291,15 +290,15 @@ if st.session_state.get('reporte_runes') is not None:
 
     with tab_fallas:
         st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
-        from tabs.tab_fallas import render_tab_fallas
-        render_tab_fallas(df_bd_calc, fecha_eval)
-
-    with tab_indices:
-        st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
-        from tabs.tab_indices import render_tab_indices
-        render_tab_indices(
-            df_bd_calc, df_forma9_filtered, fecha_eval, filters['selected_activo']
-        )
+        col_fallas, col_indices = st.columns(2, gap="medium")
+        with col_fallas:
+            from tabs.tab_fallas import render_tab_fallas
+            render_tab_fallas(df_bd_calc, fecha_eval)
+        with col_indices:
+            from tabs.tab_indices import render_tab_indices
+            render_tab_indices(
+                df_bd_calc, df_forma9_filtered, fecha_eval, filters['selected_activo']
+            )
 
     # ─────────────────────────────────────────────────────────────────────────────
     # FOOTER DE EXPORTACIÓN GLOBAL

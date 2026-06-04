@@ -1,9 +1,11 @@
 """
-tabs/tab_tablero.py  —  v2 Premium
-===================================
-Tablero Ejecutivo estilo analítico industrial.
-Tres paneles: KPIs operativos | Gauge IF + tendencia | Gauge MTBF/RL + distribución RunLife
-Todos los valores son calculados en tiempo real desde los datos filtrados.
+tabs/tab_tablero.py  —  v3 Premium Dashboard
+============================================
+Tablero Ejecutivo de Alto Impacto con estética industrial.
+Presenta 3 columnas simétricas con tarjetas premium y visualizaciones en ECharts:
+1. Resumen de Operaciones (KPIs con pills, estados y barras de progreso).
+2. Índice de Falla (Gauge IF < 1500 RLE + Tendencia Anual en un solo componente HTML).
+3. Desempeño y Vida Útil (Gauges MTBF/RunLife + Distribución de RunLife en un solo componente HTML).
 """
 
 import json, calendar
@@ -15,7 +17,7 @@ import streamlit.components.v1 as components
 
 import mtbf as mtbf_mod
 
-# ── Paleta corporativa Parex ─────────────────────────────────────────────────
+# ── Paleta Corporativa Parex ─────────────────────────────────────────────────
 _G   = "#137659"        # Verde principal
 _G2  = "#0a4d34"        # Verde oscuro
 _G3  = "#e8f5ee"        # Verde muy claro (fondo)
@@ -26,310 +28,171 @@ _Y2  = "#fdf8ec"        # Dorado fondo
 _T   = "#1f221e"        # Texto oscuro
 _T2  = "#455a72"        # Texto suave
 _W   = "#ffffff"
-_BG  = "#f5f7f6"
 
 META_IF   = 7.5
 META_MTBF = 2190
 META_RL   = 1500
 ALS_TIPOS = ['ESP', 'PCP', 'EPCP', 'BM', 'BH']
 
-
-# ─────────────────────────────────────────────────────────────────────────────
 def _css():
     st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
-/* ── Contenedor panel ── */
-.tbl-panel {
+/* ── Panel KPI Lateral ── */
+.tbl-panel-lateral {
     background: #ffffff;
     border-radius: 16px;
-    border: 1px solid rgba(19,118,89,0.12);
-    box-shadow: 0 4px 20px rgba(19,118,89,0.07), 0 1px 4px rgba(0,0,0,0.04);
-    padding: 16px 18px;
-    height: 100%;
-}
-
-/* ── Sección título ── */
-.tbl-sec-title {
-    font-family: 'Inter', Arial, sans-serif;
-    font-size: 0.52rem;
-    font-weight: 800;
-    color: #455a72;
-    letter-spacing: 2.5px;
-    text-transform: uppercase;
-    border-left: 3px solid #137659;
-    padding-left: 8px;
-    margin: 14px 0 8px 0;
-}
-
-/* ── KPI grande ── */
-.tbl-kpi-big {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    background: linear-gradient(135deg, rgba(19,118,89,0.04) 0%, rgba(192,156,46,0.04) 100%);
-    border: 1px solid rgba(19,118,89,0.14);
-    border-radius: 12px;
-    padding: 12px 14px;
-    margin-bottom: 10px;
-}
-.tbl-kpi-icon {
-    font-size: 2.2rem;
-    line-height: 1;
-    flex-shrink: 0;
-}
-.tbl-kpi-content { flex: 1; min-width: 0; }
-.tbl-kpi-label {
-    font-family: 'Inter', Arial, sans-serif;
-    font-size: 0.5rem;
-    font-weight: 700;
-    color: #455a72;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-bottom: 2px;
-}
-.tbl-kpi-value {
-    font-family: 'Inter', Arial, sans-serif;
-    font-size: 2.1rem;
-    font-weight: 900;
-    line-height: 1;
-    color: #137659;
-}
-
-/* ── ALS breakdown pills ── */
-.tbl-pills {
-    display: flex;
-    gap: 5px;
-    margin-top: 8px;
-    flex-wrap: wrap;
-}
-.tbl-pill {
+    border: 1.5px solid rgba(19,118,89,0.2);
+    box-shadow: 0 4px 20px rgba(19,118,89,0.08);
+    padding: 16px;
+    height: 480px;
+    box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    background: rgba(19,118,89,0.07);
-    border: 1px solid rgba(19,118,89,0.18);
-    border-radius: 8px;
-    padding: 4px 8px;
-    min-width: 44px;
-    flex: 1;
+    justify-content: space-between;
 }
-.tbl-pill-name {
-    font-family: 'Inter', Arial, sans-serif;
-    font-size: 0.42rem;
+
+.tbl-sec-title-lat {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
     font-weight: 800;
     color: #137659;
     letter-spacing: 1px;
-}
-.tbl-pill-val {
-    font-family: 'Inter', Arial, sans-serif;
-    font-size: 1rem;
-    font-weight: 900;
-    color: #1f221e;
-    line-height: 1.2;
-}
-.tbl-pill-sub {
-    font-family: 'Inter', Arial, sans-serif;
-    font-size: 0.38rem;
-    color: #455a72;
-    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    border-left: 4px solid #137659;
+    padding-left: 8px;
+    margin-bottom: 10px;
 }
 
-/* ── Dos columnas stat ── */
-.tbl-stat-row {
+/* ── KPI Principal ── */
+.tbl-kpi-main {
+    background: linear-gradient(135deg, rgba(19,118,89,0.05) 0%, rgba(192,156,46,0.05) 100%);
+    border: 1px solid rgba(19,118,89,0.15);
+    border-radius: 12px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.tbl-kpi-main-icon {
+    font-size: 28px;
+    line-height: 1;
+}
+.tbl-kpi-main-lbl {
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    color: #455a72;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+}
+.tbl-kpi-main-val {
+    font-family: 'Inter', sans-serif;
+    font-size: 26px;
+    font-weight: 900;
+    color: #137659;
+    line-height: 1.1;
+}
+
+/* ── Pills ALS ── */
+.tbl-pills-container {
+    display: flex;
+    gap: 4px;
+    margin-top: 6px;
+}
+.tbl-pill-box {
+    background: rgba(19,118,89,0.06);
+    border: 1px solid rgba(19,118,89,0.15);
+    border-radius: 8px;
+    padding: 4px;
+    flex: 1;
+    text-align: center;
+}
+.tbl-pill-name {
+    font-family: 'Inter', sans-serif;
+    font-size: 8px;
+    font-weight: 800;
+    color: #137659;
+}
+.tbl-pill-val {
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    font-weight: 900;
+    color: #1f221e;
+    line-height: 1.1;
+}
+.tbl-pill-sub {
+    font-family: 'Inter', sans-serif;
+    font-size: 8px;
+    color: #455a72;
+}
+
+/* ── Grid de Medidores ── */
+.tbl-row-stats {
     display: flex;
     gap: 8px;
-    margin-bottom: 8px;
 }
-.tbl-stat-card {
+.tbl-stat-item {
     flex: 1;
     border-radius: 10px;
-    padding: 10px 12px;
+    padding: 8px 10px;
     text-align: center;
     border: 1px solid;
 }
-.tbl-stat-icon {
-    font-size: 1.4rem;
-    line-height: 1;
-    margin-bottom: 3px;
-}
-.tbl-stat-label {
-    font-family: 'Inter', Arial, sans-serif;
-    font-size: 0.44rem;
-    font-weight: 700;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
+.tbl-stat-item-icon {
+    font-size: 18px;
     margin-bottom: 2px;
 }
-.tbl-stat-value {
-    font-family: 'Inter', Arial, sans-serif;
-    font-size: 1.5rem;
+.tbl-stat-item-lbl {
+    font-family: 'Inter', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+.tbl-stat-item-val {
+    font-family: 'Inter', sans-serif;
+    font-size: 20px;
     font-weight: 900;
-    line-height: 1;
+    line-height: 1.1;
 }
 
-/* ── Barra de progreso ── */
-.tbl-prog-wrap {
-    background: rgba(19,118,89,0.07);
-    border-radius: 4px;
-    height: 7px;
-    overflow: hidden;
-    margin-top: 5px;
-}
-.tbl-prog-fill {
-    height: 100%;
-    border-radius: 4px;
-    transition: width 0.8s ease;
-}
+/* ── Barras de Progreso ── */
 .tbl-prog-card {
-    background: #f9fbfa;
+    background: #fdfdfd;
     border: 1px solid rgba(19,118,89,0.12);
     border-radius: 10px;
-    padding: 10px 14px;
-    margin-bottom: 8px;
+    padding: 8px 10px;
 }
-.tbl-prog-label {
-    font-family: 'Inter', Arial, sans-serif;
-    font-size: 0.5rem;
+.tbl-prog-lbl {
+    font-family: 'Inter', sans-serif;
+    font-size: 9px;
     font-weight: 700;
     color: #455a72;
-    letter-spacing: 2px;
+    letter-spacing: 1px;
     text-transform: uppercase;
 }
-.tbl-prog-value {
-    font-family: 'Inter', Arial, sans-serif;
-    font-size: 1.35rem;
+.tbl-prog-val {
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
     font-weight: 900;
-    line-height: 1.2;
     float: right;
-    margin-top: -1px;
 }
-
-/* ── Gauge card ── */
-.tbl-gauge-card {
-    background: #ffffff;
-    border-radius: 14px;
-    border: 1px solid rgba(19,118,89,0.12);
-    box-shadow: 0 2px 12px rgba(19,118,89,0.06);
-    padding: 4px 4px 0 4px;
-    text-align: center;
-    margin-bottom: 8px;
+.tbl-prog-track {
+    background: rgba(19,118,89,0.08);
+    border-radius: 4px;
+    height: 6px;
+    overflow: hidden;
+    margin-top: 4px;
 }
-.tbl-gauge-title {
-    font-family: 'Inter', Arial, sans-serif;
-    font-size: 0.52rem;
-    font-weight: 800;
-    color: #455a72;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    padding-top: 8px;
+.tbl-prog-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s ease;
 }
 </style>
 """, unsafe_allow_html=True)
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-def _chart_html(opts: dict, height: int, cid: str) -> str:
-    return f"""
-<div id="{cid}" style="width:100%;height:{height}px;"></div>
-<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
-<script>
-(function(){{
-  var el=document.getElementById('{cid}');
-  var c=echarts.init(el,null,{{renderer:'canvas'}});
-  c.setOption({json.dumps(opts, ensure_ascii=False)});
-  new ResizeObserver(function(){{c.resize();}}).observe(el);
-}})();
-</script>"""
-
-
-def _gauge_html(value, meta, label, higher_is_better: bool, max_val, cid) -> str:
-    """Gauge con aguja estilo velocímetro, colores según sentido del KPI."""
-    meta_pct = meta / max_val
-    if higher_is_better:
-        arc_colors = [[meta_pct, _R], [1.0, _G]]
-    else:
-        arc_colors = [[meta_pct, _G], [1.0, _R]]
-
-    val_color = _G if (value >= meta if higher_is_better else value <= meta) else _R
-    val_rounded = int(round(value))
-
-    opts = {
-        "backgroundColor": _W,
-        "series": [{
-            "type": "gauge",
-            "startAngle": 205,
-            "endAngle": -25,
-            "min": 0,
-            "max": max_val,
-            "center": ["50%", "62%"],
-            "radius": "88%",
-            "splitNumber": 4,
-            "axisLine": {
-                "lineStyle": {
-                    "width": 18,
-                    "color": arc_colors,
-                    "shadowBlur": 8,
-                    "shadowColor": "rgba(0,0,0,0.08)"
-                }
-            },
-            "pointer": {
-                "itemStyle": {"color": _T},
-                "width": 5,
-                "length": "72%",
-                "offsetCenter": [0, 0],
-            },
-            "axisTick": {
-                "distance": -22,
-                "length": 7,
-                "lineStyle": {"color": "#fff", "width": 2}
-            },
-            "splitLine": {
-                "distance": -28,
-                "length": 14,
-                "lineStyle": {"color": "#fff", "width": 3}
-            },
-            "axisLabel": {
-                "color": _T2,
-                "distance": 30,
-                "fontSize": 8,
-                "fontFamily": "Inter, Arial, sans-serif",
-                "fontWeight": "600",
-            },
-            "anchor": {
-                "show": True,
-                "showAbove": True,
-                "size": 12,
-                "itemStyle": {"borderWidth": 3, "borderColor": _T, "color": _W}
-            },
-            "detail": {
-                "valueAnimation": True,
-                "formatter": f"{val_rounded}",
-                "color": val_color,
-                "fontSize": 28,
-                "fontWeight": "900",
-                "fontFamily": "Inter, Arial, sans-serif",
-                "offsetCenter": [0, "22%"],
-                "borderRadius": 6,
-            },
-            "title": {
-                "show": True,
-                "offsetCenter": [0, "48%"],
-                "color": _T2,
-                "fontSize": 9,
-                "fontWeight": "700",
-                "fontFamily": "Inter, Arial, sans-serif",
-            },
-            "data": [{"value": round(value, 1), "name": f"Meta {label}: {meta}"}],
-        }]
-    }
-    return _chart_html(opts, 200, cid)
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# RENDER PRINCIPAL
-# ─────────────────────────────────────────────────────────────────────────────
 
 def render_tab_tablero(
     df_bd_filtered,
@@ -396,7 +259,6 @@ def render_tab_tablero(
     uso_oper     = als_operativos / max(als_fondo, 1) * 100
 
     # ── Serie IF mensual — fórmula oficial: Fallas ALS (RLE<1500) / Pozos ON ─
-    #    Usa calcular_indice_falla_anual del módulo indice_falla.py
     if_cats, if_vals, on_vals, off_vals = [], [], [], []
     if_actual = 0.0
 
@@ -406,7 +268,6 @@ def render_tab_tablero(
             df_bd_filtered.copy(), df_forma9_filtered.copy(), fecha_evaluacion
         )
 
-        # Filtrar solo los meses del año en evaluación
         _MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
         df_yr = df_mensual_if[
             df_mensual_if['Mes'].str.startswith(str(anio_eval))
@@ -416,16 +277,14 @@ def render_tab_tablero(
             m_str = row['Mes']           # 'YYYY-MM'
             m_idx = int(m_str[5:7]) - 1  # 0-based month index
             if_cats.append(_MESES[m_idx])
-            # Índice mensual: Fallas_ALS_1500 / Pozos_ON  (sin rolling para el chart mensual)
             on_m   = int(row.get('Pozos ON', 0))
             fall_m = int(row.get('Fallas_ALS_1500', 0))
-            if_m   = round(fall_m / max(on_m, 1), 4)   # valor entre 0 y 1 aprox
+            if_m   = round(fall_m / max(on_m, 1), 4)
             if_vals.append(round(if_m, 4))
             on_vals.append(on_m)
             off_m  = max(int(row.get('Pozos Operativos', on_m)) - on_m, 0)
             off_vals.append(off_m)
 
-        # Valor actual: usar el rolling 12-meses más reciente (Indice_Falla_Rolling_ALS_ON_1500)
         last_row = df_mensual_if[
             df_mensual_if['Indice_Falla_Rolling_ALS_ON_1500'].notna()
         ].tail(1)
@@ -435,7 +294,6 @@ def render_tab_tablero(
             if_actual = if_vals[-1]
 
     except Exception as _e_if:
-        # Fallback: cálculo simplificado (fallas totales / pozos ON del mes)
         _MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
         for m in range(1, mes_eval + 1):
             last_day = calendar.monthrange(anio_eval, m)[1]
@@ -464,12 +322,11 @@ def render_tab_tablero(
             off_vals.append(max(op_m - on_m, 0))
         if_actual = if_vals[-1] if if_vals else 0.0
 
-    # Escalar a % si todos son ≤ 1 (la fórmula da ratio, mostramos ×100)
     if if_vals and max(if_vals) <= 1.5:
         if_vals   = [round(v * 100, 2) for v in if_vals]
         if_actual = round(if_actual * 100, 2)
 
-    if_max = max(max(if_vals) * 1.4, META_IF * 2, 20) if if_vals else 30
+    if_max = max(max(if_vals) * 1.3, META_IF * 2, 20) if if_vals else 20
 
     # ── MTBF ─────────────────────────────────────────────────────────────────
     try:
@@ -493,23 +350,21 @@ def render_tab_tablero(
         for i in range(4):
             rl_counts[i] = int(((rl_data >= rl_limites[i]) & (rl_data < rl_limites[i+1])).sum())
 
-    mtbf_max = max(mtbf_val * 1.5, META_MTBF * 1.6, 4000)
-    rl_max   = max(rl_val   * 1.5, META_RL   * 1.6, 3000)
+    mtbf_max = max(mtbf_val * 1.4, META_MTBF * 1.5, 3000)
+    rl_max   = max(rl_val   * 1.4, META_RL   * 1.5, 2500)
 
     # ═════════════════════════════════════════════════════════════════════════
-    # LAYOUT 3 PANELES
+    # LAYOUT DE 3 COLUMNAS SIMÉTRICAS
     # ═════════════════════════════════════════════════════════════════════════
-    st.markdown("<div style='height:6px;'></div>", unsafe_allow_html=True)
-    col_l, col_c, col_r = st.columns([1.05, 1.35, 1.25])
+    st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
+    col_l, col_c, col_r = st.columns([1, 1.25, 1.25], gap="medium")
 
     # ─────────────────────────────────────────────────────────────────────────
-    # PANEL IZQUIERDO — KPIs OPERATIVOS
+    # COLUMNA 1: KPIs OPERATIVOS (RENDERIZADO HTML COMPLETO)
     # ─────────────────────────────────────────────────────────────────────────
     with col_l:
-
-        # Construir pills de ALS
         pills_html = "".join([
-            f"""<div class="tbl-pill">
+            f"""<div class="tbl-pill-box">
                   <div class="tbl-pill-name">{t}</div>
                   <div class="tbl-pill-val">{als_breakdown.get(t,{}).get('total',0)}</div>
                   <div class="tbl-pill-sub">{als_breakdown.get(t,{}).get('op',0)} op</div>
@@ -518,240 +373,511 @@ def render_tab_tablero(
         ])
 
         st.markdown(f"""
-<div class="tbl-panel">
-
+<div class="tbl-panel-lateral">
+  <div class="tbl-sec-title-lat">Resumen Operativo</div>
+  
   <!-- ALS EN FONDO -->
-  <div class="tbl-kpi-big">
-    <div class="tbl-kpi-icon">🛢️</div>
-    <div class="tbl-kpi-content">
-      <div class="tbl-kpi-label">ALS EN FONDO</div>
-      <div class="tbl-kpi-value">{als_fondo:,}</div>
-      <div class="tbl-pills">{pills_html}</div>
+  <div class="tbl-kpi-main">
+    <div class="tbl-kpi-main-icon">🛢️</div>
+    <div style="flex:1;">
+      <div class="tbl-kpi-main-lbl">ALS EN FONDO</div>
+      <div class="tbl-kpi-main-val">{als_fondo:,}</div>
+      <div class="tbl-pills-container">{pills_html}</div>
     </div>
   </div>
 
-  <!-- FALLADOS / OPERATIVOS -->
-  <div class="tbl-stat-row">
-    <div class="tbl-stat-card" style="background:{_R2};border-color:rgba(198,40,40,0.25);">
-      <div class="tbl-stat-icon">⚠️</div>
-      <div class="tbl-stat-label" style="color:{_R};">ALS FALLADOS</div>
-      <div class="tbl-stat-value" style="color:{_R};">{als_fallados:,}</div>
+  <!-- ESTADOS DE FALLAS Y OPERATIVOS -->
+  <div class="tbl-row-stats">
+    <div class="tbl-stat-item" style="background:{_R2}; border-color:rgba(198,40,40,0.25);">
+      <div class="tbl-stat-item-icon">⚠️</div>
+      <div class="tbl-stat-item-lbl" style="color:{_R};">ALS FALLADOS</div>
+      <div class="tbl-stat-item-val" style="color:{_R};">{als_fallados:,}</div>
     </div>
-    <div class="tbl-stat-card" style="background:{_G3};border-color:rgba(19,118,89,0.25);">
-      <div class="tbl-stat-icon">✅</div>
-      <div class="tbl-stat-label" style="color:{_G};">ALS OPERATIVOS</div>
-      <div class="tbl-stat-value" style="color:{_G};">{als_operativos:,}</div>
-    </div>
-  </div>
-
-  <!-- ACTIVOS / INACTIVOS -->
-  <div class="tbl-stat-row">
-    <div class="tbl-stat-card" style="background:{_G3};border-color:rgba(19,118,89,0.2);">
-      <div class="tbl-stat-icon">▶️</div>
-      <div class="tbl-stat-label" style="color:{_G};">ACTIVOS</div>
-      <div class="tbl-stat-value" style="color:{_G};">{activos:,}</div>
-    </div>
-    <div class="tbl-stat-card" style="background:{_Y2};border-color:rgba(192,156,46,0.25);">
-      <div class="tbl-stat-icon">⏸️</div>
-      <div class="tbl-stat-label" style="color:{_Y};">INACTIVOS</div>
-      <div class="tbl-stat-value" style="color:{_Y};">{inactivos:,}</div>
+    <div class="tbl-stat-item" style="background:{_G3}; border-color:rgba(19,118,89,0.25);">
+      <div class="tbl-stat-item-icon">✅</div>
+      <div class="tbl-stat-item-lbl" style="color:{_G};">OPERATIVOS</div>
+      <div class="tbl-stat-item-val" style="color:{_G};">{als_operativos:,}</div>
     </div>
   </div>
 
-  <!-- DISPONIBILIDAD OPERACIONAL -->
+  <!-- ESTADOS DE TRABAJO (ACTIVOS/INACTIVOS) -->
+  <div class="tbl-row-stats">
+    <div class="tbl-stat-item" style="background:{_G3}; border-color:rgba(19,118,89,0.2);">
+      <div class="tbl-stat-item-icon">▶️</div>
+      <div class="tbl-stat-item-lbl" style="color:{_G};">ACTIVOS</div>
+      <div class="tbl-stat-item-val" style="color:{_G};">{activos:,}</div>
+    </div>
+    <div class="tbl-stat-item" style="background:{_Y2}; border-color:rgba(192,156,46,0.25);">
+      <div class="tbl-stat-item-icon">⏸️</div>
+      <div class="tbl-stat-item-lbl" style="color:{_Y};">INACTIVOS</div>
+      <div class="tbl-stat-item-val" style="color:{_Y};">{inactivos:,}</div>
+    </div>
+  </div>
+
+  <!-- DISPONIBILIDAD -->
   <div class="tbl-prog-card">
-    <div style="display:flex;justify-content:space-between;align-items:center;">
-      <div class="tbl-prog-label">DISPONIBILIDAD OPERACIONAL</div>
-      <div class="tbl-prog-value" style="color:{'#137659' if disp_oper>=75 else ('#c09c2e' if disp_oper>=50 else '#c62828')};">{disp_oper:.0f}%</div>
+    <div>
+      <span class="tbl-prog-lbl">DISPONIBILIDAD OPERACIONAL</span>
+      <span class="tbl-prog-val" style="color:{_G if disp_oper>=75 else (_Y if disp_oper>=50 else _R)};">{disp_oper:.0f}%</span>
     </div>
-    <div class="tbl-prog-wrap">
-      <div class="tbl-prog-fill" style="width:{min(disp_oper,100):.1f}%;background:{'#137659' if disp_oper>=75 else ('#c09c2e' if disp_oper>=50 else '#c62828')};"></div>
+    <div class="tbl-prog-track">
+      <div class="tbl-prog-bar" style="width:{min(disp_oper,100):.1f}%; background:{_G if disp_oper>=75 else (_Y if disp_oper>=50 else _R)};"></div>
     </div>
   </div>
 
   <!-- USO OPERATIVO -->
   <div class="tbl-prog-card">
-    <div style="display:flex;justify-content:space-between;align-items:center;">
-      <div class="tbl-prog-label">USO OPERATIVO</div>
-      <div class="tbl-prog-value" style="color:{'#137659' if uso_oper>=60 else ('#c09c2e' if uso_oper>=40 else '#c62828')};">{uso_oper:.0f}%</div>
+    <div>
+      <span class="tbl-prog-lbl">USO OPERATIVO</span>
+      <span class="tbl-prog-val" style="color:{_G if uso_oper>=60 else (_Y if uso_oper>=40 else _R)};">{uso_oper:.0f}%</span>
     </div>
-    <div class="tbl-prog-wrap">
-      <div class="tbl-prog-fill" style="width:{min(uso_oper,100):.1f}%;background:{'#137659' if uso_oper>=60 else ('#c09c2e' if uso_oper>=40 else '#c62828')};"></div>
+    <div class="tbl-prog-track">
+      <div class="tbl-prog-bar" style="width:{min(uso_oper,100):.1f}%; background:{_G if uso_oper>=60 else (_Y if uso_oper>=40 else _R)};"></div>
     </div>
   </div>
-
 </div>
 """, unsafe_allow_html=True)
 
     # ─────────────────────────────────────────────────────────────────────────
-    # PANEL CENTRAL — GAUGE IF + TENDENCIA ANUAL
+    # COLUMNA 2: GAUGE IF + TENDENCIA ANUAL (COMPONENTE HTML UNIFICADO)
     # ─────────────────────────────────────────────────────────────────────────
     with col_c:
-        st.markdown('<div class="tbl-panel">', unsafe_allow_html=True)
+        # Generar HTML embebido con ECharts
+        col2_html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        body {{
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }}
+        .tbl-panel {{
+            background: #ffffff;
+            border-radius: 16px;
+            border: 1.5px solid rgba(19,118,89,0.2);
+            box-shadow: 0 4px 20px rgba(19,118,89,0.08);
+            padding: 16px;
+            height: 480px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }}
+        .tbl-sec-title {{
+            font-size: 13px;
+            font-weight: 800;
+            color: #137659;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border-left: 4px solid #137659;
+            padding-left: 8px;
+            margin-bottom: 5px;
+        }}
+        .chart-container {{
+            width: 100%;
+        }}
+    </style>
+</head>
+<body>
+    <div class="tbl-panel">
+        <div class="tbl-sec-title">Índice de Falla (IF &lt; 1500 ALS)</div>
+        
+        <!-- Contenedor del Gauge -->
+        <div id="gauge_if" class="chart-container" style="height: 195px;"></div>
+        
+        <!-- Contenedor de la Tendencia -->
+        <div id="chart_if_anual" class="chart-container" style="height: 225px;"></div>
+    </div>
 
-        # Gauge IF (menor es mejor → verde izquierda, rojo derecha)
-        st.markdown('<div class="tbl-gauge-card"><div class="tbl-gauge-title">ÍNDICE DE FALLA (IF)</div>', unsafe_allow_html=True)
-        components.html(
-            _gauge_html(if_actual, META_IF, "IF", higher_is_better=False,
-                        max_val=if_max, cid="gauge_if"),
-            height=210, scrolling=False
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script>
+        (function() {{
+            // --- GAUGE OPTION ---
+            var value = {if_actual};
+            var meta = {META_IF};
+            var maxVal = {if_max};
+            var metaPct = meta / maxVal;
+            
+            var arcColors = [[metaPct, "{_G}"], [1.0, "{_R}"]];
+            var valColor = (value <= meta) ? "{_G}" : "{_R}";
+            
+            var gaugeOpt = {{
+                backgroundColor: "transparent",
+                series: [{{
+                    type: "gauge",
+                    startAngle: 200,
+                    endAngle: -20,
+                    min: 0,
+                    max: maxVal,
+                    center: ["50%", "60%"],
+                    radius: "95%",
+                    splitNumber: 4,
+                    axisLine: {{
+                        lineStyle: {{
+                            width: 14,
+                            color: arcColors
+                        }}
+                    }},
+                    pointer: {{
+                        itemStyle: {{ color: "{_T}" }},
+                        width: 4,
+                        length: "68%"
+                    }},
+                    axisTick: {{
+                        distance: -16,
+                        length: 5,
+                        lineStyle: {{ color: "#fff", width: 1.5 }}
+                    }},
+                    splitLine: {{
+                        distance: -20,
+                        length: 10,
+                        lineStyle: {{ color: "#fff", width: 2.5 }}
+                    }},
+                    axisLabel: {{
+                        color: "{_T2}",
+                        distance: 22,
+                        fontSize: 8,
+                        fontWeight: "600"
+                    }},
+                    anchor: {{
+                        show: true,
+                        showAbove: true,
+                        size: 8,
+                        itemStyle: {{ borderWidth: 2, borderColor: "{_T}", color: "#fff" }}
+                    }},
+                    detail: {{
+                        valueAnimation: true,
+                        formatter: function(val) {{ return val.toFixed(1) + "%"; }},
+                        color: valColor,
+                        fontSize: 24,
+                        fontWeight: "900",
+                        offsetCenter: [0, "25%"]
+                    }},
+                    title: {{
+                        show: true,
+                        offsetCenter: [0, "52%"],
+                        color: "{_T2}",
+                        fontSize: 9,
+                        fontWeight: "700"
+                    }},
+                    data: [{{ value: value, name: "Meta IF: <= " + meta + "%" }}]
+                }}]
+            }};
+            
+            var chartG = echarts.init(document.getElementById('gauge_if'));
+            chartG.setOption(gaugeOpt);
 
-        # Gráfico IF anual — barras (ON/OFF) + línea IF
-        opts_if = {
-            "backgroundColor": _W,
-            "tooltip": {
-                "trigger": "axis",
-                "axisPointer": {"type": "shadow"},
-                "backgroundColor": "rgba(255,255,255,0.97)",
-                "borderColor": "rgba(19,118,89,0.2)",
-                "textStyle": {"color": _T, "fontSize": 11},
-            },
-            "legend": {
-                "data": ["Pozos ON", "Pozos OFF", "IF (%)"],
-                "bottom": 0, "itemHeight": 7, "itemGap": 12,
-                "textStyle": {"color": _T2, "fontSize": 8, "fontFamily": "Inter, Arial, sans-serif"},
-            },
-            "grid": {"top": "6%", "left": "3%", "right": "8%", "bottom": "22%", "containLabel": True},
-            "xAxis": {
-                "type": "category", "data": if_cats,
-                "axisLabel": {"color": _T2, "fontSize": 8, "fontFamily": "Inter, Arial, sans-serif"},
-                "axisLine": {"lineStyle": {"color": "rgba(19,118,89,0.15)"}},
-                "axisTick": {"show": False},
-            },
-            "yAxis": [
-                {
-                    "type": "value", "name": "Pozos",
-                    "nameTextStyle": {"color": _T2, "fontSize": 7},
-                    "axisLabel": {"color": _T2, "fontSize": 7},
-                    "splitLine": {"lineStyle": {"color": "rgba(19,118,89,0.06)", "type": "dashed"}},
-                },
-                {
-                    "type": "value", "name": "IF %",
-                    "nameTextStyle": {"color": _R, "fontSize": 7},
-                    "axisLabel": {"color": _R, "fontSize": 7},
-                    "splitLine": {"show": False},
-                    "min": 0,
-                }
-            ],
-            "series": [
-                {
-                    "name": "Pozos ON", "type": "bar", "stack": "pozos",
-                    "data": on_vals, "barMaxWidth": 22,
-                    "itemStyle": {"color": "rgba(19,118,89,0.75)", "borderRadius": [3, 3, 0, 0]},
-                },
-                {
-                    "name": "Pozos OFF", "type": "bar", "stack": "pozos",
-                    "data": off_vals, "barMaxWidth": 22,
-                    "itemStyle": {"color": "rgba(198,40,40,0.3)", "borderRadius": [3, 3, 0, 0]},
-                },
-                {
-                    "name": "IF (%)", "type": "line", "yAxisIndex": 1,
-                    "data": if_vals, "smooth": True,
-                    "symbol": "circle", "symbolSize": 6,
-                    "lineStyle": {"color": _R, "width": 2.5},
-                    "itemStyle": {"color": _R, "borderColor": _W, "borderWidth": 2},
-                    "areaStyle": {"color": "rgba(198,40,40,0.05)"},
-                    "markLine": {
-                        "silent": True,
-                        "lineStyle": {"color": _G, "type": "dashed", "width": 1.5},
-                        "data": [{"yAxis": META_IF, "name": f"Meta {META_IF}%"}],
-                        "label": {
-                            "formatter": f"Meta {META_IF}%",
-                            "color": _G, "fontSize": 8,
-                            "fontFamily": "Inter, Arial, sans-serif"
-                        },
-                    }
-                }
-            ]
-        }
-        st.markdown(f"<div class='tbl-sec-title'>IF EN EL ÚLTIMO AÑO — {anio_eval}</div>", unsafe_allow_html=True)
-        components.html(_chart_html(opts_if, 230, "chart_if_anual"), height=242, scrolling=False)
-        st.markdown('</div>', unsafe_allow_html=True)
+            // --- TREND OPTION ---
+            var trendOpt = {{
+                backgroundColor: "transparent",
+                tooltip: {{
+                    trigger: "axis",
+                    axisPointer: {{ type: "shadow" }},
+                    backgroundColor: "rgba(255,255,255,0.96)",
+                    borderColor: "rgba(19,118,89,0.15)",
+                    textStyle: {{ color: "{_T}", fontSize: 10 }}
+                }},
+                legend: {{
+                    data: ["Pozos ON", "Pozos OFF", "IF (%)"],
+                    bottom: 0,
+                    itemHeight: 7,
+                    itemGap: 10,
+                    textStyle: {{ color: "{_T2}", fontSize: 8, fontFamily: "Inter, sans-serif" }}
+                }},
+                grid: {{ top: "12%", left: "3%", right: "8%", bottom: "20%", containLabel: true }},
+                xAxis: {{
+                    type: "category",
+                    data: {json.dumps(if_cats)},
+                    axisLabel: {{ color: "{_T2}", fontSize: 8 }},
+                    axisLine: {{ lineStyle: {{ color: "rgba(19,118,89,0.15)" }} }},
+                    axisTick: {{ show: false }}
+                }},
+                yAxis: [
+                    {{
+                        type: "value",
+                        name: "Pozos",
+                        nameTextStyle: {{ color: "{_T2}", fontSize: 8 }},
+                        axisLabel: {{ color: "{_T2}", fontSize: 8 }},
+                        splitLine: {{ lineStyle: {{ color: "rgba(19,118,89,0.06)", type: "dashed" }} }}
+                    }},
+                    {{
+                        type: "value",
+                        name: "IF %",
+                        nameTextStyle: {{ color: "{_R}", fontSize: 8 }},
+                        axisLabel: {{ color: "{_R}", fontSize: 8 }},
+                        splitLine: {{ show: false }},
+                        min: 0
+                    }}
+                ],
+                series: [
+                    {{
+                        name: "Pozos ON",
+                        type: "bar",
+                        stack: "pozos",
+                        data: {json.dumps(on_vals)},
+                        barMaxWidth: 16,
+                        itemStyle: {{ color: "rgba(19,118,89,0.75)", borderRadius: [2, 2, 0, 0] }}
+                    }},
+                    {{
+                        name: "Pozos OFF",
+                        type: "bar",
+                        stack: "pozos",
+                        data: {json.dumps(off_vals)},
+                        barMaxWidth: 16,
+                        itemStyle: {{ color: "rgba(198,40,40,0.3)", borderRadius: [2, 2, 0, 0] }}
+                    }},
+                    {{
+                        name: "IF (%)",
+                        type: "line",
+                        yAxisIndex: 1,
+                        data: {json.dumps(if_vals)},
+                        smooth: true,
+                        symbol: "circle",
+                        symbolSize: 5,
+                        lineStyle: {{ color: "{_R}", width: 2.2 }},
+                        itemStyle: {{ color: "{_R}", borderColor: "#fff", borderWidth: 1.5 }},
+                        areaStyle: {{ color: "rgba(198,40,40,0.04)" }},
+                        markLine: {{
+                            silent: true,
+                            lineStyle: {{ color: "{_G}", type: "dashed", width: 1.2 }},
+                            data: [{{ yAxis: meta, name: "Meta" }}],
+                            label: {{ formatter: "Meta " + meta + "%", color: "{_G}", fontSize: 7, position: "end" }}
+                        }}
+                    }}
+                ]
+            }};
+            
+            var chartT = echarts.init(document.getElementById('chart_if_anual'));
+            chartT.setOption(trendOpt);
+
+            // Responsive
+            window.addEventListener('resize', function() {{
+                chartG.resize();
+                chartT.resize();
+            }});
+        }})();
+    </script>
+</body>
+</html>
+"""
+        components.html(col2_html, height=480, scrolling=False)
 
     # ─────────────────────────────────────────────────────────────────────────
-    # PANEL DERECHO — GAUGES MTBF + RL + DISTRIBUCIÓN RUNLIFE
+    # COLUMNA 3: GAUGES MTBF + RUNLIFE + DISTRIBUCIÓN (COMPONENTE HTML UNIFICADO)
     # ─────────────────────────────────────────────────────────────────────────
     with col_r:
-        st.markdown('<div class="tbl-panel">', unsafe_allow_html=True)
-
-        # Dos gauges lado a lado
-        g1, g2 = st.columns(2)
-        with g1:
-            st.markdown('<div class="tbl-gauge-card"><div class="tbl-gauge-title">MTBF (días)</div>', unsafe_allow_html=True)
-            components.html(
-                _gauge_html(mtbf_val, META_MTBF, "MTBF", higher_is_better=True,
-                            max_val=mtbf_max, cid="gauge_mtbf"),
-                height=210, scrolling=False
-            )
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        with g2:
-            st.markdown('<div class="tbl-gauge-card"><div class="tbl-gauge-title">RUNLIFE (días)</div>', unsafe_allow_html=True)
-            components.html(
-                _gauge_html(rl_val, META_RL, "RL", higher_is_better=True,
-                            max_val=rl_max, cid="gauge_rl"),
-                height=210, scrolling=False
-            )
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        # Gráfico distribución RunLife
         rl_bar_colors = [_R, _Y, _G2, _G]
         total_rl = max(sum(rl_counts), 1)
         rl_pcts  = [round(v / total_rl * 100, 1) for v in rl_counts]
 
-        opts_rl = {
-            "backgroundColor": _W,
-            "tooltip": {
-                "trigger": "axis",
-                "axisPointer": {"type": "shadow"},
-                "backgroundColor": "rgba(255,255,255,0.97)",
-                "borderColor": "rgba(19,118,89,0.2)",
-                "textStyle": {"color": _T, "fontSize": 11},
-                "formatter": (
-                    "function(p){"
-                    "  var b=p[0];"
-                    "  return b.name+'<br/>Pozos: <b>'+b.value+'</b>'"
-                    "}"
-                ),
-            },
-            "grid": {"top": "8%", "left": "2%", "right": "4%", "bottom": "22%", "containLabel": True},
-            "xAxis": {
-                "type": "category",
-                "data": rl_bins,
-                "axisLabel": {
-                    "color": _T2, "fontSize": 7, "interval": 0,
-                    "fontFamily": "Inter, Arial, sans-serif",
-                    "rotate": 15,
-                },
-                "axisLine": {"lineStyle": {"color": "rgba(19,118,89,0.15)"}},
-                "axisTick": {"show": False},
-            },
-            "yAxis": {
-                "type": "value",
-                "axisLabel": {"color": _T2, "fontSize": 7},
-                "splitLine": {"lineStyle": {"color": "rgba(19,118,89,0.06)", "type": "dashed"}},
-            },
-            "series": [{
-                "type": "bar",
-                "data": [
-                    {"value": v,
-                     "itemStyle": {"color": c, "borderRadius": [5, 5, 0, 0]},
-                     "label": {
-                         "show": True,
-                         "position": "top",
-                         "color": _T,
-                         "fontSize": 10,
-                         "fontWeight": "700",
-                         "fontFamily": "Inter, Arial, sans-serif",
-                         "formatter": f"{v}\n{p}%",
-                     }}
-                    for v, c, p in zip(rl_counts, rl_bar_colors, rl_pcts)
-                ],
-                "barWidth": "48%",
-            }]
-        }
-        st.markdown(f"<div class='tbl-sec-title'>DISTRIBUCIÓN RUNLIFE — POZOS EN FONDO</div>", unsafe_allow_html=True)
-        components.html(_chart_html(opts_rl, 235, "chart_rl"), height=248, scrolling=False)
-        st.markdown('</div>', unsafe_allow_html=True)
+        col3_html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        body {{
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }}
+        .tbl-panel {{
+            background: #ffffff;
+            border-radius: 16px;
+            border: 1.5px solid rgba(19,118,89,0.2);
+            box-shadow: 0 4px 20px rgba(19,118,89,0.08);
+            padding: 16px;
+            height: 480px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }}
+        .tbl-sec-title {{
+            font-size: 13px;
+            font-weight: 800;
+            color: #137659;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border-left: 4px solid #137659;
+            padding-left: 8px;
+            margin-bottom: 5px;
+        }}
+        .gauges-row {{
+            display: flex;
+            justify-content: space-between;
+            height: 195px;
+        }}
+        .gauge-col {{
+            width: 48%;
+            height: 100%;
+        }}
+        .chart-container {{
+            width: 100%;
+        }}
+    </style>
+</head>
+<body>
+    <div class="tbl-panel">
+        <div class="tbl-sec-title">Desempeño (MTBF &amp; RunLife)</div>
+        
+        <!-- Dos Gauges lado a lado -->
+        <div class="gauges-row">
+            <div id="gauge_mtbf" class="gauge-col"></div>
+            <div id="gauge_rl" class="gauge-col"></div>
+        </div>
+        
+        <!-- Distribución RunLife -->
+        <div id="chart_rl" class="chart-container" style="height: 225px;"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script>
+        (function() {{
+            // --- GAUGE MTBF ---
+            var mtbfVal = {mtbf_val};
+            var mtbfMeta = {META_MTBF};
+            var mtbfMax = {mtbf_max};
+            var mtbfMetaPct = mtbfMeta / mtbfMax;
+            
+            var mtbfColors = [[mtbfMetaPct, "{_R}"], [1.0, "{_G}"]];
+            var mtbfColor = (mtbfVal >= mtbfMeta) ? "{_G}" : "{_R}";
+            
+            var mtbfOpt = {{
+                backgroundColor: "transparent",
+                series: [{{
+                    type: "gauge",
+                    startAngle: 200,
+                    endAngle: -20,
+                    min: 0,
+                    max: mtbfMax,
+                    center: ["50%", "60%"],
+                    radius: "95%",
+                    splitNumber: 3,
+                    axisLine: {{ lineStyle: {{ width: 10, color: mtbfColors }} }},
+                    pointer: {{ itemStyle: {{ color: "{_T}" }}, width: 3, length: "68%" }},
+                    axisTick: {{ distance: -12, length: 4, lineStyle: {{ color: "#fff", width: 1 }} }},
+                    splitLine: {{ distance: -15, length: 8, lineStyle: {{ color: "#fff", width: 2 }} }},
+                    axisLabel: {{ color: "{_T2}", distance: 16, fontSize: 8, fontWeight: "600" }},
+                    anchor: {{ show: true, size: 6, itemStyle: {{ borderWidth: 1.5, borderColor: "{_T}", color: "#fff" }} }},
+                    detail: {{
+                        valueAnimation: true,
+                        formatter: function(val) {{ return Math.round(val) + " d"; }},
+                        color: mtbfColor,
+                        fontSize: 16,
+                        fontWeight: "900",
+                        offsetCenter: [0, "25%"]
+                    }},
+                    title: {{ show: true, offsetCenter: [0, "52%"], color: "{_T2}", fontSize: 8, fontWeight: "700" }},
+                    data: [{{ value: mtbfVal, name: "MTBF (días)\\nMeta: " + mtbfMeta }}]
+                }}]
+            }};
+            
+            var chartMTBF = echarts.init(document.getElementById('gauge_mtbf'));
+            chartMTBF.setOption(mtbfOpt);
+
+            // --- GAUGE RUNLIFE ---
+            var rlVal = {rl_val};
+            var rlMeta = {META_RL};
+            var rlMax = {rl_max};
+            var rlMetaPct = rlMeta / rlMax;
+            
+            var rlColors = [[rlMetaPct, "{_R}"], [1.0, "{_G}"]];
+            var rlColor = (rlVal >= rlMeta) ? "{_G}" : "{_R}";
+            
+            var rlOpt = {{
+                backgroundColor: "transparent",
+                series: [{{
+                    type: "gauge",
+                    startAngle: 200,
+                    endAngle: -20,
+                    min: 0,
+                    max: rlMax,
+                    center: ["50%", "60%"],
+                    radius: "95%",
+                    splitNumber: 3,
+                    axisLine: {{ lineStyle: {{ width: 10, color: rlColors }} }},
+                    pointer: {{ itemStyle: {{ color: "{_T}" }}, width: 3, length: "68%" }},
+                    axisTick: {{ distance: -12, length: 4, lineStyle: {{ color: "#fff", width: 1 }} }},
+                    splitLine: {{ distance: -15, length: 8, lineStyle: {{ color: "#fff", width: 2 }} }},
+                    axisLabel: {{ color: "{_T2}", distance: 16, fontSize: 8, fontWeight: "600" }},
+                    anchor: {{ show: true, size: 6, itemStyle: {{ borderWidth: 1.5, borderColor: "{_T}", color: "#fff" }} }},
+                    detail: {{
+                        valueAnimation: true,
+                        formatter: function(val) {{ return Math.round(val) + " d"; }},
+                        color: rlColor,
+                        fontSize: 16,
+                        fontWeight: "900",
+                        offsetCenter: [0, "25%"]
+                    }},
+                    title: {{ show: true, offsetCenter: [0, "52%"], color: "{_T2}", fontSize: 8, fontWeight: "700" }},
+                    data: [{{ value: rlVal, name: "RunLife (días)\\nMeta: " + rlMeta }}]
+                }}]
+            }};
+            
+            var chartRL = echarts.init(document.getElementById('gauge_rl'));
+            chartRL.setOption(rlOpt);
+
+            // --- BAR CHART RUNLIFE DISTRIBUTION ---
+            var distOpt = {{
+                backgroundColor: "transparent",
+                tooltip: {{
+                    trigger: "axis",
+                    axisPointer: {{ type: "shadow" }},
+                    backgroundColor: "rgba(255,255,255,0.96)",
+                    borderColor: "rgba(19,118,89,0.15)",
+                    textStyle: {{ color: "{_T}", fontSize: 10 }},
+                    formatter: function(p) {{
+                        var b = p[0];
+                        return b.name + "<br/>Pozos: <b>" + b.value + "</b>";
+                    }}
+                }},
+                grid: {{ top: "10%", left: "2%", right: "4%", bottom: "20%", containLabel: true }},
+                xAxis: {{
+                    type: "category",
+                    data: {json.dumps(rl_bins)},
+                    axisLabel: {{ color: "{_T2}", fontSize: 8, interval: 0 }},
+                    axisLine: {{ lineStyle: {{ color: "rgba(19,118,89,0.15)" }} }},
+                    axisTick: {{ show: false }}
+                }},
+                yAxis: {{
+                    type: "value",
+                    axisLabel: {{ color: "{_T2}", fontSize: 8 }},
+                    splitLine: {{ lineStyle: {{ color: "rgba(19,118,89,0.06)", type: "dashed" }} }}
+                }},
+                series: [{{
+                    type: "bar",
+                    data: [
+                        {{ value: {rl_counts[0]}, itemStyle: {{ color: "{rl_bar_colors[0]}", borderRadius: [4, 4, 0, 0] }}, label: {{ show: true, position: "top", color: "{_T}", fontSize: 9, fontWeight: "700", formatter: "{rl_counts[0]}\\n{rl_pcts[0]}%" }} }},
+                        {{ value: {rl_counts[1]}, itemStyle: {{ color: "{rl_bar_colors[1]}", borderRadius: [4, 4, 0, 0] }}, label: {{ show: true, position: "top", color: "{_T}", fontSize: 9, fontWeight: "700", formatter: "{rl_counts[1]}\\n{rl_pcts[1]}%" }} }},
+                        {{ value: {rl_counts[2]}, itemStyle: {{ color: "{rl_bar_colors[2]}", borderRadius: [4, 4, 0, 0] }}, label: {{ show: true, position: "top", color: "{_T}", fontSize: 9, fontWeight: "700", formatter: "{rl_counts[2]}\\n{rl_pcts[2]}%" }} }},
+                        {{ value: {rl_counts[3]}, itemStyle: {{ color: "{rl_bar_colors[3]}", borderRadius: [4, 4, 0, 0] }}, label: {{ show: true, position: "top", color: "{_T}", fontSize: 9, fontWeight: "700", formatter: "{rl_counts[3]}\\n{rl_pcts[3]}%" }} }}
+                    ],
+                    barWidth: "45%"
+                }}]
+            }};
+            
+            var chartDist = echarts.init(document.getElementById('chart_rl'));
+            chartDist.setOption(distOpt);
+
+            // Responsive
+            window.addEventListener('resize', function() {{
+                chartMTBF.resize();
+                chartRL.resize();
+                chartDist.resize();
+            }});
+        }})();
+    </script>
+</body>
+</html>
+"""
+        components.html(col3_html, height=480, scrolling=False)
