@@ -1,5 +1,5 @@
 """
-tabs/tab_tablero.py  —  v3.1 Premium Dashboard
+tabs/tab_tablero.py  —  v3.2 Premium Dashboard
 ==============================================
 Tablero Ejecutivo de Alto Impacto con estética industrial.
 Presenta 3 columnas simétricas con tarjetas premium y visualizaciones en ECharts:
@@ -278,7 +278,6 @@ def render_tab_tablero(
             m_idx = int(m_str[5:7]) - 1  # 0-based month index
             if_cats.append(_MESES[m_idx])
             on_m   = int(row.get('Pozos ON', 0))
-            # Usar el índice rodante oficial en porcentaje real (multiplicado por 100)
             if_roll = float(row.get('Indice_Falla_Rolling_ALS_ON_1500', 0.0)) * 100.0
             if_vals.append(if_roll)
             on_vals.append(on_m)
@@ -521,22 +520,9 @@ def render_tab_tablero(
                         width: 3,
                         length: "65%"
                     }},
-                    axisTick: {{
-                        distance: -12,
-                        length: 4,
-                        lineStyle: {{ color: "#fff", width: 1 }}
-                    }},
-                    splitLine: {{
-                        distance: -15,
-                        length: 8,
-                        lineStyle: {{ color: "#fff", width: 2 }}
-                    }},
-                    axisLabel: {{
-                        color: "{_T2}",
-                        distance: 12,
-                        fontSize: 9,
-                        fontWeight: "600"
-                    }},
+                    axisTick: {{ show: false }},
+                    splitLine: {{ show: false }},
+                    axisLabel: {{ show: false }},
                     anchor: {{
                         show: true,
                         showAbove: true,
@@ -553,7 +539,7 @@ def render_tab_tablero(
                     }},
                     title: {{
                         show: true,
-                        offsetCenter: [0, "62%"],
+                        offsetCenter: [0, "65%"],
                         color: "{_T2}",
                         fontSize: 9,
                         fontWeight: "700"
@@ -751,14 +737,14 @@ def render_tab_tablero(
                     endAngle: -20,
                     min: 0,
                     max: mtbfMax,
-                    center: ["50%", "52%"],
-                    radius: "80%",
+                    center: ["50%", "50%"],
+                    radius: "85%",
                     splitNumber: 3,
                     axisLine: {{ lineStyle: {{ width: 8, color: mtbfColors }} }},
                     pointer: {{ itemStyle: {{ color: "{_T}" }}, width: 3, length: "65%" }},
-                    axisTick: {{ distance: -12, length: 4, lineStyle: {{ color: "#fff", width: 1 }} }},
-                    splitLine: {{ distance: -15, length: 8, lineStyle: {{ color: "#fff", width: 2 }} }},
-                    axisLabel: {{ color: "{_T2}", distance: 12, fontSize: 9, fontWeight: "600" }},
+                    axisTick: {{ show: false }},
+                    splitLine: {{ show: false }},
+                    axisLabel: {{ show: false }},
                     anchor: {{ show: true, size: 6, itemStyle: {{ borderWidth: 1.5, borderColor: "{_T}", color: "#fff" }} }},
                     detail: {{
                         valueAnimation: true,
@@ -768,8 +754,8 @@ def render_tab_tablero(
                         fontWeight: "900",
                         offsetCenter: [0, "32%"]
                     }},
-                    title: {{ show: true, offsetCenter: [0, "62%"], color: "{_T2}", fontSize: 8, fontWeight: "700" }},
-                    data: [{{ value: mtbfVal, name: "MTBF\\nMeta: " + mtbfMeta }}]
+                    title: {{ show: true, offsetCenter: [0, "65%"], color: "{_T2}", fontSize: 8, fontWeight: "700" }},
+                    data: [{{ value: mtbfVal, name: "MTBF\\n(Meta: " + mtbfMeta + ")" }}]
                 }}]
             }};
             
@@ -793,14 +779,14 @@ def render_tab_tablero(
                     endAngle: -20,
                     min: 0,
                     max: rlMax,
-                    center: ["50%", "52%"],
-                    radius: "80%",
+                    center: ["50%", "50%"],
+                    radius: "85%",
                     splitNumber: 3,
                     axisLine: {{ lineStyle: {{ width: 8, color: rlColors }} }},
                     pointer: {{ itemStyle: {{ color: "{_T}" }}, width: 3, length: "65%" }},
-                    axisTick: {{ distance: -12, length: 4, lineStyle: {{ color: "#fff", width: 1 }} }},
-                    splitLine: {{ distance: -15, length: 8, lineStyle: {{ color: "#fff", width: 2 }} }},
-                    axisLabel: {{ color: "{_T2}", distance: 12, fontSize: 9, fontWeight: "600" }},
+                    axisTick: {{ show: false }},
+                    splitLine: {{ show: false }},
+                    axisLabel: {{ show: false }},
                     anchor: {{ show: true, size: 6, itemStyle: {{ borderWidth: 1.5, borderColor: "{_T}", color: "#fff" }} }},
                     detail: {{
                         valueAnimation: true,
@@ -810,8 +796,8 @@ def render_tab_tablero(
                         fontWeight: "900",
                         offsetCenter: [0, "32%"]
                     }},
-                    title: {{ show: true, offsetCenter: [0, "62%"], color: "{_T2}", fontSize: 8, fontWeight: "700" }},
-                    data: [{{ value: rlVal, name: "RunLife\\nMeta: " + rlMeta }}]
+                    title: {{ show: true, offsetCenter: [0, "65%"], color: "{_T2}", fontSize: 8, fontWeight: "700" }},
+                    data: [{{ value: rlVal, name: "RunLife\\n(Meta: " + rlMeta + ")" }}]
                 }}]
             }};
             
