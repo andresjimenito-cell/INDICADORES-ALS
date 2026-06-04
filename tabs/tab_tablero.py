@@ -585,7 +585,7 @@ def render_tab_tablero(
                         stack: "pozos",
                         data: {json.dumps(on_vals)},
                         barMaxWidth: 16,
-                        itemStyle: {{ color: "rgba(19,118,89,0.75)", borderRadius: [2, 2, 0, 0] }}
+                        itemStyle: {{ color: "{_G}", borderRadius: [2, 2, 0, 0] }}
                     }},
                     {{
                         name: "Pozos OFF",
@@ -593,7 +593,7 @@ def render_tab_tablero(
                         stack: "pozos",
                         data: {json.dumps(off_vals)},
                         barMaxWidth: 16,
-                        itemStyle: {{ color: "rgba(198,40,40,0.3)", borderRadius: [2, 2, 0, 0] }}
+                        itemStyle: {{ color: "{_R}4d", borderRadius: [2, 2, 0, 0] }}
                     }},
                     {{
                         name: "IF (%)",
@@ -605,7 +605,7 @@ def render_tab_tablero(
                         symbolSize: 5,
                         lineStyle: {{ color: "{_R}", width: 2.2 }},
                         itemStyle: {{ color: "{_R}", borderColor: "#fff", borderWidth: 1.5 }},
-                        areaStyle: {{ color: "rgba(198,40,40,0.04)" }},
+                        areaStyle: {{ color: "{_R}12" }},
                         markLine: {{
                             silent: true,
                             lineStyle: {{ color: "{_G}", type: "dashed", width: 1.2 }},
