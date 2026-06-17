@@ -75,10 +75,22 @@ def calcular_indice_falla_anual(df_bd, df_forma9, fecha_evaluacion):
         ].shape[0]
         
         # 2. Cálculos para RLE < 1500
-        df_bd_mes_1500 = df_bd_mes[df_bd_mes['RUN_LIFE_EFECTIVO'] < 1500].copy()
+        # Obtener los nombres de los pozos ON en el mes actual
+        pozos_on_names = df_forma9_mes[df_forma9_mes['DIAS TRABAJADOS'] > 0]['POZO'].unique()
         
-        # La base es todos los pozos ON (no se filtra la base por RLE)
-        pozos_on_1500 = pozos_on
+        # Obtener las corridas de pozos que estuvieron activos en algún momento de este mes
+        df_bd_mes_activos = df_bd_mes[
+            (df_bd_mes['FECHA_FALLA'].isna() | (df_bd_mes['FECHA_FALLA'].dt.normalize() >= current_month_ts)) & 
+            (df_bd_mes['FECHA_PULL'].isna() | (df_bd_mes['FECHA_PULL'].dt.normalize() >= current_month_ts))
+        ]
+        
+        # Filtrar pozos activos que tengan RLE < 1500
+        pozos_activos_1500 = df_bd_mes_activos[df_bd_mes_activos['RUN_LIFE_EFECTIVO'] < 1500]['POZO'].unique()
+        
+        # La base es la intersección de pozos ON y pozos con RLE < 1500
+        pozos_on_1500 = len(set(pozos_on_names) & set(pozos_activos_1500))
+        
+        df_bd_mes_1500 = df_bd_mes[df_bd_mes['RUN_LIFE_EFECTIVO'] < 1500].copy()
         
         fallas_totales_1500 = df_bd_mes_1500[
             (df_bd_mes_1500['FECHA_FALLA'].dt.normalize() >= current_month_ts) & 
