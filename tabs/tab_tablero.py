@@ -1371,3 +1371,113 @@ def render_tab_tablero(
 </html>
 """
         components.html(col3_html, height=480, scrolling=False)
+
+    # ── TICKER HORIZONTAL DE DATOS (TELEPROMPTER / MARQUEE STYLE) ────────────────
+    ticker_html = f"""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+    
+    body {{
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        overflow: hidden;
+    }}
+    
+    .ticker-wrapper {{
+        width: 100%;
+        background: linear-gradient(90deg, rgba(255,255,255,0.98) 0%, rgba(248,253,251,0.99) 50%, rgba(255,255,255,0.98) 100%);
+        border: 1px solid rgba(19, 118, 89, 0.14);
+        border-radius: 10px;
+        padding: 6px 14px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(19, 118, 89, 0.04);
+        display: flex;
+        align-items: center;
+        box-sizing: border-box;
+        height: 38px;
+    }}
+    
+    .ticker-title {{
+        font-family: 'Inter', sans-serif;
+        font-size: 0.6rem;
+        font-weight: 850;
+        color: #137659;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        border-right: 2px solid rgba(19, 118, 89, 0.22);
+        padding-right: 12px;
+        margin-right: 12px;
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+    }}
+    
+    .ticker-content-container {{
+        overflow: hidden;
+        white-space: nowrap;
+        width: 100%;
+        position: relative;
+    }}
+    
+    .ticker-marquee {{
+        display: inline-block;
+        padding-left: 100%;
+        animation: marquee 35s linear infinite;
+    }}
+    
+    .ticker-item {{
+        display: inline-block;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: #1f221e;
+        margin-right: 40px;
+    }}
+    
+    .ticker-label {{
+        color: #64748b;
+        font-weight: 600;
+        font-size: 0.62rem;
+        margin-right: 5px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }}
+    
+    .ticker-val {{
+        color: #137659;
+    }}
+    
+    .ticker-val.warning {{
+        color: #c09c2e;
+    }}
+    
+    .ticker-val.danger {{
+        color: #c62828;
+    }}
+    
+    @keyframes marquee {{
+        0%   {{ transform: translate3d(0, 0, 0); }}
+        100% {{ transform: translate3d(-100%, 0, 0); }}
+    }}
+    </style>
+    
+    <div class="ticker-wrapper">
+        <div class="ticker-title">📡 ESTADO ALS</div>
+        <div class="ticker-content-container">
+            <div class="ticker-marquee">
+                <span class="ticker-item"><span class="ticker-label">ALS EN FONDO:</span><span class="ticker-val">{als_fondo:,} POZOS</span></span>
+                <span class="ticker-item"><span class="ticker-label">ACTIVOS OPERATIVOS:</span><span class="ticker-val">{als_operativos:,} POZOS ({(als_operativos/max(1,als_fondo)*100):.1f}%)</span></span>
+                <span class="ticker-item"><span class="ticker-label">ALS FALLADOS:</span><span class="ticker-val danger">{als_fallados:,} POZOS ({(als_fallados/max(1,als_fondo)*100):.1f}%)</span></span>
+                <span class="ticker-item"><span class="ticker-label">FALLAS DEL PERIODO:</span><span class="ticker-val danger">{fallas_totales} EVENTOS</span></span>
+                <span class="ticker-item"><span class="ticker-label">MTBF EFECTIVO:</span><span class="ticker-val warning">{mtbf_val:.1f} DÍAS</span></span>
+                <span class="ticker-item"><span class="ticker-label">RUN LIFE PROMEDIO:</span><span class="ticker-val">{rl_val:.1f} DÍAS</span></span>
+                <span class="ticker-item"><span class="ticker-label">DISPONIBILIDAD OPERATIVA:</span><span class="ticker-val">{disp_oper:.1f}%</span></span>
+                <span class="ticker-item"><span class="ticker-label">UTILIZACIÓN DE EQUIPOS:</span><span class="ticker-val">{uso_oper:.1f}%</span></span>
+            </div>
+        </div>
+    </div>
+    """
+    st.components.v1.html(ticker_html, height=42, scrolling=False)
