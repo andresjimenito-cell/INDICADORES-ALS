@@ -50,46 +50,53 @@ def _init_session_state():
 
 _HEADER_CSS = """
 <style>
-
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 /* ── Barra principal ── */
 .als-header-bar {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 6px 14px;
-    background: linear-gradient(90deg,
-        rgba(19, 118, 89, 0.08) 0%,
-        rgba(255, 255, 255, 0.95) 50%,
-        rgba(192, 156, 46, 0.08) 100%
+    gap: 16px;
+    padding: 8px 18px;
+    background: linear-gradient(135deg, 
+        rgba(255, 255, 255, 0.98) 0%, 
+        rgba(252, 254, 253, 0.99) 100%
     );
-    border: 1px solid rgba(19, 118, 89, 0.2);
-    border-radius: 8px;
+    border: 1px solid rgba(19, 118, 89, 0.16);
+    border-top: 3px solid #137659;
+    border-radius: 12px;
     margin-bottom: 0px;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 4px 18px rgba(19, 118, 89, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+    transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.als-header-bar:hover {
+    box-shadow: 0 6px 24px rgba(19, 118, 89, 0.07), 0 2px 4px rgba(0, 0, 0, 0.02);
+    border-color: rgba(19, 118, 89, 0.25);
 }
 
 /* ── Logo / ícono ── */
 .als-logo-wrap {
     flex-shrink: 0;
-    width: 28px; height: 28px;
-    border: 1px solid rgba(19, 118, 89, 0.3);
-    border-radius: 6px;
+    width: 32px; height: 32px;
+    border: 1px solid rgba(19, 118, 89, 0.25);
+    border-radius: 8px;
     display: flex; align-items: center; justify-content: center;
-    background: rgba(19, 118, 89, 0.08);
-    font-size: 1rem;
+    background: linear-gradient(135deg, #e8f5ee 0%, #c5e8d5 100%);
+    font-size: 1.1rem;
+    box-shadow: 0 2px 6px rgba(19, 118, 89, 0.08);
 }
 
 /* ── Título + subtítulo ── */
 .als-title-block { flex-shrink: 0; }
 .als-title {
-    font-family: 'Arial', sans-serif !important;
-    font-weight: 900;
-    font-size: 0.85rem;
-    letter-spacing: 2px;
-    background: linear-gradient(135deg, #137659 0%, #c09c2e 100%);
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 800;
+    font-size: 0.95rem;
+    letter-spacing: 0.5px;
+    background: linear-gradient(135deg, #137659 0%, #1db87b 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -97,19 +104,19 @@ _HEADER_CSS = """
     margin: 0;
 }
 .als-subtitle {
-    font-family: 'Arial', sans-serif !important;
-    font-size: 0.5rem;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 0.58rem;
     font-weight: 600;
-    color: #475569;
-    letter-spacing: 2px;
+    color: #64748b;
+    letter-spacing: 0.8px;
     text-transform: uppercase;
-    margin: 0;
+    margin: 2px 0 0 0;
 }
 
 /* ── Separador vertical ── */
 .als-vdivider {
-    width: 1px; height: 22px;
-    background: linear-gradient(180deg, transparent, rgba(19, 118, 89, 0.25), transparent);
+    width: 1px; height: 26px;
+    background: linear-gradient(180deg, transparent, rgba(19, 118, 89, 0.22), transparent);
     flex-shrink: 0;
 }
 
@@ -119,51 +126,68 @@ _HEADER_CSS = """
     flex-shrink: 0;
 }
 .als-date-label {
-    font-family: 'Arial', sans-serif !important;
-    font-size: 0.45rem; font-weight: 700;
-    color: #475569; letter-spacing: 1.5px; text-transform: uppercase;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 0.52rem; font-weight: 800;
+    color: #64748b; letter-spacing: 1px; text-transform: uppercase;
 }
 .als-date-value {
-    font-family: 'Arial', sans-serif !important;
-    font-size: 0.7rem; font-weight: 600;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 0.72rem; font-weight: 700;
     color: #137659;
-    letter-spacing: 1px;
+    letter-spacing: 0.2px;
+    background: rgba(19, 118, 89, 0.05);
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(19, 118, 89, 0.1);
+    margin-top: 3px;
+    display: inline-block;
 }
 
 /* ── KPI chips ── */
 .als-kpi-row {
-    display: flex; gap: 5px;
+    display: flex; gap: 8px;
     margin-left: auto;
     flex-shrink: 0;
     align-items: center;
 }
 .als-kpi-chip {
     display: flex; flex-direction: column; align-items: center;
-    padding: 2px 8px;
-    background: #ffffff;
-    border: 1px solid rgba(19, 118, 89, 0.12);
-    border-radius: 6px;
-    min-width: 50px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    padding: 4px 10px;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border: 1.5px solid rgba(19, 118, 89, 0.12);
+    border-radius: 8px;
+    min-width: 58px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.als-kpi-chip:hover {
+    transform: translateY(-1.5px);
+    border-color: rgba(19, 118, 89, 0.28);
+    box-shadow: 0 4px 10px rgba(19, 118, 89, 0.08);
 }
 .als-kpi-chip-label {
-    font-family: 'Arial', sans-serif !important;
-    font-size: 0.4rem; font-weight: 700;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 0.48rem; font-weight: 800;
     letter-spacing: 1px; text-transform: uppercase;
-    color: #475569; white-space: nowrap;
+    color: #64748b; white-space: nowrap;
 }
 .als-kpi-chip-value {
-    font-family: 'Arial', sans-serif !important;
-    font-size: 0.75rem; font-weight: 700;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 0.85rem; font-weight: 900;
     line-height: 1.1;
+    margin-top: 1px;
 }
 
 /* ── Dot pulsante de "live" ── */
-.als-live-dot {
-    display: flex; align-items: center; gap: 5px;
+.als-live-badge {
+    display: flex; align-items: center; gap: 6px;
     flex-shrink: 0;
+    background: rgba(19, 118, 89, 0.06);
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(19, 118, 89, 0.12);
 }
-.als-live-dot span {
+.als-live-dot {
     width: 6px; height: 6px; border-radius: 50%;
     background: #137659;
     box-shadow: 0 0 6px rgba(19, 118, 89, 0.6);
@@ -172,12 +196,12 @@ _HEADER_CSS = """
 }
 @keyframes pulse-dot {
     0%, 100% { opacity: 1; transform: scale(1); }
-    50%       { opacity: 0.4; transform: scale(0.7); }
+    50%       { opacity: 0.4; transform: scale(0.75); }
 }
 .als-live-text {
-    font-family: 'Arial', sans-serif !important;
-    font-size: 0.5rem; font-weight: 700;
-    color: #137659; letter-spacing: 2px; text-transform: uppercase;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 0.55rem; font-weight: 800;
+    color: #137659; letter-spacing: 1.5px; text-transform: uppercase;
 }
 
 /* ── Quitar padding extra de Streamlit sobre el header ── */
@@ -271,9 +295,9 @@ def render_header(titulo_pagina: str = "INDICADORES ALS", fecha_eval=None):
         chips_html = (
             f'<div class="als-kpi-row">'
             f'  <div class="als-vdivider"></div>'
-            + chip("TOTAL",    str(total),    "#137659")
-            + chip("ON",       str(activos),  "#095139")
-            + chip("FALLAS",   str(fallados), "#c09c2e")
+            + chip("TOTAL",    str(total),    "#455a72")
+            + chip("ON",       str(activos),  "#137659")
+            + chip("FALLAS",   str(fallados), "#c62828")
             + f'</div>'
         )
 
@@ -311,8 +335,8 @@ def render_header(titulo_pagina: str = "INDICADORES ALS", fecha_eval=None):
   {chips_html}
 
   <!-- Dot LIVE -->
-  <div class="als-live-dot" style="margin-left:{'8px' if hay_datos else 'auto'};">
-    <span></span>
+  <div class="als-live-badge" style="margin-left:{'8px' if hay_datos else 'auto'};">
+    <span class="als-live-dot"></span>
     <span class="als-live-text">{'LIVE' if hay_datos else 'STAND·BY'}</span>
   </div>
 
