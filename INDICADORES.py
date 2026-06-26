@@ -178,10 +178,7 @@ filters = render_sidebar()
 # ── HEADER & CONFIG ──────────────────────────────────────────────────────────
 col_head, col_als, col_cfg = st.columns([0.91, 0.045, 0.045], gap="small")
 with col_head:
-    render_header(
-        titulo_pagina="INDICADORES ALS",
-        fecha_eval=st.session_state.get('fecha_evaluacion_state'),
-    )
+    header_container = st.empty()
 
 with col_als:
     st.write('<div style="margin-top:4px;"></div>', unsafe_allow_html=True)
@@ -270,6 +267,14 @@ if st.session_state.get('reporte_runes') is not None:
 
     reporte_runes = st.session_state['reporte_runes']
 
+    # Render header with filtered data
+    with header_container:
+        render_header(
+            titulo_pagina="INDICADORES ALS",
+            fecha_eval=fecha_eval,
+            df_bd_filtered=df_bd_calc
+        )
+
     # ── NAVEGACIÓN (TABS ESTILIZADOS COMO BOTTOM BAR) ─────────────────────
     # Los estilos en styles.py se encargan de mover estos tabs a la parte inferior.
     tab_tablero, tab_resumen, tab_perf, tab_fallas = st.tabs([
@@ -353,6 +358,12 @@ if st.session_state.get('reporte_runes') is not None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 else:
+    with header_container:
+        render_header(
+            titulo_pagina="INDICADORES ALS",
+            fecha_eval=st.session_state.get('fecha_evaluacion_state'),
+            df_bd_filtered=None
+        )
     st.markdown("""
 <div class="als-empty-state">
     <div class="als-empty-icon">🛡️</div>

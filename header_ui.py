@@ -216,29 +216,35 @@ div[data-testid="stVerticalBlock"] > div:first-child {
 # HELPER — leer KPIs rápidos desde session_state
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _quick_kpis(fecha_eval_dt) -> tuple[int, int, int]:
-    """Devuelve (total_pozos, pozos_activos, pozos_fallados) desde session_state."""
-    df = st.session_state.get("df_bd_calculated")
+def _quick_kpis(fecha_eval_dt, df_bd=None) -> tuple[int, int, int]:
+    """Devuelve (total_pozos, pozos_activos, pozos_fallados) desde session_state o df provisto."""
+    df = df_bd if df_bd is not None else st.session_state.get("df_bd_calculated")
     if df is None or df.empty:
         return 0, 0, 0
 
+    df = df.copy()
+    
+    # Asegurar tipo datetime y normalizar fechas
+    for col in ('FECHA_RUN', 'FECHA_FALLA', 'FECHA_PULL'):
+        if col in df.columns:
+            df[col] = pd.to_datetime(df[col], errors='coerce')
+
+    df['_RUN']  = df['FECHA_RUN'].dt.normalize()
+    df['_FALL'] = df['FECHA_FALLA'].dt.normalize() if 'FECHA_FALLA' in df.columns else pd.NaT
+    df['_PULL'] = df['FECHA_PULL'].dt.normalize()  if 'FECHA_PULL'  in df.columns else pd.NaT
+
+    fecha_eval_date = fecha_eval_dt.date()
+
+    # Total de pozos únicos filtrados
     total = df["POZO"].nunique() if "POZO" in df.columns else 0
 
-    req = {"FECHA_RUN", "FECHA_PULL", "FECHA_FALLA"}
-    if req.issubset(df.columns):
-        mask_on = (
-            (df["FECHA_RUN"] <= fecha_eval_dt) &
-            (df["FECHA_PULL"].isna() | (df["FECHA_PULL"] > fecha_eval_dt)) &
-            (df["FECHA_FALLA"].isna() | (df["FECHA_FALLA"] > fecha_eval_dt))
-        )
-        mask_fail = (
-            (df["FECHA_RUN"] <= fecha_eval_dt) &
-            (df["FECHA_FALLA"].notna()) &
-            (df["FECHA_FALLA"] <= fecha_eval_dt) &
-            (df["FECHA_PULL"].isna() | (df["FECHA_PULL"] > fecha_eval_dt))
-        )
-        activos  = df[mask_on]["POZO"].nunique()   if "POZO" in df.columns else 0
-        fallados = df[mask_fail]["POZO"].nunique() if "POZO" in df.columns else 0
+    # Lógica idéntica al Tablero para activos (operativos) y fallados:
+    mask_fondo = (df['_RUN'] <= fecha_eval_date) & (df['_PULL'].isna() | (df['_PULL'] > fecha_eval_date))
+    df_fondo = df[mask_fondo]
+    
+    if not df_fondo.empty:
+        activos = df_fondo[df_fondo['_FALL'].isna() | (df_fondo['_FALL'] > fecha_eval_date)]['POZO'].nunique() if 'POZO' in df_fondo.columns else 0
+        fallados = df_fondo[df_fondo['_FALL'].notna() & (df_fondo['_FALL'] <= fecha_eval_date)]['POZO'].nunique() if 'POZO' in df_fondo.columns else 0
     else:
         activos, fallados = 0, 0
 
@@ -249,7 +255,7 @@ def _quick_kpis(fecha_eval_dt) -> tuple[int, int, int]:
 # RENDER PRINCIPAL
 # ─────────────────────────────────────────────────────────────────────────────
 
-def render_header(titulo_pagina: str = "INDICADORES ALS", fecha_eval=None):
+def render_header(titulo_pagina: str = "INDICADORES ALS", fecha_eval=None, df_bd_filtered=None):
     """
     Header compacto de alta densidad.
 
@@ -277,7 +283,7 @@ def render_header(titulo_pagina: str = "INDICADORES ALS", fecha_eval=None):
     f_display = f"{f_ini_display} - {f_eval_display}"
 
     # ── KPIs rápidos ───────────────────────────────────────────────────────
-    total, activos, fallados = _quick_kpis(fecha_eval_dt)
+    total, activos, fallados = _quick_kpis(fecha_eval_dt, df_bd_filtered)
 
     hay_datos = st.session_state.get("reporte_runes") is not None
 
