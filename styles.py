@@ -32,6 +32,13 @@ def _apply_styles_internal():
             background-color: #f5f7f6 !important;
         }
 
+        header[data-testid="stHeader"] {
+            background: transparent !important;
+            background-color: transparent !important;
+            border-bottom: none !important;
+            box-shadow: none !important;
+        }
+
         /* Ocultar elementos de Streamlit para ganar espacio */
         .stDeployButton { display: none !important; }
         footer { display: none !important; }
