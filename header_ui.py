@@ -122,8 +122,9 @@ _HEADER_CSS = """
 
 /* ── Badge de fecha ── */
 .als-date-badge {
-    display: flex; flex-direction: column; align-items: flex-start;
+    display: flex; flex-direction: column; align-items: flex-end;
     flex-shrink: 0;
+    margin-left: auto;
 }
 .als-date-label {
     font-family: 'Inter', sans-serif !important;
@@ -332,23 +333,11 @@ def render_header(titulo_pagina: str = "INDICADORES ALS", fecha_eval=None, df_bd
     <p class="als-subtitle">ALS · Artificial Lift Systems · Parex Resources (Frontera)</p>
   </div>
 
-  <!-- Separador -->
-  <div class="als-vdivider"></div>
-
   <!-- Fecha evaluación -->
   <div class="als-date-badge">
     <span class="als-date-label">Periodo eval.</span>
     <span class="als-date-value">{f_display}</span>
   </div>
 
-  <!-- KPI chips (solo si hay datos) -->
-  {chips_html}
-
-  <!-- Dot LIVE -->
-  <div class="als-live-badge" style="margin-left:{'8px' if hay_datos else 'auto'};">
-    <span class="als-live-dot"></span>
-    <span class="als-live-text">{'LIVE' if hay_datos else 'STAND·BY'}</span>
-  </div>
-
 </div>
-""", unsafe_allow_html=True)
+""",unsafe_allow_html=True)
