@@ -250,7 +250,7 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
     cards_html = ""
     for c in cards_data:
         cards_html += f"""
-        <div class="kpi-card-premium" style="border-left: 3px solid {c['color']}; align-items: center; text-align: center;">
+        <div class="kpi-card-premium" style="border-top: 3px solid {c['color']}; align-items: center; text-align: center;">
             <div class="kpi-icon-container" style="background: {c['color']}15; color: {c['color']}; margin: 0 auto 10px auto;">
                 {c['icon']}
             </div>
@@ -267,14 +267,21 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
 <head>
     <meta charset="utf-8"/>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        
         body {{ 
             background: transparent; 
-            font-family: 'Arial', sans-serif !important; 
+            font-family: 'Inter', sans-serif !important; 
             margin: 0; 
             padding: 4px; 
             overflow: hidden; 
         }}
         
+        @keyframes countUp {{
+            from {{ opacity: 0; transform: translateY(4px); }}
+            to   {{ opacity: 1; transform: translateY(0); }}
+        }}
+
         .hud-grid {{
             display: grid;
             grid-template-columns: repeat(9, 1fr);
@@ -283,9 +290,9 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
         }}
 
         .kpi-card-premium {{
-            background: linear-gradient(135deg, #ffffff, #f9fafb);
-            border: 1px solid rgba(19, 118, 89, 0.15);
-            border-radius: 12px;
+            background: linear-gradient(135deg, #f8fdfb 0%, #ffffff 100%);
+            border: 1.5px solid rgba(19, 118, 89, 0.13);
+            border-radius: 16px;
             padding: 10px 8px;
             display: flex;
             flex-direction: column;
@@ -294,35 +301,29 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
             gap: 4px;
             min-width: 0;
             height: 155px;
-            transition: all 0.25s ease-out;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+            box-shadow: 0 2px 8px rgba(19, 118, 89, 0.04), 0 8px 32px rgba(19, 118, 89, 0.06);
             position: relative;
             overflow: hidden;
-        }}
-
-        .kpi-card-premium::after {{
-            content: "";
-            position: absolute;
-            top: 0; left: 0; right: 0; height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(19,118,89,0.1), transparent);
+            animation: countUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
         }}
 
         .kpi-card-premium:hover {{
-            background: linear-gradient(135deg, #f3f4f6, #ffffff);
-            transform: translateY(-3px);
-            box-shadow: 0 10px 25px rgba(19,118,89,0.05), 0 0 10px rgba(19,118,89,0.05);
-            border-color: rgba(19, 118, 89, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(19, 118, 89, 0.10), 0 12px 40px rgba(19, 118, 89, 0.12);
+            border-color: rgba(19, 118, 89, 0.25);
         }}
 
         .kpi-icon-container {{
-            width: 32px;
-            height: 32px;
-            border-radius: 6px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.1rem;
+            font-size: 1.15rem;
             flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
         }}
 
         .kpi-content {{
@@ -334,11 +335,12 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
         }}
 
         .kpi-title {{
-            font-size: 0.65rem;
-            font-weight: 700;
-            color: #64748b;
+            font-family: 'Inter', sans-serif !important;
+            font-size: 0.62rem;
+            font-weight: 800;
+            color: #455a72;
             text-transform: uppercase;
-            letter-spacing: 0.8px;
+            letter-spacing: 1px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
