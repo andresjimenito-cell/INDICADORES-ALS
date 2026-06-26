@@ -399,28 +399,57 @@ def render_premium_echarts_run_life(df_monthly, titulo="TIEMPO DE VIDA DASHBOARD
     container_height = chart_height + 20
 
     html_template = f"""
-    <div id="chart-container-rl" style="position: relative; width:100%; height:{chart_height}px; background: #ffffff; border: 1px solid rgba(19, 118, 89, 0.15); border-radius: 15px; overflow: hidden;">
-        <div id="echarts-rl" style="width:100%; height:100%;"></div>
-        <button id="zoom-btn-rl" style="
-            position: absolute; 
-            top: 8px; 
-            right: 8px; 
-            z-index: 1000; 
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        #chart-container-rl {{
+            position: relative; 
+            width:100%; 
+            height:{chart_height}px; 
             background: #ffffff; 
-            border: 1px solid rgba(19, 118, 89, 0.2); 
-            color: #1f221e; 
-            padding: 2px 8px; 
-            border-radius: 4px; 
+            border: 1.5px solid rgba(19, 118, 89, 0.13); 
+            border-radius: 16px; 
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(19, 118, 89, 0.04), 0 8px 32px rgba(19, 118, 89, 0.06);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }}
+        #chart-container-rl:hover {{
+            transform: translateY(-2px);
+            border-color: rgba(19, 118, 89, 0.25);
+            box-shadow: 0 6px 20px rgba(19, 118, 89, 0.10), 0 12px 40px rgba(19, 118, 89, 0.12);
+        }}
+        #zoom-btn-rl {{
+            position: absolute; 
+            top: 10px; 
+            right: 10px; 
+            z-index: 1000; 
+            background: rgba(255, 255, 255, 0.95); 
+            border: 1px solid rgba(19, 118, 89, 0.25); 
+            color: #137659; 
+            padding: 4px 10px; 
+            border-radius: 6px; 
             cursor: pointer; 
             font-size: 8px; 
-            font-family: 'Arial', sans-serif;
+            font-family: 'Inter', sans-serif;
             font-weight: 700;
             text-transform: uppercase;
             backdrop-filter: blur(4px);
-            transition: all 0.3s;
-            height: 18px;
+            transition: all 0.25s ease;
+            height: 22px;
             line-height: 1;
-        ">⛶ FULL</button>
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            display: flex;
+            align-items: center;
+        }}
+        #zoom-btn-rl:hover {{
+            background: #137659;
+            color: #ffffff;
+            border-color: #137659;
+            box-shadow: 0 4px 12px rgba(19, 118, 89, 0.2);
+        }}
+    </style>
+    <div id="chart-container-rl">
+        <div id="echarts-rl" style="width:100%; height:100%;"></div>
+        <button id="zoom-btn-rl">⛶ FULL</button>
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
@@ -567,28 +596,57 @@ def render_premium_echarts_pozos(df_monthly, titulo="OPERATIVIDAD DASHBOARD"):
     container_height = chart_height + 20
 
     html_template = f"""
-    <div id="chart-container-pozos" style="position: relative; width:100%; height:{chart_height}px; background: #ffffff; border: 1px solid rgba(19, 118, 89, 0.15); border-radius: 15px; overflow: hidden;">
-        <div id="echarts-pozos" style="width:100%; height:100%;"></div>
-        <button id="zoom-btn-pozos" style="
-            position: absolute; 
-            top: 8px; 
-            right: 8px; 
-            z-index: 1000; 
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        #chart-container-pozos {{
+            position: relative; 
+            width:100%; 
+            height:{chart_height}px; 
             background: #ffffff; 
-            border: 1px solid rgba(19, 118, 89, 0.2); 
-            color: #1f221e; 
-            padding: 2px 8px; 
-            border-radius: 4px; 
+            border: 1.5px solid rgba(19, 118, 89, 0.13); 
+            border-radius: 16px; 
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(19, 118, 89, 0.04), 0 8px 32px rgba(19, 118, 89, 0.06);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }}
+        #chart-container-pozos:hover {{
+            transform: translateY(-2px);
+            border-color: rgba(19, 118, 89, 0.25);
+            box-shadow: 0 6px 20px rgba(19, 118, 89, 0.10), 0 12px 40px rgba(19, 118, 89, 0.12);
+        }}
+        #zoom-btn-pozos {{
+            position: absolute; 
+            top: 10px; 
+            right: 10px; 
+            z-index: 1000; 
+            background: rgba(255, 255, 255, 0.95); 
+            border: 1px solid rgba(19, 118, 89, 0.25); 
+            color: #137659; 
+            padding: 4px 10px; 
+            border-radius: 6px; 
             cursor: pointer; 
             font-size: 8px; 
-            font-family: 'Arial', sans-serif;
+            font-family: 'Inter', sans-serif;
             font-weight: 700;
             text-transform: uppercase;
             backdrop-filter: blur(4px);
-            transition: all 0.3s;
-            height: 18px;
+            transition: all 0.25s ease;
+            height: 22px;
             line-height: 1;
-        ">⛶ FULL</button>
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            display: flex;
+            align-items: center;
+        }}
+        #zoom-btn-pozos:hover {{
+            background: #137659;
+            color: #ffffff;
+            border-color: #137659;
+            box-shadow: 0 4px 12px rgba(19, 118, 89, 0.2);
+        }}
+    </style>
+    <div id="chart-container-pozos">
+        <div id="echarts-pozos" style="width:100%; height:100%;"></div>
+        <button id="zoom-btn-pozos">⛶ FULL</button>
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
