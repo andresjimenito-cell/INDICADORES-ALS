@@ -233,7 +233,7 @@ def _quick_kpis(fecha_eval_dt, df_bd=None) -> tuple[int, int, int]:
     df['_FALL'] = df['FECHA_FALLA'].dt.normalize() if 'FECHA_FALLA' in df.columns else pd.NaT
     df['_PULL'] = df['FECHA_PULL'].dt.normalize()  if 'FECHA_PULL'  in df.columns else pd.NaT
 
-    fecha_eval_date = fecha_eval_dt.date()
+    fecha_eval_date = fecha_eval_dt.normalize()
 
     # Total de pozos únicos filtrados
     total = df["POZO"].nunique() if "POZO" in df.columns else 0
