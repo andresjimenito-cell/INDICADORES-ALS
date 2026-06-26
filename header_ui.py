@@ -319,9 +319,8 @@ def render_header(titulo_pagina: str = "INDICADORES ALS", fecha_eval=None, df_bd
     else:
         logo_inner = "🛡️"
 
-    # HTML completo del header
-    st.markdown(_HEADER_CSS, unsafe_allow_html=True)
-    st.markdown(f"""
+    # HTML + CSS completo del header en una sola llamada para evitar que st.empty sobreescriba los estilos
+    st.markdown(_HEADER_CSS + f"""
 <div class="als-header-bar">
 
   <!-- Logo -->
@@ -340,4 +339,4 @@ def render_header(titulo_pagina: str = "INDICADORES ALS", fecha_eval=None, df_bd
   </div>
 
 </div>
-""",unsafe_allow_html=True)
+""", unsafe_allow_html=True)
