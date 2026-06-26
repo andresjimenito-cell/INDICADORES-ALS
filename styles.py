@@ -335,31 +335,32 @@ def _apply_styles_internal():
         div[data-testid="stPopover"] button,
         button[data-testid="stPopoverButton"],
         div.stPopover button {
-            background-color: #ffffff !important;
-            background: #ffffff !important;
-            border: 1px solid rgba(19, 118, 89, 0.3) !important;
+            background: linear-gradient(135deg, 
+                rgba(255, 255, 255, 0.98) 0%, 
+                rgba(252, 254, 253, 0.99) 100%
+            ) !important;
+            border: 1px solid rgba(19, 118, 89, 0.16) !important;
+            border-top: 3px solid #137659 !important;
             color: #137659 !important;
-            border-radius: 50% !important;
-            width: 30px !important;
-            height: 30px !important;
-            min-height: 30px !important;
+            border-radius: 12px !important;
+            width: 100% !important;
+            height: 52px !important;
+            min-height: 52px !important;
             padding: 0 !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            font-size: 0.9rem !important;
-            transition: all 0.3s !important;
+            font-size: 1.25rem !important;
+            transition: all 0.3s ease !important;
             margin: 0 !important;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
+            box-shadow: 0 4px 18px rgba(19, 118, 89, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02) !important;
         }
         div[data-testid="stPopover"] button:hover,
         button[data-testid="stPopoverButton"]:hover,
         div.stPopover button:hover {
-            background-color: #137659 !important;
-            background: #137659 !important;
-            color: #ffffff !important;
-            border-color: #137659 !important;
-            box-shadow: 0 4px 12px rgba(19, 118, 89, 0.25) !important;
+            border-color: rgba(19, 118, 89, 0.25) !important;
+            box-shadow: 0 6px 24px rgba(19, 118, 89, 0.07), 0 2px 4px rgba(0, 0, 0, 0.02) !important;
+            transform: translateY(-1.5px) !important;
         }
         div[data-testid="stPopoverBody"] {
             background-color: #ffffff !important;

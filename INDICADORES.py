@@ -190,12 +190,11 @@ if st.session_state.get('reporte_runes') is None:
 filters = render_sidebar()
 
 # ── HEADER & CONFIG ──────────────────────────────────────────────────────────
-col_head, col_als, col_cfg = st.columns([0.91, 0.045, 0.045], gap="small")
+col_head, col_als, col_cfg = st.columns([0.90, 0.05, 0.05], gap="small")
 with col_head:
     header_container = st.empty()
 
 with col_als:
-    st.write('<div style="margin-top:4px;"></div>', unsafe_allow_html=True)
     with st.popover("🏷️", help="Comparativa ALS en KPIs"):
         df_bd_raw = st.session_state.get('df_bd_calculated')
         if df_bd_raw is not None and not df_bd_raw.empty:
@@ -221,7 +220,6 @@ with col_als:
             st.info("Carga datos para filtrar.")
 
 with col_cfg:
-    st.write('<div style="margin-top:4px;"></div>', unsafe_allow_html=True)
     render_upload_section()
 
 # ── LÓGICA PRINCIPAL ─────────────────────────────────────────────────────────
