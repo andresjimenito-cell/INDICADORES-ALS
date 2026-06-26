@@ -217,13 +217,17 @@ div[data-testid="stVerticalBlock"] > div:first-child {
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _quick_kpis(fecha_eval_dt, df_bd=None) -> tuple[int, int, int]:
-    """Devuelve (total_pozos, pozos_activos, pozos_fallados) desde session_state o df provisto."""
-    df = df_bd if df_bd is not None else st.session_state.get("df_bd_calculated")
+    """Devuelve (total_pozos, pozos_activos, pozos_fallados) desde el df completo en session_state."""
+    df = st.session_state.get("df_bd_calculated")
     if df is None or df.empty:
         return 0, 0, 0
 
     df = df.copy()
     
+    # Excluir 'ECUADOR' tal como se hace en el tablero
+    if 'ACTIVO' in df.columns:
+        df = df[df['ACTIVO'].astype(str).str.upper().str.strip() != 'ECUADOR']
+
     # Asegurar tipo datetime y normalizar fechas
     for col in ('FECHA_RUN', 'FECHA_FALLA', 'FECHA_PULL'):
         if col in df.columns:
@@ -235,7 +239,7 @@ def _quick_kpis(fecha_eval_dt, df_bd=None) -> tuple[int, int, int]:
 
     fecha_eval_date = fecha_eval_dt.normalize()
 
-    # Total de pozos únicos filtrados
+    # Total de pozos únicos (excluyendo Ecuador)
     total = df["POZO"].nunique() if "POZO" in df.columns else 0
 
     # Lógica idéntica al Tablero para activos (operativos) y fallados:
