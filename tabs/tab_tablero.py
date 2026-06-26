@@ -1372,7 +1372,77 @@ def render_tab_tablero(
 """
         components.html(col3_html, height=480, scrolling=False)
 
+    # ── CÁLCULO DE MÉTRICAS DE PRODUCCIÓN PARA EL TICKER ─────────────────────────
+    total_bopd = 0.0
+    promedio_bopd = 0.0
+    total_bfpd = 0.0
+    promedio_bsw = 0.0
+    total_gas = 0.0
+    
+    try:
+        df_f9_temp = df_forma9_filtered.copy()
+        df_f9_temp['FECHA_FORMA9'] = pd.to_datetime(df_f9_temp.get('FECHA_FORMA9'), errors='coerce')
+        
+        df_month_f9 = df_f9_temp[
+            (df_f9_temp['FECHA_FORMA9'].dt.year == anio_eval) & 
+            (df_f9_temp['FECHA_FORMA9'].dt.month == mes_eval)
+        ].copy()
+        
+        # BOPD (Crudo)
+        bopd_col = next((c for c in df_month_f9.columns if 'BOPD' in str(c).upper()), None)
+        if bopd_col:
+            df_month_f9[bopd_col] = pd.to_numeric(df_month_f9[bopd_col], errors='coerce').fillna(0)
+            df_on_f9 = df_month_f9[df_month_f9[bopd_col] > 0].copy()
+            total_bopd = float(df_on_f9[bopd_col].sum())
+            promedio_bopd = float(df_on_f9[bopd_col].mean()) if not df_on_f9.empty else 0.0
+            
+        # BFPD (Fluido Total)
+        bfpd_col = next((c for c in df_month_f9.columns if 'BFPD' in str(c).upper() or 'FLUID' in str(c).upper()), None)
+        if bfpd_col:
+            df_month_f9[bfpd_col] = pd.to_numeric(df_month_f9[bfpd_col], errors='coerce').fillna(0)
+            total_bfpd = float(df_month_f9[bfpd_col].sum())
+            
+        # BSW % (Corte de Agua)
+        bsw_col = next((c for c in df_month_f9.columns if 'BSW' in str(c).upper()), None)
+        if bsw_col:
+            df_month_f9[bsw_col] = pd.to_numeric(df_month_f9[bsw_col], errors='coerce').fillna(0)
+            df_active_bsw = df_month_f9[df_month_f9[bsw_col] > 0]
+            promedio_bsw = float(df_active_bsw[bsw_col].mean()) if not df_active_bsw.empty else float(df_month_f9[bsw_col].mean())
+            
+        # GAS (Gas producido)
+        gas_col = next((c for c in df_month_f9.columns if 'GAS' in str(c).upper()), None)
+        if gas_col:
+            df_month_f9[gas_col] = pd.to_numeric(df_month_f9[gas_col], errors='coerce').fillna(0)
+            total_gas = float(df_month_f9[gas_col].sum())
+    except Exception:
+        pass
+
     # ── TICKER HORIZONTAL DE DATOS (TELEPROMPTER / MARQUEE STYLE) ────────────────
+    st.markdown('<div style="margin-top: 30px;"></div>', unsafe_allow_html=True)
+    
+    # Construcción dinámica de items para el ticker
+    ticker_items = []
+    ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">ALS EN FONDO:</span><span class="ticker-val">{als_fondo:,} POZOS</span></span>')
+    ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">ACTIVOS OPERATIVOS:</span><span class="ticker-val">{als_operativos:,} POZOS ({(als_operativos/max(1,als_fondo)*100):.1f}%)</span></span>')
+    ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">DISPONIBILIDAD:</span><span class="ticker-val">{disp_oper:.1f}%</span></span>')
+    ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">UTILIZACIÓN:</span><span class="ticker-val">{uso_oper:.1f}%</span></span>')
+    ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">PROD. CRUDO TOTAL:</span><span class="ticker-val warning">{total_bopd:,.0f} BOPD</span></span>')
+    ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">PROD. CRUDO PROM:</span><span class="ticker-val warning">{promedio_bopd:.1f} BOPD/POZO</span></span>')
+    
+    if total_bfpd > 0:
+        ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">PROD. FLUIDO TOTAL:</span><span class="ticker-val">{total_bfpd:,.0f} BFPD</span></span>')
+    if promedio_bsw > 0:
+        ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">BSW PROMEDIO:</span><span class="ticker-val warning">{promedio_bsw:.1f}%</span></span>')
+    if total_gas > 0:
+        ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">PROD. GAS TOTAL:</span><span class="ticker-val">{total_gas:,.0f} MSCFD</span></span>')
+        
+    ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">ALS FALLADOS:</span><span class="ticker-val danger">{als_fallados:,} POZOS ({(als_fallados/max(1,als_fondo)*100):.1f}%)</span></span>')
+    ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">FALLAS PERIODO:</span><span class="ticker-val danger">{fallas_totales} EVENTOS</span></span>')
+    ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">MTBF EFECTIVO:</span><span class="ticker-val warning">{mtbf_val:.1f} DÍAS</span></span>')
+    ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">RUN LIFE PROMEDIO:</span><span class="ticker-val">{rl_val:.1f} DÍAS</span></span>')
+    
+    track_html = "".join(ticker_items)
+    
     ticker_html = f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
@@ -1420,21 +1490,31 @@ def render_tab_tablero(
         white-space: nowrap;
         width: 100%;
         position: relative;
+        display: flex;
     }}
     
     .ticker-marquee {{
-        display: inline-block;
-        padding-left: 100%;
-        animation: marquee 35s linear infinite;
+        display: flex;
+        flex-wrap: nowrap;
+        width: max-content;
+        animation: marquee 50s linear infinite;
+    }}
+    
+    .ticker-track {{
+        display: flex;
+        flex-wrap: nowrap;
+        flex-shrink: 0;
     }}
     
     .ticker-item {{
-        display: inline-block;
+        display: flex;
+        align-items: center;
         font-family: 'Inter', sans-serif;
         font-size: 0.7rem;
         font-weight: 700;
         color: #1f221e;
         margin-right: 40px;
+        white-space: nowrap;
     }}
     
     .ticker-label {{
@@ -1460,7 +1540,7 @@ def render_tab_tablero(
     
     @keyframes marquee {{
         0%   {{ transform: translate3d(0, 0, 0); }}
-        100% {{ transform: translate3d(-100%, 0, 0); }}
+        100% {{ transform: translate3d(-25%, 0, 0); }}
     }}
     </style>
     
@@ -1468,16 +1548,12 @@ def render_tab_tablero(
         <div class="ticker-title">📡 ESTADO ALS</div>
         <div class="ticker-content-container">
             <div class="ticker-marquee">
-                <span class="ticker-item"><span class="ticker-label">ALS EN FONDO:</span><span class="ticker-val">{als_fondo:,} POZOS</span></span>
-                <span class="ticker-item"><span class="ticker-label">ACTIVOS OPERATIVOS:</span><span class="ticker-val">{als_operativos:,} POZOS ({(als_operativos/max(1,als_fondo)*100):.1f}%)</span></span>
-                <span class="ticker-item"><span class="ticker-label">ALS FALLADOS:</span><span class="ticker-val danger">{als_fallados:,} POZOS ({(als_fallados/max(1,als_fondo)*100):.1f}%)</span></span>
-                <span class="ticker-item"><span class="ticker-label">FALLAS DEL PERIODO:</span><span class="ticker-val danger">{fallas_totales} EVENTOS</span></span>
-                <span class="ticker-item"><span class="ticker-label">MTBF EFECTIVO:</span><span class="ticker-val warning">{mtbf_val:.1f} DÍAS</span></span>
-                <span class="ticker-item"><span class="ticker-label">RUN LIFE PROMEDIO:</span><span class="ticker-val">{rl_val:.1f} DÍAS</span></span>
-                <span class="ticker-item"><span class="ticker-label">DISPONIBILIDAD OPERATIVA:</span><span class="ticker-val">{disp_oper:.1f}%</span></span>
-                <span class="ticker-item"><span class="ticker-label">UTILIZACIÓN DE EQUIPOS:</span><span class="ticker-val">{uso_oper:.1f}%</span></span>
+                <div class="ticker-track">{track_html}</div>
+                <div class="ticker-track">{track_html}</div>
+                <div class="ticker-track">{track_html}</div>
+                <div class="ticker-track">{track_html}</div>
             </div>
         </div>
     </div>
     """
-    st.components.v1.html(ticker_html, height=42, scrolling=False)
+    st.components.v1.html(ticker_html, height=45, scrolling=False)
