@@ -13,15 +13,18 @@ else:
 get_color_sequence = _colors.get('color_sequence', lambda mode=None: [COLOR_PRINCIPAL, '#00cfff', '#FFDE31', '#5AFFDA'])
 get_plotly_layout = get_plotly_layout
 
-def calcular_indice_falla_anual(df_bd, df_forma9, fecha_evaluacion):
+def calcular_indice_falla_anual(df_bd, df_forma9, fecha_evaluacion, fecha_inicio=None):
     """
-    Calcula los índices de falla para los últimos 3 años (36 meses),
+    Calcula los índices de falla para el rango especificado o los últimos 12 años por defecto,
     incluyendo el cálculo de 12 meses rodante (rolling) para la gráfica, 
     y el resumen final.
     También calcula el índice adicional para pozos/runs con RUN_LIFE_EFECTIVO < 1500 días.
     """
     end_date = pd.to_datetime(fecha_evaluacion).normalize()
-    start_date = end_date - timedelta(days=365 * 12)
+    if fecha_inicio is not None:
+        start_date = pd.to_datetime(fecha_inicio).normalize()
+    else:
+        start_date = end_date - timedelta(days=365 * 12)
     
     # Asegurar que las columnas de fecha son datetime
     df_bd = df_bd.copy()
@@ -123,20 +126,22 @@ def calcular_indice_falla_anual(df_bd, df_forma9, fecha_evaluacion):
     df_mensual['Indice de Falla ON'] = (df_mensual['Fallas Totales'] / df_mensual['Pozos ON']).replace([np.inf, -np.inf], np.nan).fillna(0)
     df_mensual['Indice de Falla ALS ON'] = (df_mensual['Fallas ALS'] / df_mensual['Pozos ON']).replace([np.inf, -np.inf], np.nan).fillna(0)
     
-    # --- 2. CÁLCULO DE ÍNDICES ANUALES MÓVILES (ROLLING 12-MONTH) PARA LA GRÁFICA ---
-    WINDOW_SIZE = 12
+    # --- 2. CÁLCULO DE ÍNDICES ANUALES MÓVILES (ROLLING) PARA LA GRÁFICA ---
+    # Si el rango seleccionado tiene menos de 12 meses, ajustamos WINDOW_SIZE a los meses disponibles
+    num_meses_rango = len(df_mensual)
+    WINDOW_SIZE = min(12, max(1, num_meses_rango))
     
     # Sumas de Fallas
-    df_mensual['Fallas_Totales_Rolling'] = df_mensual['Fallas Totales'].rolling(window=WINDOW_SIZE, min_periods=WINDOW_SIZE).sum()
-    df_mensual['Fallas_ALS_Rolling'] = df_mensual['Fallas ALS'].rolling(window=WINDOW_SIZE, min_periods=WINDOW_SIZE).sum()
+    df_mensual['Fallas_Totales_Rolling'] = df_mensual['Fallas Totales'].rolling(window=WINDOW_SIZE, min_periods=1).sum()
+    df_mensual['Fallas_ALS_Rolling'] = df_mensual['Fallas ALS'].rolling(window=WINDOW_SIZE, min_periods=1).sum()
     
-    df_mensual['Fallas_1500_Rolling'] = df_mensual['Fallas_1500'].rolling(window=WINDOW_SIZE, min_periods=WINDOW_SIZE).sum()
-    df_mensual['Fallas_ALS_1500_Rolling'] = df_mensual['Fallas_ALS_1500'].rolling(window=WINDOW_SIZE, min_periods=WINDOW_SIZE).sum()
+    df_mensual['Fallas_1500_Rolling'] = df_mensual['Fallas_1500'].rolling(window=WINDOW_SIZE, min_periods=1).sum()
+    df_mensual['Fallas_ALS_1500_Rolling'] = df_mensual['Fallas_ALS_1500'].rolling(window=WINDOW_SIZE, min_periods=1).sum()
     
     # Promedios de Pozos
-    df_mensual['Pozos_ON_Rolling_Avg'] = df_mensual['Pozos ON'].rolling(window=WINDOW_SIZE, min_periods=WINDOW_SIZE).mean()
-    df_mensual['Pozos_Operativos_Rolling_Avg'] = df_mensual['Pozos Operativos'].rolling(window=WINDOW_SIZE, min_periods=WINDOW_SIZE).mean()
-    df_mensual['Pozos_ON_1500_Rolling_Avg'] = df_mensual['Pozos_ON_1500'].rolling(window=WINDOW_SIZE, min_periods=WINDOW_SIZE).mean()
+    df_mensual['Pozos_ON_Rolling_Avg'] = df_mensual['Pozos ON'].rolling(window=WINDOW_SIZE, min_periods=1).mean()
+    df_mensual['Pozos_Operativos_Rolling_Avg'] = df_mensual['Pozos Operativos'].rolling(window=WINDOW_SIZE, min_periods=1).mean()
+    df_mensual['Pozos_ON_1500_Rolling_Avg'] = df_mensual['Pozos_ON_1500'].rolling(window=WINDOW_SIZE, min_periods=1).mean()
 
     # Cálculo de los Índices Rolling
     df_mensual['Indice_Falla_Rolling_ON'] = (

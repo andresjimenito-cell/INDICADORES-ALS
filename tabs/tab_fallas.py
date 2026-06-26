@@ -38,10 +38,21 @@ def render_tab_fallas(df_bd_filtered, fecha_evaluacion):
     total_fallas_rango = len(reporte_fallas)
     fallas_als = df_bd_filtered[df_bd_filtered['INDICADOR_MTBF'] == 1].shape[0] if df_bd_filtered is not None else 0
     
-    limit_365 = fecha_eval - timedelta(days=365)
-    df_recent = df_bd_filtered[df_bd_filtered['FECHA_FALLA'] >= limit_365] if df_bd_filtered is not None else pd.DataFrame()
-    pozos_fallados = df_recent['POZO'].nunique() if not df_recent.empty else 0
-    idx_sev = (len(df_recent) / pozos_fallados) if pozos_fallados > 0 else 0
+    fecha_ini_str = st.session_state.get('fecha_inicio_state')
+    if fecha_ini_str is not None:
+        fecha_ini_dt = pd.to_datetime(fecha_ini_str).normalize()
+    else:
+        fecha_ini_dt = fecha_eval - pd.DateOffset(years=1)
+
+    if df_bd_filtered is not None and not df_bd_filtered.empty:
+        fallas_als_periodo = int(df_bd_filtered[
+            (df_bd_filtered['FECHA_FALLA'].notna()) &
+            (df_bd_filtered['FECHA_FALLA'] >= fecha_ini_dt) &
+            (df_bd_filtered['FECHA_FALLA'] <= fecha_eval) &
+            (df_bd_filtered['INDICADOR_MTBF'] == 1)
+        ].shape[0])
+    else:
+        fallas_als_periodo = 0
 
     k1, k2, k3, k4 = st.columns(4)
     with k1:
@@ -49,21 +60,19 @@ def render_tab_fallas(df_bd_filtered, fecha_evaluacion):
     with k2:
         st.markdown(f'<div class="kpi-card"><div class="kpi-icon">⚙️</div><div class="kpi-label">FALLAS ALS</div><div class="kpi-value" style="color:#095139;">{fallas_als}</div></div>', unsafe_allow_html=True)
     with k3:
-        st.markdown(f'<div class="kpi-card"><div class="kpi-icon">🔥</div><div class="kpi-label">I. SEVERIDAD</div><div class="kpi-value" style="color:#c09c2e;">{idx_sev:.2f}</div></div>', unsafe_allow_html=True)
-    try:
-        from indice_falla import calcular_indice_falla_anual
-        df_forma9_f = st.session_state.get('df_forma9_calculated')
-        if df_forma9_f is not None and df_bd_filtered is not None:
-            df_forma9_f_filtered = df_forma9_f[df_forma9_f['POZO'].isin(df_bd_filtered['POZO'])]
-            resumen_df, _ = calcular_indice_falla_anual(df_bd_filtered, df_forma9_f_filtered, fecha_evaluacion)
-            val_rle_1500 = resumen_df[resumen_df['Indicador'] == 'Índice de Falla ALS ON RLE < 1500']['Valor'].values[0]
-        else:
-            val_rle_1500 = "0.00%"
-    except Exception:
-        val_rle_1500 = "0.00%"
+        st.markdown(f'<div class="kpi-card"><div class="kpi-icon">🔥</div><div class="kpi-label">FALLAS ALS PERI</div><div class="kpi-value" style="color:#c09c2e;">{fallas_als_periodo}</div></div>', unsafe_allow_html=True)
+        
+    if df_bd_filtered is not None and not df_bd_filtered.empty:
+        fallas_periodo = int(df_bd_filtered[
+            (df_bd_filtered['FECHA_FALLA'].notna()) &
+            (df_bd_filtered['FECHA_FALLA'] >= fecha_ini_dt) &
+            (df_bd_filtered['FECHA_FALLA'] <= fecha_eval)
+        ].shape[0])
+    else:
+        fallas_periodo = 0
 
     with k4:
-        st.markdown(f'<div class="kpi-card"><div class="kpi-icon">⏳</div><div class="kpi-label">I.F. ALS &lt; 1500</div><div class="kpi-value" style="color:#137659;">{val_rle_1500}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="kpi-card"><div class="kpi-icon">⏳</div><div class="kpi-label">FALLAS PERIODO</div><div class="kpi-value" style="color:#137659;">{fallas_periodo}</div></div>', unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -75,10 +84,13 @@ def render_tab_fallas(df_bd_filtered, fecha_evaluacion):
         mask = (df_bd_filtered['FECHA_FALLA'] >= (fecha_eval - timedelta(days=365)))
         for _, run in df_bd_filtered[mask].iterrows():
             razon = run.get('RAZON ESPECIFICA PULL', '')
+            clasif = clasificar_razon_ia(razon) if razon else 'Otros'
+            if clasif == 'Desconocida':
+                clasif = 'Otros'
             detalles.append({
                 'Pozo': run['POZO'],
                 'Vida': run['RUN LIFE'],
-                'Clasif': clasificar_razon_ia(razon) if razon else 'Otros',
+                'Clasif': clasif,
                 'Etapa': clasificar_runlife(run['RUN LIFE'])
             })
     df_det = pd.DataFrame(detalles)

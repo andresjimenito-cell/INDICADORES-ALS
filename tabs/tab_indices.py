@@ -13,7 +13,7 @@ from config import COLOR_PRINCIPAL
 from indice_falla import calcular_indice_falla_anual
 from styles import render_hud_table
 
-def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, selected_activo):
+def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, selected_activo, fecha_inicio=None):
     """Renderiza el contenido completo del Tab INDICES & DATA con estilo HUD."""
     
     if df_bd_filtered.empty or df_forma9_filtered.empty:
@@ -24,7 +24,8 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
         indice_resumen_df, df_mensual_hist = calcular_indice_falla_anual(
             df_bd_filtered,
             df_forma9_filtered,
-            fecha_evaluacion
+            fecha_evaluacion,
+            fecha_inicio
         )
         
         # --- 1. KPI GRID (Resumen de Índices) ---
@@ -49,13 +50,20 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
 
 
         # --- 2. GRÁFICOS DE TENDENCIA ---
-        months_idx = [str(m) for m in df_mensual_hist['Mes']]
-        val_if_on = [round(float(x)*100, 2) for x in df_mensual_hist['Indice_Falla_Rolling_ON'].tolist()]
-        val_if_als = [round(float(x)*100, 2) for x in df_mensual_hist['Indice_Falla_Rolling_ALS_ON'].tolist()]
+        df_mensual_grafico = df_mensual_hist.copy()
+        if fecha_inicio is None:
+            fecha_inicio = st.session_state.get('fecha_inicio_state')
+        if fecha_inicio is not None:
+            limite_inicio = pd.to_datetime(fecha_inicio).strftime('%Y-%m')
+            df_mensual_grafico = df_mensual_grafico[df_mensual_grafico['Mes'] >= limite_inicio].copy()
+
+        months_idx = [str(m) for m in df_mensual_grafico['Mes']]
+        val_if_on = [round(float(x)*100, 2) for x in df_mensual_grafico['Indice_Falla_Rolling_ON'].tolist()]
+        val_if_als = [round(float(x)*100, 2) for x in df_mensual_grafico['Indice_Falla_Rolling_ALS_ON'].tolist()]
         
         # Nuevas métricas RLE < 1500
-        val_if_on_1500 = [round(float(x)*100, 2) for x in df_mensual_hist.get('Indice_Falla_Rolling_ON_1500', pd.Series([0]*len(df_mensual_hist))).tolist()]
-        val_if_als_1500 = [round(float(x)*100, 2) for x in df_mensual_hist.get('Indice_Falla_Rolling_ALS_ON_1500', pd.Series([0]*len(df_mensual_hist))).tolist()]
+        val_if_on_1500 = [round(float(x)*100, 2) for x in df_mensual_grafico.get('Indice_Falla_Rolling_ON_1500', pd.Series([0]*len(df_mensual_grafico))).tolist()]
+        val_if_als_1500 = [round(float(x)*100, 2) for x in df_mensual_grafico.get('Indice_Falla_Rolling_ALS_ON_1500', pd.Series([0]*len(df_mensual_grafico))).tolist()]
         
         col_left, col_right = st.columns(2)
         
@@ -97,8 +105,8 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
 
         with col_right:
             st.markdown("<div style='margin-bottom:10px;'></div>", unsafe_allow_html=True)
-            p_ops = df_mensual_hist['Pozos Operativos'].tolist()
-            f_tots = df_mensual_hist['Fallas Totales'].tolist()
+            p_ops = df_mensual_grafico['Pozos Operativos'].tolist()
+            f_tots = df_mensual_grafico['Fallas Totales'].tolist()
             echarts_op = {
                 "backgroundColor": "transparent",
                 "title": {

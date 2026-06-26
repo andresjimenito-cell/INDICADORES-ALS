@@ -45,7 +45,7 @@ def clasificar_razon_ia(razon: str) -> str:
         return 'Tubería'
     if any(w in razon_norm for w in palabras_yacimiento):
         return 'Yacimiento'
-    return 'Otra'
+    return 'Otros'
 
 
 # ===========================================================================
@@ -167,19 +167,19 @@ def generar_reporte_completo(df_bd, df_forma9, fecha_evaluacion):
 
     df_bd_eval = df_bd[df_bd['FECHA_RUN_DATE'].dt.normalize() <= fecha_evaluacion].copy()
 
-    extraidos_count  = df_bd_eval[df_bd_eval['FECHA_PULL_DATE'].dt.normalize() <= fecha_evaluacion].shape[0]
+    extraidos_count  = df_bd_eval[df_bd_eval['FECHA_PULL_DATE'].dt.normalize() <= fecha_evaluacion]['POZO'].nunique() if 'POZO' in df_bd_eval.columns else 0
     running_count    = df_bd_eval[
         (df_bd_eval['FECHA_RUN_DATE'].dt.normalize() <= fecha_evaluacion) &
         (df_bd_eval['FECHA_PULL_DATE'].isna() | (df_bd_eval['FECHA_PULL_DATE'].dt.normalize() > fecha_evaluacion))
-    ].shape[0]
+    ]['POZO'].nunique() if 'POZO' in df_bd_eval.columns else 0
     fallados_count   = df_bd_eval[
         (df_bd_eval['FECHA_FALLA_DATE'].dt.normalize() <= fecha_evaluacion) &
         (df_bd_eval['FECHA_PULL_DATE'].isna() | (df_bd_eval['FECHA_PULL_DATE'].dt.normalize() > fecha_evaluacion))
-    ].shape[0]
+    ]['POZO'].nunique() if 'POZO' in df_bd_eval.columns else 0
     pozos_operativos = df_bd_eval[
         (df_bd_eval['FECHA_FALLA_DATE'].isna() | (df_bd_eval['FECHA_FALLA_DATE'].dt.normalize() > fecha_evaluacion)) &
         (df_bd_eval['FECHA_PULL_DATE'].isna()  | (df_bd_eval['FECHA_PULL_DATE'].dt.normalize()  > fecha_evaluacion))
-    ].shape[0]
+    ]['POZO'].nunique() if 'POZO' in df_bd_eval.columns else 0
 
     df_forma9_eval = df_forma9[
         (df_forma9['FECHA_FORMA9'].dt.normalize() >= (fecha_evaluacion - pd.Timedelta(days=30))) &

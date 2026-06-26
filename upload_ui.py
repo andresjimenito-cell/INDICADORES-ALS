@@ -92,6 +92,15 @@ def render_upload_section():
         """, unsafe_allow_html=True)
         
         default_date = get_last_day_of_previous_month()
+        default_start_date = default_date - timedelta(days=365)
+        
+        fecha_inicio = st.date_input(
+            "🗓️ FECHA INICIO",
+            value=default_start_date,
+            key="fecha_ini_input",
+            max_value=datetime.now().date(),
+        )
+        
         fecha_evaluacion = st.date_input(
             "🗓️ FECHA EVALUACIÓN",
             value=default_date,
@@ -101,8 +110,8 @@ def render_upload_section():
         
         st.markdown(f"""
         <div class="fecha-alerta">
-            <div style="color:#FF00FF; font-size:0.6rem; font-family:'Arial', sans-serif !important;">SISTEMA DE CORTE</div>
-            <div style="font-size:0.85rem; font-weight:700;">{fecha_evaluacion.strftime('%d %b %Y').upper()}</div>
+            <div style="color:#FF00FF; font-size:0.6rem; font-family:'Arial', sans-serif !important;">RANGO DE EVALUACIÓN</div>
+            <div style="font-size:0.85rem; font-weight:700;">{fecha_inicio.strftime('%d %b %Y').upper()} - {fecha_evaluacion.strftime('%d %b %Y').upper()}</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -161,6 +170,7 @@ def render_upload_section():
                             save_cached_data(
                                 df_bd_calc, df_forma9_calc, fecha_evaluacion,
                                 reporte_runes_final, historico_run_life, reporte_fallas,
+                                fecha_ini=fecha_inicio
                             )
                             st.toast("Datos guardados en caché para carga rápida", icon="💾")
 
@@ -169,6 +179,7 @@ def render_upload_section():
                             st.session_state['df_bd_calculated']       = df_bd_calc
                             st.session_state['df_forma9_calculated']   = df_forma9_calc
                             st.session_state['fecha_evaluacion_state'] = fecha_evaluacion
+                            st.session_state['fecha_inicio_state']     = fecha_inicio
                             st.session_state['reporte_runes']          = reporte_runes_final
                             st.session_state['historico_run_life']     = historico_run_life
                             st.session_state['reporte_fallas']         = reporte_fallas

@@ -205,7 +205,6 @@ def generar_grafico_pozos_indices(df_bd, df_forma9, fecha_evaluacion, titulo="Gr
         name='POZOS INACTIVOS', 
         marker=dict(color=COLOR_POZOS_OFF, line=dict(width=1), opacity=1),
         offsetgroup=0.5, 
-        base=df_monthly['Pozos_ON'],
         hovertemplate='<b>[ESTADO: INACTIVOS]</b><br>CANTIDAD: %{y}<extra></extra>'
     ))
 

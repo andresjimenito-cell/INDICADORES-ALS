@@ -9,7 +9,7 @@ Diseño HUD futurista con uso óptimo del espacio horizontal:
   - Zero vertical waste: ocupa ~72px totales
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 
 import pandas as pd
@@ -37,6 +37,7 @@ def _init_session_state():
         "unique_als":             [],
         "unique_activos":         [],
         "fecha_evaluacion_state": datetime.now().date(),
+        "fecha_inicio_state":     datetime.now().date() - timedelta(days=365),
     }
     for key, val in defaults.items():
         if key not in st.session_state:
@@ -233,17 +234,23 @@ def render_header(titulo_pagina: str = "INDICADORES ALS", fecha_eval=None):
     """
     _init_session_state()
 
+    fecha_ini = st.session_state.get('fecha_inicio_state')
+
     # ── Fecha ──────────────────────────────────────────────────────────────
-    if fecha_eval:
-        try:
-            fecha_eval_dt = pd.to_datetime(fecha_eval)
-            f_display = fecha_eval_dt.strftime("%d %b %Y").upper()
-        except Exception:
-            fecha_eval_dt = pd.to_datetime(datetime.now())
-            f_display = "N/D"
-    else:
+    try:
+        fecha_eval_dt = pd.to_datetime(fecha_eval or datetime.now())
+        f_eval_display = fecha_eval_dt.strftime("%d %b %Y").upper()
+    except Exception:
         fecha_eval_dt = pd.to_datetime(datetime.now())
-        f_display = fecha_eval_dt.strftime("%d %b %Y").upper()
+        f_eval_display = "N/D"
+
+    try:
+        fecha_ini_dt = pd.to_datetime(fecha_ini or (datetime.now() - timedelta(days=365)))
+        f_ini_display = fecha_ini_dt.strftime("%d %b %Y").upper()
+    except Exception:
+        f_ini_display = "N/D"
+
+    f_display = f"{f_ini_display} - {f_eval_display}"
 
     # ── KPIs rápidos ───────────────────────────────────────────────────────
     total, activos, fallados = _quick_kpis(fecha_eval_dt)
@@ -296,7 +303,7 @@ def render_header(titulo_pagina: str = "INDICADORES ALS", fecha_eval=None):
 
   <!-- Fecha evaluación -->
   <div class="als-date-badge">
-    <span class="als-date-label">Fecha eval.</span>
+    <span class="als-date-label">Periodo eval.</span>
     <span class="als-date-value">{f_display}</span>
   </div>
 

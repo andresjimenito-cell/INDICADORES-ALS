@@ -163,6 +163,7 @@ if st.session_state.get('reporte_runes') is None:
         st.session_state['df_bd_calculated']      = cached_data['df_bd']
         st.session_state['df_forma9_calculated']  = cached_data['df_forma9']
         st.session_state['fecha_evaluacion_state'] = cached_data['fecha_evaluacion']
+        st.session_state['fecha_inicio_state']     = cached_data.get('fecha_inicio', cached_data['fecha_evaluacion'] - pd.DateOffset(years=1))
         st.session_state['reporte_runes']         = cached_data['reporte_runes']
         st.session_state['historico_run_life']    = cached_data['historico_run_life']
         st.session_state['reporte_fallas']        = cached_data['reporte_fallas']
@@ -225,6 +226,23 @@ if st.session_state.get('reporte_runes') is not None:
 
     df_forma9_calc = st.session_state['df_forma9_calculated'].copy()
     fecha_eval    = st.session_state['fecha_evaluacion_state']
+    fecha_ini     = st.session_state.get('fecha_inicio_state')
+    if fecha_ini is None:
+        fecha_ini = pd.to_datetime(fecha_eval) - pd.DateOffset(years=1)
+
+    # ── Filtrar BD por rango de fechas ─────────────────────────────────────
+    df_bd_calc['FECHA_RUN'] = pd.to_datetime(df_bd_calc['FECHA_RUN'])
+    df_bd_calc['FECHA_PULL'] = pd.to_datetime(df_bd_calc['FECHA_PULL'], errors='coerce')
+    df_bd_calc['FECHA_FALLA'] = pd.to_datetime(df_bd_calc['FECHA_FALLA'], errors='coerce')
+
+    df_bd_calc = df_bd_calc[
+        (df_bd_calc['FECHA_RUN'] <= pd.to_datetime(fecha_eval)) &
+        (df_bd_calc['FECHA_PULL'].isna() | (df_bd_calc['FECHA_PULL'] >= pd.to_datetime(fecha_ini)))
+    ].copy()
+
+    # Limpiar fallas fuera del rango de evaluación
+    df_bd_calc.loc[df_bd_calc['FECHA_FALLA'] < pd.to_datetime(fecha_ini), 'FECHA_FALLA'] = pd.NaT
+    df_bd_calc.loc[df_bd_calc['FECHA_FALLA'] > pd.to_datetime(fecha_eval), 'FECHA_FALLA'] = pd.NaT
 
     # ── Aplicar filtros globales ───────────────────────────────────────────
     _filtros = {
@@ -239,9 +257,16 @@ if st.session_state.get('reporte_runes') is not None:
         if val != 'TODOS' and col in df_bd_calc.columns:
             df_bd_calc = df_bd_calc[df_bd_calc[col] == val]
 
+    # ── Filtrar Forma 9 por rango de fechas ────────────────────────────────
+    df_forma9_calc['FECHA_FORMA9'] = pd.to_datetime(df_forma9_calc['FECHA_FORMA9'])
+    df_forma9_filtered = df_forma9_calc[
+        (df_forma9_calc['FECHA_FORMA9'] >= pd.to_datetime(fecha_ini)) &
+        (df_forma9_calc['FECHA_FORMA9'] <= pd.to_datetime(fecha_eval))
+    ].copy()
+
     # ── Filtrar Forma 9 según pozos resultantes ────────────────────────────
     pozos_en_bd       = df_bd_calc['POZO'].unique() if 'POZO' in df_bd_calc.columns else []
-    df_forma9_filtered = df_forma9_calc[df_forma9_calc['POZO'].isin(pozos_en_bd)].copy()
+    df_forma9_filtered = df_forma9_filtered[df_forma9_filtered['POZO'].isin(pozos_en_bd)].copy()
 
     reporte_runes = st.session_state['reporte_runes']
 
@@ -297,7 +322,10 @@ if st.session_state.get('reporte_runes') is not None:
         with col_indices:
             from tabs.tab_indices import render_tab_indices
             render_tab_indices(
-                df_bd_calc, df_forma9_filtered, fecha_eval, filters['selected_activo']
+                df_bd_calc,
+                df_forma9_filtered,
+                fecha_eval,
+                filters['selected_activo']
             )
 
     # ─────────────────────────────────────────────────────────────────────────────

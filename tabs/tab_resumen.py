@@ -169,22 +169,50 @@ def render_tab_resumen(
     from grafico import generar_grafico_resumen
     from grafico_run_life import generar_grafico_run_life, generar_grafico_pozos_indices
 
-    # ── Pre-procesamiento ────────────────────────────────────────────────────
+    # ── Pre-procesamiento (Obtener datos alineados sin restricciones del periodo) ──
+    df_bd_raw = st.session_state.get('df_bd_calculated')
+    df_forma9_raw = st.session_state.get('df_forma9_calculated')
+    
+    df_bd_untr = df_bd_raw.copy() if df_bd_raw is not None else df_bd_filtered.copy()
+    if 'ACTIVO' in df_bd_untr.columns:
+        df_bd_untr = df_bd_untr[df_bd_untr['ACTIVO'].astype(str).str.upper().str.strip() != 'ECUADOR']
+        
+    _filtros = {
+        'ACTIVO':    st.session_state.get('general_activo_filter',    'TODOS'),
+        'BLOQUE':    st.session_state.get('general_bloque_filter',    'TODOS'),
+        'CAMPO':     st.session_state.get('general_campo_filter',     'TODOS'),
+        'ALS':       st.session_state.get('general_als_filter',       'TODOS'),
+        'PROVEEDOR': st.session_state.get('general_proveedor_filter', 'TODOS'),
+        'NICK':      st.session_state.get('general_nick_filter',      'TODOS'),
+    }
+    for col, val in _filtros.items():
+        if val != 'TODOS' and col in df_bd_untr.columns:
+            df_bd_untr = df_bd_untr[df_bd_untr[col] == val]
+            
+    df_bd_untr['FECHA_RUN_TEMP'] = pd.to_datetime(df_bd_untr['FECHA_RUN'], errors='coerce')
+    df_bd_untr = df_bd_untr[df_bd_untr['FECHA_RUN_TEMP'].dt.normalize() <= pd.to_datetime(fecha_evaluacion).normalize()].copy()
+    df_bd_untr['FECHA_FALLA'] = pd.to_datetime(df_bd_untr['FECHA_FALLA'], errors='coerce')
+    df_bd_untr.loc[df_bd_untr['FECHA_FALLA'].dt.normalize() > pd.to_datetime(fecha_evaluacion).normalize(), 'FECHA_FALLA'] = pd.NaT
+
+    df_forma9_untr = df_forma9_raw.copy() if df_forma9_raw is not None else df_forma9_filtered.copy()
+    pozos_en_bd_untr = df_bd_untr['POZO'].unique() if 'POZO' in df_bd_untr.columns else []
+    df_forma9_untr = df_forma9_untr[df_forma9_untr['POZO'].isin(pozos_en_bd_untr)].copy()
+
     for col in ('FECHA_PULL', 'FECHA_FALLA', 'FECHA_RUN'):
-        if col in df_bd_filtered.columns:
-            df_bd_filtered[col] = pd.to_datetime(df_bd_filtered[col], errors='coerce')
+        if col in df_bd_untr.columns:
+            df_bd_untr[col] = pd.to_datetime(df_bd_untr[col], errors='coerce')
 
     fecha_eval_dt = pd.to_datetime(fecha_evaluacion)
     anio_campana  = fecha_eval_dt.year
 
     # Índice de falla
     try:
-        indice_resumen_df, _ = calcular_indice_falla_anual(df_bd_filtered, df_forma9_filtered, fecha_evaluacion)
+        indice_resumen_df, _ = calcular_indice_falla_anual(df_bd_untr, df_forma9_untr, fecha_evaluacion)
     except Exception:
         indice_resumen_df = None
 
     # Monthly summary
-    fig_perf, df_monthly_summary = generar_grafico_resumen(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, titulo="")
+    fig_perf, df_monthly_summary = generar_grafico_resumen(df_bd_untr, df_forma9_untr, fecha_evaluacion, titulo="")
     st.session_state['df_monthly_summary'] = df_monthly_summary
 
     # =========================================================================
@@ -205,40 +233,62 @@ def render_tab_resumen(
     # =========================================================================
 
     # Pre-calcular datos de campaña antes de abrir columnas
+    # Obtener fecha de inicio desde st.session_state
+    fecha_ini_dt = pd.to_datetime(st.session_state.get('fecha_inicio_state'))
+    if fecha_ini_dt is None:
+        fecha_ini_dt = fecha_eval_dt - pd.DateOffset(years=1)
+    fecha_ini_dt = fecha_ini_dt.normalize()
+
     df_camp = pd.DataFrame()
     df_res  = pd.DataFrame()
     df_fall = pd.Series(dtype=int)
-    idx_meses = range(1, 1)
     val_total_corr = val_nuevos = val_ws = val_fallas = val_extraidos = val_activos = 0
     cats = d_nv = d_ws = d_fl = []
+    unique_months = []
+
+    # Generar todos los meses en el rango evaluado
+    curr = fecha_ini_dt.replace(day=1)
+    while curr <= fecha_eval_dt.normalize():
+        unique_months.append(curr.strftime('%Y-%m'))
+        curr = (curr + pd.offsets.MonthBegin(1)).normalize()
 
     if 'FECHA_RUN' in df_bd_filtered.columns:
-        df_camp = df_bd_filtered[df_bd_filtered['FECHA_RUN'].dt.year == anio_campana].copy()
+        # Filtrar df_camp para contener sólo corridas que iniciaron en el periodo evaluado
+        df_camp = df_bd_filtered[
+            (df_bd_filtered['FECHA_RUN'] >= fecha_ini_dt) &
+            (df_bd_filtered['FECHA_RUN'] <= fecha_eval_dt)
+        ].copy()
+        
         if not df_camp.empty:
-            df_camp['Mes']   = df_camp['FECHA_RUN'].dt.month
+            df_camp['Mes']   = df_camp['FECHA_RUN'].dt.strftime('%Y-%m')
             df_camp['Tipo']  = (df_camp['RUN'].apply(lambda x: 'Nuevo' if x == 1 else 'WS')
                                 if 'RUN' in df_camp.columns else 'Otro')
             df_camp['Falla'] = (
                 df_camp['FECHA_FALLA'].notna() &
-                (df_camp['FECHA_FALLA'] <= fecha_eval_dt)
+                (df_camp['FECHA_FALLA'] <= fecha_eval_dt) &
+                (df_camp['FECHA_FALLA'] >= fecha_ini_dt)
             ).astype(int)
 
-            mes_max   = fecha_eval_dt.month
-            idx_meses = range(1, mes_max + 1)
             df_res    = (df_camp.groupby(['Mes', 'Tipo'])
                                 .size()
                                 .unstack(fill_value=0)
-                                .reindex(idx_meses, fill_value=0))
-            df_fall   = (df_camp[df_camp['Falla'] == 1]
-                                .groupby('Mes').size()
-                                .reindex(idx_meses, fill_value=0))
+                                .reindex(unique_months, fill_value=0))
+            
+            # Agrupar fallas por Mes y Tipo para diferenciar Nuevos vs WS
+            df_fall_by_type = (df_camp[df_camp['Falla'] == 1]
+                               .groupby(['Mes', 'Tipo'])
+                               .size()
+                               .unstack(fill_value=0)
+                               .reindex(unique_months, fill_value=0))
 
             _MES = ['Ene','Feb','Mar','Abr','May','Jun',
                     'Jul','Ago','Sep','Oct','Nov','Dic']
-            cats = [_MES[i - 1] for i in df_res.index]
+            cats = [f"{_MES[int(m[5:7]) - 1]}-{m[2:4]}" for m in df_res.index]
             d_nv = df_res['Nuevo'].tolist() if 'Nuevo' in df_res.columns else [0]*len(cats)
             d_ws = df_res['WS'].tolist()    if 'WS'    in df_res.columns else [0]*len(cats)
-            d_fl = df_fall.tolist()
+            
+            d_fl_nuevo = df_fall_by_type['Nuevo'].tolist() if 'Nuevo' in df_fall_by_type.columns else [0]*len(cats)
+            d_fl_ws    = df_fall_by_type['WS'].tolist() if 'WS' in df_fall_by_type.columns else [0]*len(cats)
 
             df_nv_df = df_camp[df_camp['RUN'] == 1] if 'RUN' in df_camp.columns else pd.DataFrame()
             df_ws_df = df_camp[df_camp['RUN'] >  1] if 'RUN' in df_camp.columns else df_camp
@@ -266,9 +316,9 @@ def render_tab_resumen(
             st.info("Sin datos.")
 
     with col_camp:
-        _section_title(f"▸ Campaña {anio_campana}", _CYAN)
+        _section_title("▸ Campaña Rango General", _CYAN)
         if df_camp.empty:
-            st.info(f"Sin corridas en {anio_campana}.")
+            st.info("Sin corridas en el rango seleccionado.")
         else:
             m1, m2 = st.columns(2)
             with m1:
@@ -288,7 +338,7 @@ def render_tab_resumen(
                     "textStyle": {"color": "#1f221e", "fontSize": 11},
                 },
                 "legend": {
-                    "data": ["Nuevos", "Well Service", "Fallas"],
+                    "data": ["Nuevos", "Well Service", "Fallas Nuevos", "Fallas WS"],
                     "textStyle": {"color": "#1f221e", "fontSize": 8},
                     "bottom": 0,
                     "itemHeight": 6,
@@ -334,11 +384,18 @@ def render_tab_resumen(
                         }
                     },
                     {
-                        "name": "Fallas", "type": "line",
-                        "data": d_fl, "smooth": True,
+                        "name": "Fallas Nuevos", "type": "line",
+                        "data": d_fl_nuevo, "smooth": True,
                         "symbol": "circle", "symbolSize": 5,
                         "lineStyle": {"width": 2, "color": "#c62828"},
                         "itemStyle": {"color": "#c62828", "borderWidth": 2, "borderColor": "#fff"}
+                    },
+                    {
+                        "name": "Fallas WS", "type": "line",
+                        "data": d_fl_ws, "smooth": True,
+                        "symbol": "circle", "symbolSize": 5,
+                        "lineStyle": {"width": 2, "color": "#ff7043", "type": "dashed"},
+                        "itemStyle": {"color": "#ff7043", "borderWidth": 2, "borderColor": "#fff"}
                     }
                 ]
             }
@@ -380,8 +437,7 @@ def render_tab_resumen(
                 }]
             }
 
-            components.html(_echarts_html(opts_camp,     165, "chart_campana"),    height=178)
-            components.html(_echarts_html(opts_run_stats, 155, "chart_run_stats"), height=168)
+            components.html(_echarts_html(opts_camp, 320, "chart_campana"), height=335)
 
     st.markdown("<div style='height:6px;'></div>", unsafe_allow_html=True)
 
@@ -389,7 +445,7 @@ def render_tab_resumen(
     # FILA 3 — TABLA DE RESUMEN MENSUAL DE CAMPAÑA (colapsada)
     # =========================================================================
     if 'FECHA_RUN' in df_bd_filtered.columns and not df_camp.empty:
-        with st.expander("📅 TABLA DE RESUMEN MENSUAL DE CAMPAÑA", expanded=False):
+        with st.expander("📅 TABLA DE RESUMEN MENSUAL", expanded=False):
             selected_als = st.session_state.get('kpis_als_filter', 'ESP')
 
             if selected_als and selected_als != 'TODOS':
@@ -397,24 +453,24 @@ def render_tab_resumen(
             else:
                 df_bd_als = df_bd_filtered.copy()
 
-            df_mensual = pd.DataFrame(index=idx_meses)
+            df_mensual = pd.DataFrame(index=unique_months)
             _MES_COMPLETO = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
                              'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
-            df_mensual['Mes'] = [_MES_COMPLETO[m - 1] for m in df_mensual.index]
+            df_mensual['Mes'] = [f"{_MES_COMPLETO[int(m[5:7]) - 1]} {m[:4]}" for m in df_mensual.index]
             
             # Fallas Totales del mes
             df_mensual['Fallas Totales'] = [
                 df_bd_filtered[
-                    (df_bd_filtered['FECHA_FALLA'].dt.month == m) &
-                    (df_bd_filtered['FECHA_FALLA'].dt.year == anio_campana)
+                    (df_bd_filtered['FECHA_FALLA'].dt.month == int(m[5:7])) &
+                    (df_bd_filtered['FECHA_FALLA'].dt.year == int(m[:4]))
                 ].shape[0] for m in df_mensual.index
             ]
             
             # Fallas ALS del mes (para el ALS seleccionado)
             df_mensual[f'Fallas {selected_als}'] = [
                 df_bd_als[
-                    (df_bd_als['FECHA_FALLA'].dt.month == m) &
-                    (df_bd_als['FECHA_FALLA'].dt.year == anio_campana)
+                    (df_bd_als['FECHA_FALLA'].dt.month == int(m[5:7])) &
+                    (df_bd_als['FECHA_FALLA'].dt.year == int(m[:4]))
                 ].shape[0] for m in df_mensual.index
             ]
             
@@ -440,9 +496,11 @@ def render_tab_resumen(
             df_forma9_f = df_forma9_filtered.copy()
             df_forma9_f['FECHA_FORMA9_DATE'] = df_forma9_f['FECHA_FORMA9'].dt.normalize()
             
-            for m in idx_meses:
-                last_day = calendar.monthrange(anio_campana, m)[1]
-                date_limit = pd.Timestamp(year=anio_campana, month=m, day=last_day).normalize()
+            for m_str in unique_months:
+                y = int(m_str[:4])
+                m = int(m_str[5:7])
+                last_day = calendar.monthrange(y, m)[1]
+                date_limit = pd.Timestamp(year=y, month=m, day=last_day).normalize()
                 
                 # 1. Pozos Operativos Totales
                 op_tot = df_bd_f[
@@ -455,7 +513,7 @@ def render_tab_resumen(
                 # 2. Pozos ON
                 pozos_on = df_forma9_f[
                     (df_forma9_f['FECHA_FORMA9_DATE'].dt.month == m) &
-                    (df_forma9_f['FECHA_FORMA9_DATE'].dt.year == anio_campana) &
+                    (df_forma9_f['FECHA_FORMA9_DATE'].dt.year == y) &
                     (df_forma9_f['DIAS TRABAJADOS'] > 0)
                 ]['POZO'].nunique()
                 pozos_on_lista.append(pozos_on)
@@ -473,18 +531,18 @@ def render_tab_resumen(
                 pozos_operativos_als_lista.append(op_als)
                 
                 # 5. Pozos nuevos e intervenciones (WS)
-                n_nuevo = df_res.loc[m, 'Nuevo'] if 'Nuevo' in df_res.columns and m in df_res.index else 0
-                n_ws = df_res.loc[m, 'WS'] if 'WS' in df_res.columns and m in df_res.index else 0
+                n_nuevo = df_res.loc[m_str, 'Nuevo'] if 'Nuevo' in df_res.columns and m_str in df_res.index else 0
+                n_ws = df_res.loc[m_str, 'WS'] if 'WS' in df_res.columns and m_str in df_res.index else 0
                 pozos_nuevos_lista.append(n_nuevo)
                 pozos_ws_lista.append(n_ws)
                 
                 # 6. Reactivaciones (ON en este mes, no ON en el anterior, sin nuevas corridas / WS en este mes)
                 prev_month = 12 if m == 1 else m - 1
-                prev_year = anio_campana - 1 if m == 1 else anio_campana
+                prev_year = y - 1 if m == 1 else y
                 
                 wells_on_m = set(df_forma9_f[
                     (df_forma9_f['FECHA_FORMA9_DATE'].dt.month == m) &
-                    (df_forma9_f['FECHA_FORMA9_DATE'].dt.year == anio_campana) &
+                    (df_forma9_f['FECHA_FORMA9_DATE'].dt.year == y) &
                     (df_forma9_f['DIAS TRABAJADOS'] > 0)
                 ]['POZO'].astype(str).str.strip().unique())
                 
@@ -494,7 +552,7 @@ def render_tab_resumen(
                     (df_forma9_f['DIAS TRABAJADOS'] > 0)
                 ]['POZO'].astype(str).str.strip().unique())
                 
-                runs_m = df_camp[df_camp['FECHA_RUN'].dt.month == m]
+                runs_m = df_camp[df_camp['Mes'] == m_str]
                 wells_new_m = set(runs_m[runs_m['RUN'] == 1]['POZO'].astype(str).str.strip().unique()) if 'RUN' in runs_m.columns else set()
                 wells_ws_m = set(runs_m[runs_m['RUN'] > 1]['POZO'].astype(str).str.strip().unique()) if 'RUN' in runs_m.columns else set()
                 
@@ -634,18 +692,18 @@ def render_tab_resumen(
     # =========================================================================
     # FILA 5 — DETALLE CAMPAÑA (expandible)
     # =========================================================================
-    with st.expander(f"📄 VER DETALLE DE CORRIDAS (CAMPAÑA ANUAL)", expanded=False):
+    with st.expander("📄 VER DETALLE DE CORRIDAS (RANGO SELECCIONADO)", expanded=False):
         if 'FECHA_RUN' not in df_bd_filtered.columns:
             st.info("Columna FECHA_RUN no disponible.")
         else:
-            df_det = df_bd_filtered[df_bd_filtered['FECHA_RUN'].dt.year == anio_campana].copy()
+            df_det = df_bd_filtered.copy()
             if df_det.empty:
-                st.info(f"No hay corridas registradas en {anio_campana}.")
+                st.info("No hay corridas registradas en el rango seleccionado.")
             else:
                 st.markdown(
                     f"<div style='color:#455a72;font-family:\"Arial\",sans-serif !important;"
                     f"font-size:0.6rem;margin-bottom:6px;letter-spacing:1px;'>"
-                    f"Campaña {anio_campana} · {len(df_det)} corridas</div>",
+                    f"Rango Seleccionado · {len(df_det)} corridas</div>",
                     unsafe_allow_html=True,
                 )
                 cols_show = [c for c in ('POZO', 'RUN', 'ACTIVO', 'CAMPO', 'BLOQUE',

@@ -77,7 +77,7 @@ def cached_onedrive_download(url: str, dest_filename: str):
 # 2. CACHÉ LOCAL (PICKLE)
 # ===========================================================================
 
-def save_cached_data(df_bd, df_forma9, fecha_eval, reporte_runes, historico, reporte_fallas) -> bool:
+def save_cached_data(df_bd, df_forma9, fecha_eval, reporte_runes, historico, reporte_fallas, fecha_ini=None) -> bool:
     """Guarda los DataFrames y variables clave en un archivo pickle."""
     try:
         CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -85,6 +85,7 @@ def save_cached_data(df_bd, df_forma9, fecha_eval, reporte_runes, historico, rep
             'df_bd': df_bd,
             'df_forma9': df_forma9,
             'fecha_evaluacion': fecha_eval,
+            'fecha_inicio': fecha_ini,
             'reporte_runes': reporte_runes,
             'historico_run_life': historico,
             'reporte_fallas': reporte_fallas,
@@ -104,6 +105,12 @@ def load_cached_data():
     try:
         with open(CACHE_FILE, 'rb') as f:
             data = pickle.load(f)
+        if 'fecha_inicio' not in data and 'fecha_evaluacion' in data:
+            import pandas as pd
+            try:
+                data['fecha_inicio'] = (pd.to_datetime(data['fecha_evaluacion']) - pd.DateOffset(years=1)).date()
+            except Exception:
+                data['fecha_inicio'] = None
         return data
     except Exception as e:
         print(f"Error cargando caché: {e}")

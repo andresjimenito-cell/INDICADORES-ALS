@@ -176,73 +176,44 @@ def render_tab_performance(df_bd_filtered, df_forma9_filtered, fecha_evaluacion)
     st.markdown("<br>", unsafe_allow_html=True)
 
 
-    col_left, col_right = st.columns(2)
+    st.markdown("<div style='margin-bottom:10px;'></div>", unsafe_allow_html=True)
+    df_range = df_perf.groupby('RANGO').agg({'POZO': 'count', 'BOPD': 'sum'}).reindex(['< 2 años', '2 - 4 años', '4 - 6 años', '> 6 años']).fillna(0)
     
-    with col_left:
-        st.markdown("<div style='margin-bottom:10px;'></div>", unsafe_allow_html=True)
-        df_range = df_perf.groupby('RANGO').agg({'POZO': 'count', 'BOPD': 'mean'}).reindex(['< 2 años', '2 - 4 años', '4 - 6 años', '> 6 años']).fillna(0)
-        
-        categories = df_range.index.tolist()
-        pozos_data = df_range['POZO'].tolist()
-        bopd_data = [round(x, 1) for x in df_range['BOPD'].tolist()]
+    categories = df_range.index.tolist()
+    pozos_data = df_range['POZO'].tolist()
+    bopd_data = [round(x, 1) for x in df_range['BOPD'].tolist()]
 
-        options = {
-            "backgroundColor": "transparent",
-            "title": {
-                "text": "📈 CORRELACIÓN PROD. VS LONGEVIDAD",
-                "left": "center",
-                "top": 0,
-                "textStyle": {"color": "#137659", "fontSize": 13, "fontFamily": "Arial, sans-serif", "fontWeight": "bold"}
+    options = {
+        "backgroundColor": "transparent",
+        "title": {
+            "text": "📈 CORRELACIÓN PROD. VS LONGEVIDAD",
+            "left": "center",
+            "top": 0,
+            "textStyle": {"color": "#137659", "fontSize": 13, "fontFamily": "Arial, sans-serif", "fontWeight": "bold"}
+        },
+        "textStyle": {"fontFamily": "Arial, sans-serif"},
+        "tooltip": {"trigger": "axis", "backgroundColor": "rgba(255, 255, 255, 0.95)", "borderColor": "#137659", "borderWidth": 1, "textStyle": {"color": "#1f221e", "fontFamily": "Arial, sans-serif"}},
+        "legend": {"data": ["POZOS", "BOPD TOTAL"], "textStyle": {"color": "#475569", "fontSize": 10, "fontFamily": "Arial, sans-serif"}, "bottom": 0, "icon": "circle"},
+        "grid": {"top": "15%", "left": "5%", "right": "5%", "bottom": "18%", "containLabel": True},
+        "xAxis": {"type": "category", "data": categories, "axisLabel": {"color": "#475569", "fontSize": 10, "fontFamily": "Arial, sans-serif"}},
+        "yAxis": [
+            {"type": "value", "name": "POZOS", "splitLine": {"lineStyle": {"color": "rgba(19, 118, 89, 0.05)"}}, "axisLabel": {"color": "#475569", "fontFamily": "Arial, sans-serif"}}, 
+            {"type": "value", "name": "BOPD TOTAL", "splitLine": {"show": False}, "axisLabel": {"color": "#475569", "fontFamily": "Arial, sans-serif"}}
+        ],
+        "series": [
+            {
+                "name": "POZOS", "type": "bar", "barWidth": "45%", 
+                "itemStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 0, "y2": 1, "colorStops": [{"offset": 0, "color": "#137659"}, {"offset": 1, "color": "rgba(19, 118, 89, 0.1)"}]}, "borderRadius": [5, 5, 0, 0]}, 
+                "data": pozos_data
             },
-            "textStyle": {"fontFamily": "Arial, sans-serif"},
-            "tooltip": {"trigger": "axis", "backgroundColor": "rgba(255, 255, 255, 0.95)", "borderColor": "#137659", "borderWidth": 1, "textStyle": {"color": "#1f221e", "fontFamily": "Arial, sans-serif"}},
-            "legend": {"data": ["POZOS", "BOPD"], "textStyle": {"color": "#475569", "fontSize": 10, "fontFamily": "Arial, sans-serif"}, "bottom": 0, "icon": "circle"},
-            "grid": {"top": "15%", "left": "5%", "right": "5%", "bottom": "18%", "containLabel": True},
-            "xAxis": {"type": "category", "data": categories, "axisLabel": {"color": "#475569", "fontSize": 10, "fontFamily": "Arial, sans-serif"}},
-            "yAxis": [
-                {"type": "value", "name": "POZOS", "splitLine": {"lineStyle": {"color": "rgba(19, 118, 89, 0.05)"}}, "axisLabel": {"color": "#475569", "fontFamily": "Arial, sans-serif"}}, 
-                {"type": "value", "name": "BOPD", "splitLine": {"show": False}, "axisLabel": {"color": "#475569", "fontFamily": "Arial, sans-serif"}}
-            ],
-            "series": [
-                {
-                    "name": "POZOS", "type": "bar", "barWidth": "40%", 
-                    "itemStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 0, "y2": 1, "colorStops": [{"offset": 0, "color": "#137659"}, {"offset": 1, "color": "rgba(19, 118, 89, 0.1)"}]}, "borderRadius": [5, 5, 0, 0]}, 
-                    "data": pozos_data
-                },
-                {
-                    "name": "BOPD", "type": "line", "yAxisIndex": 1, "smooth": True, "symbol": "diamond", "symbolSize": 8, 
-                    "lineStyle": {"width": 3, "color": "#c09c2e"}, 
-                    "itemStyle": {"color": "#c09c2e"}, "data": bopd_data
-                }
-            ]
-        }
-        components.html(f'<div id="perf-chart-main" style="width:100%; height:380px; background:#ffffff; border-radius:15px; overflow:hidden; border:1px solid rgba(19, 118, 89, 0.15);"></div><script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script><script>(function(){{var myChart=echarts.init(document.getElementById("perf-chart-main"),null);myChart.setOption({json.dumps(options)});window.addEventListener("resize",function(){{myChart.resize();}});}})();</script>', height=400)
-
-    with col_right:
-        st.markdown("<div style='margin-bottom:10px;'></div>", unsafe_allow_html=True)
-        top_bopd = df_perf.sort_values('BOPD', ascending=False).head(10)
-        
-        echarts_top_bopd = {
-            "backgroundColor": "transparent",
-            "title": {
-                "text": "🏆 TOP 10 PRODUCCIÓN POR POZO",
-                "left": "center",
-                "top": 0,
-                "textStyle": {"color": "#137659", "fontSize": 13, "fontFamily": "Arial, sans-serif", "fontWeight": "bold"}
-            },
-            "textStyle": {"fontFamily": "Arial, sans-serif"},
-            "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}, "backgroundColor": "rgba(255, 255, 255, 0.95)", "borderColor": "#137659", "textStyle": {"color": "#1f221e", "fontFamily": "Arial, sans-serif"}},
-            "grid": {"left": "3%", "right": "15%", "bottom": "10%", "top": "15%", "containLabel": True},
-            "xAxis": {"type": "value", "splitLine": {"show": False}, "axisLabel": {"show": False}},
-            "yAxis": {"type": "category", "data": top_bopd['POZO'].tolist(), "axisLabel": {"color": "#1f221e", "fontSize": 10, "fontFamily": "Arial, sans-serif"}},
-            "series": [{
-                "type": "bar",
-                "data": top_bopd['BOPD'].tolist(),
-                "itemStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#c09c2e"}, {"offset": 1, "color": "rgba(192, 156, 46, 0.1)"}]}, "borderRadius": [0, 5, 5, 0]},
-                "label": {"show": True, "position": "right", "color": "#c09c2e", "fontFamily": "Arial, sans-serif", "formatter": "{c} b"}
-            }]
-        }
-        components.html(f'<div id="perf-chart-top" style="width:100%; height:380px; background:#ffffff; border-radius:15px; overflow:hidden; border:1px solid rgba(19, 118, 89, 0.15);"></div><script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script><script>(function(){{var myChart=echarts.init(document.getElementById("perf-chart-top"),null);myChart.setOption({json.dumps(echarts_top_bopd)});window.addEventListener("resize",function(){{myChart.resize();}});}})();</script>', height=400)
+            {
+                "name": "BOPD TOTAL", "type": "line", "yAxisIndex": 1, "smooth": True, "symbol": "diamond", "symbolSize": 8, 
+                "lineStyle": {"width": 3, "color": "#c09c2e"}, 
+                "itemStyle": {"color": "#c09c2e"}, "data": bopd_data
+            }
+        ]
+    }
+    components.html(f'<div id="perf-chart-main" style="width:100%; height:380px; background:#ffffff; border-radius:15px; overflow:hidden; border:1px solid rgba(19, 118, 89, 0.15);"></div><script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script><script>(function(){{var myChart=echarts.init(document.getElementById("perf-chart-main"),null);myChart.setOption({json.dumps(options)});window.addEventListener("resize",function(){{myChart.resize();}});}})();</script>', height=400)
 
     st.markdown("<br>", unsafe_allow_html=True)
     

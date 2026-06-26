@@ -1,5 +1,5 @@
 """
-tabs/tab_tablero.py  —  v4.1 Ultra Refined Minimalist Dashboard
+tabs/tab_tablero.py  —  v4.2 Ultra Refined Minimalist Dashboard
 ==============================================================
 Tablero Ejecutivo de Alto Impacto con estética industrial Parex.
 Presenta 3 columnas simétricas de 480px de altura:
@@ -42,165 +42,419 @@ def _css():
 /* ── Panel KPI Lateral ── */
 .tbl-panel-lateral {
     background: #ffffff;
-    border-radius: 16px;
-    border: 1.5px solid rgba(19,118,89,0.2);
-    box-shadow: 0 4px 20px rgba(19,118,89,0.08);
-    padding: 18px 16px;
+    border-radius: 20px;
+    border: 1.5px solid rgba(19,118,89,0.18);
+    box-shadow: 0 2px 8px rgba(19,118,89,0.06), 0 8px 32px rgba(19,118,89,0.08);
+    padding: 16px 14px;
     height: 480px;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    gap: 10px;
+    transition: box-shadow 0.3s ease;
+}
+
+.tbl-panel-lateral:hover {
+    box-shadow: 0 4px 16px rgba(19,118,89,0.10), 0 12px 40px rgba(19,118,89,0.12);
 }
 
 .tbl-sec-title-lat {
     font-family: 'Inter', sans-serif;
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 800;
     color: #137659;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    border-left: 4px solid #137659;
-    padding-left: 8px;
-    margin-bottom: 8px;
-}
-
-/* ── KPI Principal ── */
-.tbl-kpi-main {
-    background: linear-gradient(135deg, rgba(19,118,89,0.05) 0%, rgba(192,156,46,0.05) 100%);
-    border: 1px solid rgba(19,118,89,0.15);
-    border-radius: 12px;
-    padding: 10px 12px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-.tbl-kpi-main-icon {
-    font-size: 28px;
-    line-height: 1;
-}
-.tbl-kpi-main-lbl {
-    font-family: 'Inter', sans-serif;
-    font-size: 10px;
-    font-weight: 700;
-    color: #455a72;
     letter-spacing: 1.5px;
     text-transform: uppercase;
-}
-.tbl-kpi-main-val {
-    font-family: 'Inter', sans-serif;
-    font-size: 26px;
-    font-weight: 900;
-    color: #137659;
-    line-height: 1.1;
+    border-left: 3px solid #137659;
+    padding-left: 9px;
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
-/* ── Pills ALS ── */
-.tbl-pills-container {
+/* ── ALS EN FONDO Card ── */
+.tbl-kpi-fondo-card {
+    background: linear-gradient(135deg, #f8fdfb 0%, #ffffff 100%);
+    border: 1.5px solid rgba(19,118,89,0.14);
+    border-radius: 16px;
+    padding: 10px 14px;
     display: flex;
-    gap: 4px;
-    margin-top: 6px;
+    align-items: center;
+    justify-content: space-between;
+    height: 120px;
+    box-sizing: border-box;
+    transition: border-color 0.25s, transform 0.2s;
+    position: relative;
+    overflow: hidden;
 }
-.tbl-pill-box {
-    background: rgba(19,118,89,0.06);
-    border: 1px solid rgba(19,118,89,0.15);
-    border-radius: 8px;
-    padding: 4px;
-    flex: 1;
-    text-align: center;
-    transition: all 0.2s ease;
+
+.tbl-kpi-fondo-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #137659, #0a4d34, #137659);
+    border-radius: 16px 16px 0 0;
 }
-.tbl-pill-box:hover {
-    background: rgba(19,118,89,0.12);
+
+.tbl-kpi-fondo-card:hover {
+    border-color: rgba(19,118,89,0.28);
     transform: translateY(-1px);
 }
-.tbl-pill-name {
+
+/* ── Icono Petrolero ── */
+.tbl-pump-icon-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+}
+
+.tbl-pump-icon {
+    width: 45px;
+    height: 45px;
+    opacity: 0.65;
+    filter: drop-shadow(0 2px 4px rgba(19,118,89,0.15));
+}
+
+/* ── Mini Bar Chart para ALS ── */
+.tbl-mini-chart-container {
+    display: flex;
+    gap: 6px;
+    align-items: flex-end;
+    height: 90px;
+    padding: 0 2px;
+}
+
+.tbl-mini-bar-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 22px;
+}
+
+.tbl-mini-bar-val {
+    font-family: 'Inter', sans-serif;
+    font-size: 7.5px;
+    font-weight: 700;
+    color: #455a72;
+    margin-bottom: 2px;
+    white-space: nowrap;
+}
+
+.tbl-mini-bar-track {
+    width: 9px;
+    height: 42px;
+    background: #c62828;
+    border-radius: 3px;
+    display: flex;
+    flex-direction: column-reverse;
+    overflow: hidden;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.tbl-mini-bar-fill {
+    width: 100%;
+    background: linear-gradient(180deg, #1db87b 0%, #137659 100%);
+    transition: height 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tbl-mini-bar-label {
     font-family: 'Inter', sans-serif;
     font-size: 8px;
     font-weight: 800;
     color: #137659;
+    margin-top: 3px;
 }
-.tbl-pill-val {
+
+/* ── Info ALS EN FONDO ── */
+.tbl-info-fondo {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.tbl-info-fondo-lbl {
     font-family: 'Inter', sans-serif;
-    font-size: 15px;
+    font-size: 9px;
+    font-weight: 800;
+    color: #455a72;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.tbl-info-fondo-val {
+    font-family: 'Inter', sans-serif;
+    font-size: 30px;
     font-weight: 900;
     color: #1f221e;
-    line-height: 1.1;
+    line-height: 1;
+    margin-top: 3px;
+    letter-spacing: -1px;
 }
-.tbl-pill-sub {
+
+/* ── Grid Inferior ── */
+.tbl-grid-bottom {
+    display: flex;
+    gap: 10px;
+    height: 290px;
+}
+
+/* ── Tarjetas Genéricas ── */
+.tbl-card-base {
+    background: #ffffff;
+    border: 1.5px solid rgba(19,118,89,0.13);
+    border-radius: 16px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    text-align: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.tbl-card-base:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(19,118,89,0.10);
+    border-color: rgba(19,118,89,0.25);
+}
+
+/* ── Tarjeta Fallados (Izquierda, Alta) ── */
+.tbl-card-fallados {
+    width: 48%;
+    height: 100%;
+    border-color: rgba(198,40,40,0.20);
+    justify-content: space-between;
+    padding: 14px 8px;
+    background: linear-gradient(160deg, #fff 60%, #fff9f9 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+.tbl-card-fallados::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #c62828, #e57373);
+    border-radius: 16px 16px 0 0;
+}
+
+.tbl-card-fallados:hover {
+    border-color: rgba(198,40,40,0.32);
+    box-shadow: 0 6px 20px rgba(198,40,40,0.08);
+}
+
+.tbl-icon-circle-red {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #ffebee 0%, #ffd9d9 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    color: #c62828;
+    box-shadow: 0 3px 10px rgba(198,40,40,0.15);
+}
+
+.tbl-fallados-lbl {
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    font-weight: 800;
+    color: #1f221e;
+    letter-spacing: 0.8px;
+    margin-top: 6px;
+    text-transform: uppercase;
+}
+
+.tbl-fallados-val {
+    font-family: 'Inter', sans-serif;
+    font-size: 36px;
+    font-weight: 900;
+    color: #c62828;
+    line-height: 1;
+    margin-top: 2px;
+    letter-spacing: -1.5px;
+}
+
+.tbl-fallados-atrib {
+    border-top: 1px dashed rgba(198,40,40,0.2);
+    padding-top: 7px;
+    width: 100%;
+    margin-top: 6px;
+}
+
+.tbl-fallados-atrib-lbl {
+    font-family: 'Inter', sans-serif;
+    font-size: 7.5px;
+    font-weight: 700;
+    color: #455a72;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    line-height: 1.2;
+}
+
+.tbl-fallados-atrib-val {
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    font-weight: 900;
+    color: #c62828;
+    margin-top: 2px;
+    letter-spacing: -0.5px;
+}
+
+/* ── Columna Derecha (Operativos, Activos, Inactivos) ── */
+.tbl-col-operativos {
+    width: 52%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    height: 100%;
+}
+
+/* ── Tarjeta Operativos ── */
+.tbl-card-operativos {
+    height: 135px;
+    flex-direction: row;
+    justify-content: space-around;
+    align-items: center;
+    border-color: rgba(19,118,89,0.22);
+    padding: 8px 12px;
+    background: linear-gradient(135deg, #f8fdfb 0%, #ffffff 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+.tbl-card-operativos::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #137659, #1db87b);
+    border-radius: 16px 16px 0 0;
+}
+
+.tbl-card-operativos:hover {
+    border-color: rgba(19,118,89,0.35);
+    box-shadow: 0 6px 20px rgba(19,118,89,0.10);
+}
+
+.tbl-icon-circle-green {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #e8f5ee 0%, #c5e8d5 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    color: #137659;
+    box-shadow: 0 3px 10px rgba(19,118,89,0.15);
+}
+
+.tbl-op-info {
+    text-align: right;
+}
+
+.tbl-op-lbl {
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    font-weight: 800;
+    color: #1f221e;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+}
+
+.tbl-op-val {
+    font-family: 'Inter', sans-serif;
+    font-size: 32px;
+    font-weight: 900;
+    color: #137659;
+    line-height: 1;
+    margin-top: 3px;
+    letter-spacing: -1px;
+}
+
+/* ── Fila de Activos / Inactivos ── */
+.tbl-row-act-inact {
+    display: flex;
+    gap: 10px;
+    height: 145px;
+}
+
+.tbl-card-sub {
+    flex: 1;
+    height: 100%;
+    padding: 12px 6px;
+    justify-content: space-between;
+}
+
+.tbl-icon-circle-subgreen {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #c2ebd9, #a0d9c0);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: #0f7d58;
+    box-shadow: 0 2px 8px rgba(19,118,89,0.12);
+}
+
+.tbl-icon-circle-subyellow {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #fff3cd, #ffe58a);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: #c09c2e;
+    box-shadow: 0 2px 8px rgba(192,156,46,0.15);
+}
+
+.tbl-sub-lbl {
     font-family: 'Inter', sans-serif;
     font-size: 8px;
+    font-weight: 800;
     color: #455a72;
-}
-
-/* ── Grid de Medidores ── */
-.tbl-row-stats {
-    display: flex;
-    gap: 8px;
-}
-.tbl-stat-item {
-    flex: 1;
-    border-radius: 10px;
-    padding: 8px 10px;
-    text-align: center;
-    border: 1px solid;
-    transition: all 0.2s ease;
-}
-.tbl-stat-item:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.04);
-}
-.tbl-stat-item-icon {
-    font-size: 18px;
-    margin-bottom: 2px;
-}
-.tbl-stat-item-lbl {
-    font-family: 'Inter', sans-serif;
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 1px;
+    letter-spacing: 0.8px;
     text-transform: uppercase;
-}
-.tbl-stat-item-val {
-    font-family: 'Inter', sans-serif;
-    font-size: 20px;
-    font-weight: 900;
-    line-height: 1.1;
-}
-
-/* ── Barras de Progreso ── */
-.tbl-prog-card {
-    background: #fdfdfd;
-    border: 1px solid rgba(19,118,89,0.12);
-    border-radius: 10px;
-    padding: 8px 10px;
-}
-.tbl-prog-lbl {
-    font-family: 'Inter', sans-serif;
-    font-size: 9px;
-    font-weight: 700;
-    color: #455a72;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-}
-.tbl-prog-val {
-    font-family: 'Inter', sans-serif;
-    font-size: 15px;
-    font-weight: 900;
-    float: right;
-}
-.tbl-prog-track {
-    background: rgba(19,118,89,0.08);
-    border-radius: 4px;
-    height: 6px;
-    overflow: hidden;
     margin-top: 4px;
 }
-.tbl-prog-bar {
-    height: 100%;
-    border-radius: 4px;
-    transition: width 0.6s ease;
+
+.tbl-sub-val {
+    font-family: 'Inter', sans-serif;
+    font-size: 24px;
+    font-weight: 900;
+    line-height: 1;
+    margin-top: 2px;
+    letter-spacing: -0.5px;
 }
+
+/* ── Animación de entrada para números ── */
+@keyframes countUp {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.tbl-info-fondo-val,
+.tbl-fallados-val,
+.tbl-op-val,
+.tbl-sub-val,
+.tbl-fallados-atrib-val {
+    animation: countUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -218,12 +472,37 @@ def render_tab_tablero(
     mes_eval        = fecha_eval_dt.month
     anio_eval       = fecha_eval_dt.year
 
-    # ── Normalizar fechas ────────────────────────────────────────────────────
-    for col in ('FECHA_RUN', 'FECHA_FALLA', 'FECHA_PULL'):
-        if col in df_bd_filtered.columns:
-            df_bd_filtered[col] = pd.to_datetime(df_bd_filtered[col], errors='coerce')
+    # ── Ignorar fecha_ini y usar sólo fecha_evaluacion para el Tablero ──────
+    df_raw = st.session_state.get('df_bd_calculated')
+    if df_raw is not None:
+        df_resumen = df_raw.copy()
+        if 'ACTIVO' in df_resumen.columns:
+            df_resumen = df_resumen[df_resumen['ACTIVO'].astype(str).str.upper().str.strip() != 'ECUADOR']
+        for col in ('FECHA_RUN', 'FECHA_FALLA', 'FECHA_PULL'):
+            if col in df_resumen.columns:
+                df_resumen[col] = pd.to_datetime(df_resumen[col], errors='coerce')
+        df_resumen = df_resumen[df_resumen['FECHA_RUN'].dt.normalize() <= fecha_eval_date].copy()
+        df_resumen.loc[df_resumen['FECHA_FALLA'].dt.normalize() > fecha_eval_date, 'FECHA_FALLA'] = pd.NaT
+        
+        # Aplicar filtros del sidebar
+        _filtros = {
+            'ACTIVO':    st.session_state.get('general_activo_filter',    'TODOS'),
+            'BLOQUE':    st.session_state.get('general_bloque_filter',    'TODOS'),
+            'CAMPO':     st.session_state.get('general_campo_filter',     'TODOS'),
+            'ALS':       st.session_state.get('general_als_filter',       'TODOS'),
+            'PROVEEDOR': st.session_state.get('general_proveedor_filter', 'TODOS'),
+            'NICK':      st.session_state.get('general_nick_filter',      'TODOS'),
+        }
+        for col, val in _filtros.items():
+            if val != 'TODOS' and col in df_resumen.columns:
+                df_resumen = df_resumen[df_resumen[col] == val]
+    else:
+        df_resumen = df_bd_filtered.copy()
+        for col in ('FECHA_RUN', 'FECHA_FALLA', 'FECHA_PULL'):
+            if col in df_resumen.columns:
+                df_resumen[col] = pd.to_datetime(df_resumen[col], errors='coerce')
 
-    df = df_bd_filtered.copy()
+    df = df_resumen.copy()
     df['_RUN']  = df['FECHA_RUN'].dt.normalize()
     df['_FALL'] = df['FECHA_FALLA'].dt.normalize() if 'FECHA_FALLA' in df.columns else pd.NaT
     df['_PULL'] = df['FECHA_PULL'].dt.normalize()  if 'FECHA_PULL'  in df.columns else pd.NaT
@@ -231,26 +510,37 @@ def render_tab_tablero(
     # ── ALS en fondo ─────────────────────────────────────────────────────────
     mask_fondo = (df['_RUN'] <= fecha_eval_date) & (df['_PULL'].isna() | (df['_PULL'] > fecha_eval_date))
     df_fondo = df[mask_fondo]
-    als_fondo = len(df_fondo)
+    als_fondo = df_fondo['POZO'].nunique() if 'POZO' in df_fondo.columns else 0
 
     # ── Fallados y operativos ────────────────────────────────────────────────
-    mask_falla    = df_fondo['_FALL'].notna() & (df_fondo['_FALL'] <= fecha_eval_date)
-    als_fallados  = int(mask_falla.sum())
-    als_operativos = als_fondo - als_fallados
+    df_falla = df_fondo[df_fondo['_FALL'].notna() & (df_fondo['_FALL'] <= fecha_eval_date)]
+    als_fallados  = df_falla['POZO'].nunique() if 'POZO' in df_falla.columns else 0
+    als_operativos = df_fondo[df_fondo['_FALL'].isna() | (df_fondo['_FALL'] > fecha_eval_date)]['POZO'].nunique() if 'POZO' in df_fondo.columns else 0
 
     # ── Breakdown por tipo ALS ───────────────────────────────────────────────
     als_breakdown = {}
     if 'ALS' in df_fondo.columns:
         for t in ALS_TIPOS:
             sub  = df_fondo[df_fondo['ALS'].astype(str).str.strip().str.upper() == t]
-            tot  = len(sub)
-            fall = int((sub['_FALL'].notna() & (sub['_FALL'] <= fecha_eval_date)).sum())
+            tot  = sub['POZO'].nunique() if 'POZO' in sub.columns else 0
+            fall = sub[sub['_FALL'].notna() & (sub['_FALL'] <= fecha_eval_date)]['POZO'].nunique() if 'POZO' in sub.columns else 0
             als_breakdown[t] = {'total': tot, 'op': tot - fall}
 
-    # ── Activos / Inactivos (Fórmula corregida idéntica al Resumen) ────────────
+    # ── Activos / Inactivos ────
+    df_f9_raw = st.session_state.get('df_forma9_calculated')
+    if df_f9_raw is not None:
+        df_forma9_untr = df_f9_raw.copy()
+        df_forma9_untr['FECHA_FORMA9'] = pd.to_datetime(df_forma9_untr['FECHA_FORMA9'], errors='coerce')
+        pozos_en_resumen = df_resumen['POZO'].unique() if 'POZO' in df_resumen.columns else []
+        df_forma9_untr = df_forma9_untr[df_forma9_untr['POZO'].isin(pozos_en_resumen)].copy()
+    else:
+        df_forma9_untr = df_forma9_filtered.copy()
+
+    df_f9 = df_forma9_untr.copy()
+    df_f9 = df_f9[(df_f9['FECHA_FORMA9'].dt.month == mes_eval) & (df_f9['FECHA_FORMA9'].dt.year == anio_eval)]
+
     activos = inactivos = 0
-    if not df_forma9_filtered.empty and 'FECHA_FORMA9' in df_forma9_filtered.columns:
-        df_f9     = df_forma9_filtered.copy()
+    if not df_f9.empty and 'FECHA_FORMA9' in df_f9.columns:
         df_f9['_F9'] = pd.to_datetime(df_f9['FECHA_FORMA9'], errors='coerce').dt.normalize()
         dias_col  = 'DIAS TRABAJADOS' if 'DIAS TRABAJADOS' in df_f9.columns else None
         mask_on   = (df_f9['_F9'].dt.month == mes_eval) & (df_f9['_F9'].dt.year == anio_eval)
@@ -268,27 +558,26 @@ def render_tab_tablero(
     disp_oper    = activos   / total_pozos * 100
     uso_oper     = als_operativos / max(als_fondo, 1) * 100
 
-    # ── Serie IF mensual — fórmula oficial: Indice_Falla_Rolling_ALS_ON_1500 ─
+    # ── Serie IF mensual ─
     if_cats, if_vals, on_vals, off_vals = [], [], [], []
     if_actual = 0.0
 
     try:
         from indice_falla import calcular_indice_falla_anual
         _, df_mensual_if = calcular_indice_falla_anual(
-            df_bd_filtered.copy(), df_forma9_filtered.copy(), fecha_evaluacion
+            df.copy(), df_forma9_untr.copy(), fecha_evaluacion
         )
 
         _MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
-        df_yr = df_mensual_if[
-            df_mensual_if['Mes'].str.startswith(str(anio_eval))
-        ].copy()
+        df_yr = df_mensual_if.tail(12).copy()
 
         for _, row in df_yr.iterrows():
-            m_str = row['Mes']           # 'YYYY-MM'
-            m_idx = int(m_str[5:7]) - 1  # 0-based month index
-            if_cats.append(_MESES[m_idx])
+            m_str = row['Mes']
+            m_idx = int(m_str[5:7]) - 1
+            label = f"{_MESES[m_idx]}-{m_str[2:4]}"
+            if_cats.append(label)
             on_m   = int(row.get('Pozos ON', 0))
-            if_roll = float(row.get('Indice_Falla_Rolling_ALS_ON_1500', 0.0)) * 100.0
+            if_roll = float(row.get('Indice_Falla_Rolling_ALS_ON', 0.0)) * 100.0
             if_vals.append(if_roll)
             on_vals.append(on_m)
             off_m  = max(int(row.get('Pozos Operativos', on_m)) - on_m, 0)
@@ -296,24 +585,29 @@ def render_tab_tablero(
 
         last_row = df_mensual_if.tail(1)
         if not last_row.empty:
-            if_actual = float(last_row['Indice_Falla_Rolling_ALS_ON_1500'].iloc[0]) * 100.0
+            if_actual = float(last_row['Indice_Falla_Rolling_ALS_ON'].iloc[0]) * 100.0
         elif if_vals:
             if_actual = if_vals[-1]
 
     except Exception as _e_if:
         _MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
-        for m in range(1, mes_eval + 1):
-            last_day = calendar.monthrange(anio_eval, m)[1]
-            end_m_ts = pd.Timestamp(year=anio_eval, month=m, day=last_day).normalize()
+        from dateutil.relativedelta import relativedelta
+        start_m = fecha_eval_dt - relativedelta(months=11)
+        for i in range(12):
+            curr_date = start_m + relativedelta(months=i)
+            m = curr_date.month
+            y = curr_date.year
+            last_day = calendar.monthrange(y, m)[1]
+            end_m_ts = pd.Timestamp(year=y, month=m, day=last_day).normalize()
             fallas_m = int(df[
-                (df['_FALL'].dt.month == m) & (df['_FALL'].dt.year == anio_eval)
+                (df['_FALL'].dt.month == m) & (df['_FALL'].dt.year == y)
             ].shape[0])
             on_m = 0
-            if not df_forma9_filtered.empty and 'FECHA_FORMA9' in df_forma9_filtered.columns:
-                df_f9c = df_forma9_filtered.copy()
+            if not df_forma9_untr.empty and 'FECHA_FORMA9' in df_forma9_untr.columns:
+                df_f9c = df_forma9_untr.copy()
                 df_f9c['_F9'] = pd.to_datetime(df_f9c['FECHA_FORMA9'], errors='coerce').dt.normalize()
                 dias_c = 'DIAS TRABAJADOS' if 'DIAS TRABAJADOS' in df_f9c.columns else None
-                mm = (df_f9c['_F9'].dt.month == m) & (df_f9c['_F9'].dt.year == anio_eval)
+                mm = (df_f9c['_F9'].dt.month == m) & (df_f9c['_F9'].dt.year == y)
                 if dias_c:
                     mm = mm & (df_f9c[dias_c].fillna(0) > 0)
                 on_m = int(df_f9c[mm]['POZO'].nunique())
@@ -322,7 +616,7 @@ def render_tab_tablero(
                 (df['_FALL'].isna() | (df['_FALL'] > end_m_ts)) &
                 (df['_PULL'].isna() | (df['_PULL'] > end_m_ts))
             ]['POZO'].nunique()) if 'POZO' in df.columns else 0
-            if_cats.append(_MESES[m - 1])
+            if_cats.append(f"{_MESES[m - 1]}-{str(y)[2:4]}")
             if_m = (fallas_m / max(on_m, 1)) * 100.0
             if_vals.append(if_m)
             on_vals.append(on_m)
@@ -333,18 +627,18 @@ def render_tab_tablero(
 
     # ── MTBF ─────────────────────────────────────────────────────────────────
     try:
-        mtbf_val, _ = mtbf_mod.calcular_mtbf(df_bd_filtered, fecha_evaluacion)
+        mtbf_val, _ = mtbf_mod.calcular_mtbf(df, fecha_evaluacion)
         mtbf_val = float(mtbf_val) if mtbf_val and not np.isnan(float(mtbf_val)) else 0.0
     except Exception:
         mtbf_val = 0.0
 
-    # ── RunLife promedio (tiempo de vida total) ──────────────────────────────
-    rl_col = next((c for c in ('RUN LIFE', 'RUN_LIFE', 'RUNLIFE') if c in df_bd_filtered.columns), None)
-    rl_val = float(df_bd_filtered[rl_col].dropna().mean()) if rl_col else 0.0
+    # ── RunLife promedio ──────────────────────────────────────────────────────
+    rl_col = next((c for c in ('RUN LIFE', 'RUN_LIFE', 'RUNLIFE') if c in df.columns), None)
+    rl_val = float(df[rl_col].dropna().mean()) if rl_col else 0.0
     if np.isnan(rl_val):
         rl_val = 0.0
 
-    # ── Distribución RunLife (en días) ───────────────────────────────────────
+    # ── Distribución RunLife ─────────────────────────────────────────────────
     rl_bins   = ['< 2 años', '2 – 4 años', '4 – 6 años', '> 6 años']
     rl_limites = [0, 730, 1460, 2190, 99999]
     rl_counts  = [0, 0, 0, 0]
@@ -366,83 +660,147 @@ def render_tab_tablero(
     # COLUMNA 1: KPIs OPERATIVOS (RENDERIZADO HTML COMPLETO)
     # ─────────────────────────────────────────────────────────────────────────
     with col_l:
-        pills_html = "".join([
-            f"""<div class="tbl-pill-box">
-                  <div class="tbl-pill-name">{t}</div>
-                  <div class="tbl-pill-val">{als_breakdown.get(t,{}).get('total',0)}</div>
-                  <div class="tbl-pill-sub">{als_breakdown.get(t,{}).get('op',0)} op</div>
-                </div>"""
-            for t in ALS_TIPOS
-        ])
+        fecha_ini_str = st.session_state.get('fecha_inicio_state')
+        if fecha_ini_str is not None:
+            fecha_ini_dt = pd.to_datetime(fecha_ini_str).normalize()
+        else:
+            fecha_ini_dt = fecha_eval_date - pd.DateOffset(years=1)
+            
+        fallas_als = int((df_resumen['INDICADOR_MTBF'] == 1).sum()) if df_resumen is not None else 0
+        
+        if df_resumen is not None and not df_resumen.empty:
+            fallas_totales = int(df_resumen[
+                (df_resumen['FECHA_FALLA'].notna()) &
+                (df_resumen['FECHA_FALLA'].dt.normalize() >= fecha_ini_dt) &
+                (df_resumen['FECHA_FALLA'].dt.normalize() <= fecha_eval_date)
+            ].shape[0])
+            
+            limit_365 = fecha_eval_date - pd.Timedelta(days=365)
+            df_recent = df_resumen[df_resumen['FECHA_FALLA'] >= limit_365]
+            pozos_fallados_rec = df_recent['POZO'].nunique() if not df_recent.empty else 0
+            idx_sev = (len(df_recent) / pozos_fallados_rec) if pozos_fallados_rec > 0 else 0.0
+        else:
+            fallas_totales = 0
+            idx_sev = 0.0
 
-        st.markdown(f"""
+        # Barras verticales ALS con animación CSS
+        mini_bars_html = ""
+        for t in ALS_TIPOS:
+            bd_info = als_breakdown.get(t, {'total': 0, 'op': 0})
+            tot = bd_info['total']
+            op = bd_info['op']
+            op_pct = (op / tot * 100) if tot > 0 else 0
+            mini_bars_html += (
+                f'<div class="tbl-mini-bar-col">'
+                f'<div class="tbl-mini-bar-val">{op}/{tot}</div>'
+                f'<div class="tbl-mini-bar-track">'
+                f'<div class="tbl-mini-bar-fill" style="height: {op_pct:.1f}%;"></div>'
+                f'</div>'
+                f'<div class="tbl-mini-bar-label">{t}</div>'
+                f'</div>'
+            )
+
+        kpi_panel_html = f"""
 <div class="tbl-panel-lateral">
   <div class="tbl-sec-title-lat">Resumen Operativo</div>
   
-  <!-- ALS EN FONDO -->
-  <div class="tbl-kpi-main">
-    <div class="tbl-kpi-main-icon">🛢️</div>
-    <div style="flex:1;">
-      <div class="tbl-kpi-main-lbl">ALS EN FONDO</div>
-      <div class="tbl-kpi-main-val">{als_fondo:,}</div>
-      <div class="tbl-pills-container">{pills_html}</div>
+  <!-- ALS EN FONDO PANEL -->
+  <div class="tbl-kpi-fondo-card">
+    <div class="tbl-pump-icon-container">
+      <svg class="tbl-pump-icon" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="10" y="73" width="80" height="6" fill="#137659"/>
+        <path d="M12.5 73 L22 58 L28.5 58 L32.5 73 Z" fill="#137659"/>
+        <path d="M9.5 57.5 C9.5 47.5 17.5 39.5 22 39.5 C23 39.5 24 40.5 23.5 42.5 C21.5 49.5 14.5 56.5 11 58.5 C10.5 58.8 9.5 58.5 9.5 57.5 Z" fill="#1f221e"/>
+        <circle cx="22" cy="58" r="2.5" fill="#ffffff"/>
+        <path d="M35 73 L47.5 30 L52.5 30 L65 73 H59 L50 42 L41 73 Z" fill="#137659"/>
+        <path d="M46.5 33 L53.5 33 M44.5 40 L55.5 40 M42 49 L58 49 M39.5 58 L60.5 58 M37.5 67 L62.5 67" stroke="#137659" stroke-width="1.8"/>
+        <path d="M47.5 30 L59 73 M52.5 30 L41 73" stroke="#137659" stroke-width="1.2"/>
+        <path d="M27.5 20.5 L73 31.5 L71.5 36.5 L26 25.5 Z" fill="#1f221e"/>
+        <path d="M72 31.5 C75 22.5 83 23 85 32 C86.5 38 85.5 45.5 84 52.5 L79.5 52.5 C81.5 46.5 81.5 37 77.5 33 Z" fill="#1f221e"/>
+        <circle cx="82" cy="29" r="1" fill="#ffffff"/>
+        <circle cx="83.5" cy="35" r="1" fill="#ffffff"/>
+        <circle cx="83.5" cy="41" r="1" fill="#ffffff"/>
+        <circle cx="82.5" cy="47" r="1" fill="#ffffff"/>
+        <line x1="85" y1="32" x2="85" y2="70" stroke="#1f221e" stroke-width="1.8"/>
+        <rect x="82.5" y="70" width="5" height="3" fill="#137659"/>
+        <line x1="27" y1="23" x2="11" y2="52" stroke="#1f221e" stroke-width="2"/>
+        <circle cx="27" cy="23" r="2.5" fill="#1f221e"/>
+        <circle cx="11" cy="52" r="2" fill="#1f221e"/>
+      </svg>
+    </div>
+    
+    <div class="tbl-mini-chart-container">
+      {mini_bars_html}
+    </div>
+    
+    <div class="tbl-info-fondo">
+      <div class="tbl-info-fondo-lbl">ALS EN FONDO</div>
+      <div class="tbl-info-fondo-val">{als_fondo:,}</div>
     </div>
   </div>
 
-  <!-- ESTADOS DE FALLAS Y OPERATIVOS -->
-  <div class="tbl-row-stats">
-    <div class="tbl-stat-item" style="background:{_R2}; border-color:rgba(198,40,40,0.25);">
-      <div class="tbl-stat-item-icon">⚠️</div>
-      <div class="tbl-stat-item-lbl" style="color:{_R};">ALS FALLADOS</div>
-      <div class="tbl-stat-item-val" style="color:{_R};">{als_fallados:,}</div>
+  <div class="tbl-grid-bottom">
+    
+    <!-- ALS FALLADOS -->
+    <div class="tbl-card-base tbl-card-fallados">
+      <div class="tbl-icon-circle-red">⚠️</div>
+      <div>
+        <div class="tbl-fallados-lbl">Pozos Fallados</div>
+        <div class="tbl-fallados-val">{als_fallados:,}</div>
+      </div>
+      
+      <div class="tbl-fallados-atrib">
+        <div class="tbl-fallados-atrib-lbl">Fallas Periodo</div>
+        <div class="tbl-fallados-atrib-val">{fallas_totales}</div>
+      </div>
+      
+      <div class="tbl-fallados-atrib" style="border-top: 1px dashed rgba(198,40,40,0.2); padding-top: 6px; width: 100%;">
+        <div class="tbl-fallados-atrib-lbl">I. Severidad</div>
+        <div class="tbl-fallados-atrib-val">{idx_sev:.2f}</div>
+      </div>
     </div>
-    <div class="tbl-stat-item" style="background:{_G3}; border-color:rgba(19,118,89,0.25);">
-      <div class="tbl-stat-item-icon">✅</div>
-      <div class="tbl-stat-item-lbl" style="color:{_G};">OPERATIVOS</div>
-      <div class="tbl-stat-item-val" style="color:{_G};">{als_operativos:,}</div>
+    
+    <!-- COLUMNA DERECHA -->
+    <div class="tbl-col-operativos">
+      
+      <div class="tbl-card-base tbl-card-operativos">
+        <div class="tbl-icon-circle-green">✅</div>
+        <div class="tbl-op-info">
+          <div class="tbl-op-lbl">ALS OPERATIVOS</div>
+          <div class="tbl-op-val">{als_operativos:,}</div>
+        </div>
+      </div>
+      
+      <div class="tbl-row-act-inact">
+        
+        <div class="tbl-card-base tbl-card-sub">
+          <div class="tbl-icon-circle-subgreen">▶️</div>
+          <div>
+            <div class="tbl-sub-lbl">ACTIVOS</div>
+            <div class="tbl-sub-val" style="color: #0f7d58;">{activos:,}</div>
+          </div>
+        </div>
+        
+        <div class="tbl-card-base tbl-card-sub">
+          <div class="tbl-icon-circle-subyellow">⏸️</div>
+          <div>
+            <div class="tbl-sub-lbl">INACTIVOS</div>
+            <div class="tbl-sub-val" style="color: #c09c2e;">{inactivos:,}</div>
+          </div>
+        </div>
+        
+      </div>
+      
     </div>
-  </div>
-
-  <!-- ESTADOS DE TRABAJO (ACTIVOS/INACTIVOS) -->
-  <div class="tbl-row-stats">
-    <div class="tbl-stat-item" style="background:{_G3}; border-color:rgba(19,118,89,0.2);">
-      <div class="tbl-stat-item-icon">▶️</div>
-      <div class="tbl-stat-item-lbl" style="color:{_G};">ACTIVOS</div>
-      <div class="tbl-stat-item-val" style="color:{_G};">{activos:,}</div>
-    </div>
-    <div class="tbl-stat-item" style="background:{_Y2}; border-color:rgba(192,156,46,0.25);">
-      <div class="tbl-stat-item-icon">⏸️</div>
-      <div class="tbl-stat-item-lbl" style="color:{_Y};">INACTIVOS</div>
-      <div class="tbl-stat-item-val" style="color:{_Y};">{inactivos:,}</div>
-    </div>
-  </div>
-
-  <!-- DISPONIBILIDAD -->
-  <div class="tbl-prog-card">
-    <div>
-      <span class="tbl-prog-lbl">DISPONIBILIDAD OPERACIONAL</span>
-      <span class="tbl-prog-val" style="color:{_G if disp_oper>=75 else (_Y if disp_oper>=50 else _R)};">{disp_oper:.0f}%</span>
-    </div>
-    <div class="tbl-prog-track">
-      <div class="tbl-prog-bar" style="width:{min(disp_oper,100):.1f}%; background:{_G if disp_oper>=75 else (_Y if disp_oper>=50 else _R)};"></div>
-    </div>
-  </div>
-
-  <!-- USO OPERATIVO -->
-  <div class="tbl-prog-card">
-    <div>
-      <span class="tbl-prog-lbl">USO OPERATIVO</span>
-      <span class="tbl-prog-val" style="color:{_G if uso_oper>=60 else (_Y if uso_oper>=40 else _R)};">{uso_oper:.0f}%</span>
-    </div>
-    <div class="tbl-prog-track">
-      <div class="tbl-prog-bar" style="width:{min(uso_oper,100):.1f}%; background:{_G if uso_oper>=60 else (_Y if uso_oper>=40 else _R)};"></div>
-    </div>
+    
   </div>
 </div>
-""", unsafe_allow_html=True)
+""".replace("\n", " ")
+
+        st.markdown(kpi_panel_html, unsafe_allow_html=True)
 
     # ─────────────────────────────────────────────────────────────────────────
-    # COLUMNA 2: GAUGE IF + TENDENCIA ANUAL (COMPONENTE HTML UNIFICADO)
+    # COLUMNA 2: GAUGE IF + TENDENCIA ANUAL
     # ─────────────────────────────────────────────────────────────────────────
     with col_c:
         col2_html = f"""
@@ -452,6 +810,7 @@ def render_tab_tablero(
     <meta charset="utf-8">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        * {{ box-sizing: border-box; }}
         body {{
             margin: 0;
             padding: 0;
@@ -461,36 +820,49 @@ def render_tab_tablero(
         }}
         .tbl-panel {{
             background: #ffffff;
-            border-radius: 16px;
-            border: 1.5px solid rgba(19,118,89,0.2);
-            box-shadow: 0 4px 20px rgba(19,118,89,0.08);
+            border-radius: 20px;
+            border: 1.5px solid rgba(19,118,89,0.18);
+            box-shadow: 0 2px 8px rgba(19,118,89,0.06), 0 8px 32px rgba(19,118,89,0.08);
             padding: 16px;
             height: 480px;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+        }}
+        .tbl-panel::before {{
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #137659 0%, #1db87b 50%, #137659 100%);
+            border-radius: 20px 20px 0 0;
         }}
         .tbl-sec-title {{
-            font-size: 13px;
+            font-size: 11px;
             font-weight: 800;
             color: #137659;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
             text-transform: uppercase;
-            border-left: 4px solid #137659;
-            padding-left: 8px;
-            margin-bottom: 5px;
+            border-left: 3px solid #137659;
+            padding-left: 9px;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }}
         .chart-container {{
             width: 100%;
+            flex-shrink: 0;
         }}
     </style>
 </head>
 <body>
     <div class="tbl-panel">
-        <div class="tbl-sec-title">Índice de Falla (IF &lt; 1500 ALS)</div>
-        <div id="gauge_if" class="chart-container" style="height: 195px;"></div>
-        <div id="chart_if_anual" class="chart-container" style="height: 225px;"></div>
+        <div class="tbl-sec-title">Índice de Falla (IF ALS ON)</div>
+        <div id="gauge_if" class="chart-container" style="height: 190px;"></div>
+        <div id="chart_if_anual" class="chart-container" style="height: 230px;"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
@@ -506,31 +878,69 @@ def render_tab_tablero(
             
             var gaugeOpt = {{
                 backgroundColor: "transparent",
+                animation: true,
+                animationDuration: 1200,
+                animationEasing: "cubicOut",
                 series: [{{
                     type: "gauge",
-                    startAngle: 200,
-                    endAngle: -20,
+                    startAngle: 205,
+                    endAngle: -25,
                     min: 0,
                     max: maxVal,
-                    center: ["50%", "52%"],
-                    radius: "80%",
+                    center: ["50%", "54%"],
+                    radius: "82%",
                     splitNumber: 4,
-                    axisLine: {{ lineStyle: {{ width: 8, color: arcColors }} }},
-                    pointer: {{ itemStyle: {{ color: "{_T}" }}, width: 3, length: "65%" }},
+                    axisLine: {{
+                        lineStyle: {{
+                            width: 10,
+                            color: arcColors,
+                            shadowBlur: 4,
+                            shadowColor: "rgba(19,118,89,0.15)"
+                        }}
+                    }},
+                    progress: {{
+                        show: false
+                    }},
+                    pointer: {{
+                        itemStyle: {{ color: "{_T}", shadowBlur: 4, shadowColor: "rgba(31,34,30,0.3)" }},
+                        width: 4,
+                        length: "62%"
+                    }},
                     axisTick: {{ show: false }},
                     splitLine: {{ show: false }},
                     axisLabel: {{ show: false }},
-                    anchor: {{ show: true, showAbove: true, size: 6, itemStyle: {{ borderWidth: 1.5, borderColor: "{_T}", color: "#fff" }} }},
+                    anchor: {{
+                        show: true,
+                        showAbove: true,
+                        size: 8,
+                        itemStyle: {{
+                            borderWidth: 2,
+                            borderColor: "{_T}",
+                            color: "#fff",
+                            shadowBlur: 3,
+                            shadowColor: "rgba(0,0,0,0.2)"
+                        }}
+                    }},
                     detail: {{
                         valueAnimation: true,
                         formatter: function(val) {{ return val.toFixed(2) + "%"; }},
                         color: valColor,
-                        fontSize: 18,
+                        fontSize: 20,
                         fontWeight: "900",
-                        offsetCenter: [0, "32%"]
+                        fontFamily: "Inter, sans-serif",
+                        offsetCenter: [0, "30%"],
+                        borderRadius: 4,
+                        padding: [4, 8]
                     }},
-                    title: {{ show: true, offsetCenter: [0, "65%"], color: "{_T2}", fontSize: 9, fontWeight: "700" }},
-                    data: [{{ value: value, name: "Meta IF: <= " + meta + "%" }}]
+                    title: {{
+                        show: true,
+                        offsetCenter: [0, "63%"],
+                        color: "{_T2}",
+                        fontSize: 9,
+                        fontWeight: "700",
+                        fontFamily: "Inter, sans-serif"
+                    }},
+                    data: [{{ value: value, name: "Meta IF: ≤ " + meta + "%" }}]
                 }}]
             }};
             
@@ -539,26 +949,33 @@ def render_tab_tablero(
 
             var trendOpt = {{
                 backgroundColor: "transparent",
+                animation: true,
+                animationDuration: 900,
+                animationEasing: "cubicOut",
                 tooltip: {{
                     trigger: "axis",
-                    axisPointer: {{ type: "shadow" }},
-                    backgroundColor: "rgba(255,255,255,0.96)",
-                    borderColor: "rgba(19,118,89,0.15)",
-                    textStyle: {{ color: "{_T}", fontSize: 10 }}
+                    axisPointer: {{ type: "cross", crossStyle: {{ color: "rgba(19,118,89,0.3)" }} }},
+                    backgroundColor: "rgba(255,255,255,0.98)",
+                    borderColor: "rgba(19,118,89,0.2)",
+                    borderWidth: 1,
+                    borderRadius: 10,
+                    padding: [8, 12],
+                    textStyle: {{ color: "{_T}", fontSize: 11, fontFamily: "Inter, sans-serif" }},
+                    extraCssText: "box-shadow: 0 4px 16px rgba(19,118,89,0.12);"
                 }},
                 legend: {{
                     data: ["Pozos ON", "Pozos OFF", "IF (%)"],
                     bottom: 0,
                     itemHeight: 7,
-                    itemGap: 10,
-                    textStyle: {{ color: "{_T2}", fontSize: 8, fontFamily: "Inter, sans-serif" }}
+                    itemGap: 12,
+                    textStyle: {{ color: "{_T2}", fontSize: 9, fontFamily: "Inter, sans-serif" }}
                 }},
-                grid: {{ top: "12%", left: "3%", right: "8%", bottom: "20%", containLabel: true }},
+                grid: {{ top: "8%", left: "3%", right: "8%", bottom: "18%", containLabel: true }},
                 xAxis: {{
                     type: "category",
                     data: {json.dumps(if_cats)},
-                    axisLabel: {{ color: "{_T2}", fontSize: 8 }},
-                    axisLine: {{ lineStyle: {{ color: "rgba(19,118,89,0.15)" }} }},
+                    axisLabel: {{ color: "{_T2}", fontSize: 8, fontFamily: "Inter, sans-serif" }},
+                    axisLine: {{ lineStyle: {{ color: "rgba(19,118,89,0.12)" }} }},
                     axisTick: {{ show: false }}
                 }},
                 yAxis: [
@@ -585,7 +1002,17 @@ def render_tab_tablero(
                         stack: "pozos",
                         data: {json.dumps(on_vals)},
                         barMaxWidth: 16,
-                        itemStyle: {{ color: "{_G}", borderRadius: [2, 2, 0, 0] }}
+                        itemStyle: {{
+                            color: {{
+                                type: "linear",
+                                x: 0, y: 0, x2: 0, y2: 1,
+                                colorStops: [
+                                    {{ offset: 0, color: "#1db87b" }},
+                                    {{ offset: 1, color: "{_G}" }}
+                                ]
+                            }},
+                            borderRadius: [3, 3, 0, 0]
+                        }}
                     }},
                     {{
                         name: "Pozos OFF",
@@ -593,24 +1020,42 @@ def render_tab_tablero(
                         stack: "pozos",
                         data: {json.dumps(off_vals)},
                         barMaxWidth: 16,
-                        itemStyle: {{ color: "{_R}4d", borderRadius: [2, 2, 0, 0] }}
+                        itemStyle: {{
+                            color: "rgba(198,40,40,0.18)",
+                            borderRadius: [3, 3, 0, 0]
+                        }}
                     }},
                     {{
                         name: "IF (%)",
                         type: "line",
                         yAxisIndex: 1,
                         data: {json.dumps(if_vals)},
-                        smooth: true,
+                        smooth: 0.5,
                         symbol: "circle",
-                        symbolSize: 5,
-                        lineStyle: {{ color: "{_R}", width: 2.2 }},
-                        itemStyle: {{ color: "{_R}", borderColor: "#fff", borderWidth: 1.5 }},
-                        areaStyle: {{ color: "{_R}12" }},
+                        symbolSize: 6,
+                        lineStyle: {{ color: "{_R}", width: 2.5, shadowBlur: 6, shadowColor: "rgba(198,40,40,0.2)" }},
+                        itemStyle: {{ color: "{_R}", borderColor: "#fff", borderWidth: 2 }},
+                        areaStyle: {{
+                            color: {{
+                                type: "linear",
+                                x: 0, y: 0, x2: 0, y2: 1,
+                                colorStops: [
+                                    {{ offset: 0, color: "rgba(198,40,40,0.15)" }},
+                                    {{ offset: 1, color: "rgba(198,40,40,0.01)" }}
+                                ]
+                            }}
+                        }},
                         markLine: {{
                             silent: true,
-                            lineStyle: {{ color: "{_G}", type: "dashed", width: 1.2 }},
+                            lineStyle: {{ color: "{_G}", type: "dashed", width: 1.5, opacity: 0.7 }},
                             data: [{{ yAxis: meta, name: "Meta" }}],
-                            label: {{ formatter: "Meta " + meta + "%", color: "{_G}", fontSize: 7, position: "end" }}
+                            label: {{
+                                formatter: "Meta " + meta + "%",
+                                color: "{_G}",
+                                fontSize: 8,
+                                fontWeight: "700",
+                                position: "end"
+                            }}
                         }}
                     }}
                 ]
@@ -631,10 +1076,10 @@ def render_tab_tablero(
         components.html(col2_html, height=480, scrolling=False)
 
     # ─────────────────────────────────────────────────────────────────────────
-    # COLUMNA 3: GAUGES MTBF + RUNLIFE + DISTRIBUCIÓN (COMPONENTE HTML UNIFICADO)
+    # COLUMNA 3: GAUGES MTBF + RUNLIFE + DISTRIBUCIÓN
     # ─────────────────────────────────────────────────────────────────────────
     with col_r:
-        rl_bar_colors = [_R, _Y, _G2, _G]
+        rl_bar_colors = [_G, _G2, _Y, _R]
         total_rl = max(sum(rl_counts), 1)
         rl_pcts  = [round(v / total_rl * 100, 1) for v in rl_counts]
 
@@ -645,6 +1090,7 @@ def render_tab_tablero(
     <meta charset="utf-8">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        * {{ box-sizing: border-box; }}
         body {{
             margin: 0;
             padding: 0;
@@ -654,30 +1100,40 @@ def render_tab_tablero(
         }}
         .tbl-panel {{
             background: #ffffff;
-            border-radius: 16px;
-            border: 1.5px solid rgba(19,118,89,0.2);
-            box-shadow: 0 4px 20px rgba(19,118,89,0.08);
+            border-radius: 20px;
+            border: 1.5px solid rgba(19,118,89,0.18);
+            box-shadow: 0 2px 8px rgba(19,118,89,0.06), 0 8px 32px rgba(19,118,89,0.08);
             padding: 16px;
             height: 480px;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+        }}
+        .tbl-panel::before {{
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #137659 0%, #1db87b 50%, #137659 100%);
+            border-radius: 20px 20px 0 0;
         }}
         .tbl-sec-title {{
-            font-size: 13px;
+            font-size: 11px;
             font-weight: 800;
             color: #137659;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
             text-transform: uppercase;
-            border-left: 4px solid #137659;
-            padding-left: 8px;
-            margin-bottom: 5px;
+            border-left: 3px solid #137659;
+            padding-left: 9px;
+            margin-bottom: 6px;
         }}
         .gauges-row {{
             display: flex;
             justify-content: space-between;
-            height: 195px;
+            height: 190px;
+            flex-shrink: 0;
         }}
         .gauge-col {{
             width: 48%;
@@ -685,6 +1141,7 @@ def render_tab_tablero(
         }}
         .chart-container {{
             width: 100%;
+            flex-shrink: 0;
         }}
     </style>
 </head>
@@ -695,7 +1152,7 @@ def render_tab_tablero(
             <div id="gauge_mtbf" class="gauge-col"></div>
             <div id="gauge_rl" class="gauge-col"></div>
         </div>
-        <div id="chart_rl" class="chart-container" style="height: 225px;"></div>
+        <div id="chart_rl" class="chart-container" style="height: 230px;"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
@@ -708,100 +1165,119 @@ def render_tab_tablero(
             
             var mtbfColors = [[mtbfMetaPct, "{_R}"], [1.0, "{_G}"]];
             var mtbfColor = (mtbfVal >= mtbfMeta) ? "{_G}" : "{_R}";
-            
-            var mtbfOpt = {{
-                backgroundColor: "transparent",
-                series: [{{
-                    type: "gauge",
-                    startAngle: 200,
-                    endAngle: -20,
-                    min: 0,
-                    max: mtbfMax,
-                    center: ["50%", "50%"],
-                    radius: "85%",
-                    splitNumber: 3,
-                    axisLine: {{ lineStyle: {{ width: 8, color: mtbfColors }} }},
-                    pointer: {{ itemStyle: {{ color: "{_T}" }}, width: 3, length: "65%" }},
-                    axisTick: {{ show: false }},
-                    splitLine: {{ show: false }},
-                    axisLabel: {{ show: false }},
-                    anchor: {{ show: true, size: 6, itemStyle: {{ borderWidth: 1.5, borderColor: "{_T}", color: "#fff" }} }},
-                    detail: {{
-                        valueAnimation: true,
-                        formatter: function(val) {{ return val.toFixed(1) + " d"; }},
-                        color: mtbfColor,
-                        fontSize: 16,
-                        fontWeight: "900",
-                        offsetCenter: [0, "32%"]
-                    }},
-                    title: {{ show: true, offsetCenter: [0, "65%"], color: "{_T2}", fontSize: 8, fontWeight: "700" }},
-                    data: [{{ value: mtbfVal, name: "MTBF\\n(Meta: " + mtbfMeta + ")" }}]
-                }}]
-            }};
+
+            function makeGaugeOpt(val, meta, maxV, metaPct, arcColors, valColor, title, unit) {{
+                return {{
+                    backgroundColor: "transparent",
+                    animation: true,
+                    animationDuration: 1200,
+                    animationEasing: "cubicOut",
+                    series: [{{
+                        type: "gauge",
+                        startAngle: 205,
+                        endAngle: -25,
+                        min: 0,
+                        max: maxV,
+                        center: ["50%", "50%"],
+                        radius: "88%",
+                        splitNumber: 3,
+                        axisLine: {{
+                            lineStyle: {{
+                                width: 10,
+                                color: arcColors,
+                                shadowBlur: 4,
+                                shadowColor: "rgba(19,118,89,0.15)"
+                            }}
+                        }},
+                        pointer: {{
+                            itemStyle: {{
+                                color: "{_T}",
+                                shadowBlur: 4,
+                                shadowColor: "rgba(31,34,30,0.3)"
+                            }},
+                            width: 4,
+                            length: "60%"
+                        }},
+                        axisTick: {{ show: false }},
+                        splitLine: {{ show: false }},
+                        axisLabel: {{ show: false }},
+                        anchor: {{
+                            show: true,
+                            size: 8,
+                            itemStyle: {{
+                                borderWidth: 2,
+                                borderColor: "{_T}",
+                                color: "#fff",
+                                shadowBlur: 3,
+                                shadowColor: "rgba(0,0,0,0.2)"
+                            }}
+                        }},
+                        detail: {{
+                            valueAnimation: true,
+                            formatter: function(v) {{ return v.toFixed(1) + unit; }},
+                            color: valColor,
+                            fontSize: 15,
+                            fontWeight: "900",
+                            fontFamily: "Inter, sans-serif",
+                            offsetCenter: [0, "32%"]
+                        }},
+                        title: {{
+                            show: true,
+                            offsetCenter: [0, "66%"],
+                            color: "{_T2}",
+                            fontSize: 8,
+                            fontWeight: "700",
+                            fontFamily: "Inter, sans-serif"
+                        }},
+                        data: [{{ value: val, name: title + "\\n(Meta: " + meta + ")" }}]
+                    }}]
+                }};
+            }}
             
             var chartMTBF = echarts.init(document.getElementById('gauge_mtbf'));
-            chartMTBF.setOption(mtbfOpt);
+            chartMTBF.setOption(makeGaugeOpt(
+                mtbfVal, mtbfMeta, {mtbf_max}, mtbfMetaPct,
+                mtbfColors, mtbfColor, "MTBF", " d"
+            ));
 
             var rlVal = {rl_val};
             var rlMeta = {META_RL};
-            var rlMax = {rl_max};
-            var rlMetaPct = rlMeta / rlMax;
-            
+            var rlMetaPct = rlMeta / {rl_max};
             var rlColors = [[rlMetaPct, "{_R}"], [1.0, "{_G}"]];
             var rlColor = (rlVal >= rlMeta) ? "{_G}" : "{_R}";
-            
-            var rlOpt = {{
-                backgroundColor: "transparent",
-                series: [{{
-                    type: "gauge",
-                    startAngle: 200,
-                    endAngle: -20,
-                    min: 0,
-                    max: rlMax,
-                    center: ["50%", "50%"],
-                    radius: "85%",
-                    splitNumber: 3,
-                    axisLine: {{ lineStyle: {{ width: 8, color: rlColors }} }},
-                    pointer: {{ itemStyle: {{ color: "{_T}" }}, width: 3, length: "65%" }},
-                    axisTick: {{ show: false }},
-                    splitLine: {{ show: false }},
-                    axisLabel: {{ show: false }},
-                    anchor: {{ show: true, size: 6, itemStyle: {{ borderWidth: 1.5, borderColor: "{_T}", color: "#fff" }} }},
-                    detail: {{
-                        valueAnimation: true,
-                        formatter: function(val) {{ return val.toFixed(1) + " d"; }},
-                        color: rlColor,
-                        fontSize: 16,
-                        fontWeight: "900",
-                        offsetCenter: [0, "32%"]
-                    }},
-                    title: {{ show: true, offsetCenter: [0, "65%"], color: "{_T2}", fontSize: 8, fontWeight: "700" }},
-                    data: [{{ value: rlVal, name: "RunLife\\n(Meta: " + rlMeta + ")" }}]
-                }}]
-            }};
-            
+
             var chartRL = echarts.init(document.getElementById('gauge_rl'));
-            chartRL.setOption(rlOpt);
+            chartRL.setOption(makeGaugeOpt(
+                rlVal, rlMeta, {rl_max}, rlMetaPct,
+                rlColors, rlColor, "RunLife", " d"
+            ));
 
             var distOpt = {{
                 backgroundColor: "transparent",
+                animation: true,
+                animationDuration: 900,
+                animationEasing: "cubicOut",
                 tooltip: {{
                     trigger: "axis",
                     axisPointer: {{ type: "shadow" }},
-                    backgroundColor: "rgba(255,255,255,0.96)",
-                    borderColor: "rgba(19,118,89,0.15)",
-                    textStyle: {{ color: "{_T}", fontSize: 10 }},
+                    backgroundColor: "rgba(255,255,255,0.98)",
+                    borderColor: "rgba(19,118,89,0.2)",
+                    borderWidth: 1,
+                    borderRadius: 10,
+                    padding: [8, 12],
+                    textStyle: {{ color: "{_T}", fontSize: 11, fontFamily: "Inter, sans-serif" }},
+                    extraCssText: "box-shadow: 0 4px 16px rgba(19,118,89,0.12);",
                     formatter: function(p) {{
                         var b = p[0];
                         return b.name + "<br/>Pozos: <b>" + b.value + "</b>";
                     }}
                 }},
-                grid: {{ top: "10%", left: "2%", right: "4%", bottom: "20%", containLabel: true }},
+                grid: {{ top: "14%", left: "2%", right: "4%", bottom: "14%", containLabel: true }},
                 xAxis: {{
                     type: "category",
                     data: {json.dumps(rl_bins)},
-                    axisLabel: {{ color: "{_T2}", fontSize: 8, interval: 0 }},
-                    axisLine: {{ lineStyle: {{ color: "rgba(19,118,89,0.15)" }} }},
+                    axisLabel: {{ color: "{_T2}", fontSize: 8, fontFamily: "Inter, sans-serif", interval: 0 }},
+                    axisLine: {{ lineStyle: {{ color: "rgba(19,118,89,0.12)" }} }},
                     axisTick: {{ show: false }}
                 }},
                 yAxis: {{
@@ -812,10 +1288,70 @@ def render_tab_tablero(
                 series: [{{
                     type: "bar",
                     data: [
-                        {{ value: {rl_counts[0]}, itemStyle: {{ color: "{rl_bar_colors[0]}", borderRadius: [4, 4, 0, 0] }}, label: {{ show: true, position: "top", color: "{_T}", fontSize: 9, fontWeight: "700", formatter: "{rl_counts[0]}\\n{rl_pcts[0]}%" }} }},
-                        {{ value: {rl_counts[1]}, itemStyle: {{ color: "{rl_bar_colors[1]}", borderRadius: [4, 4, 0, 0] }}, label: {{ show: true, position: "top", color: "{_T}", fontSize: 9, fontWeight: "700", formatter: "{rl_counts[1]}\\n{rl_pcts[1]}%" }} }},
-                        {{ value: {rl_counts[2]}, itemStyle: {{ color: "{rl_bar_colors[2]}", borderRadius: [4, 4, 0, 0] }}, label: {{ show: true, position: "top", color: "{_T}", fontSize: 9, fontWeight: "700", formatter: "{rl_counts[2]}\\n{rl_pcts[2]}%" }} }},
-                        {{ value: {rl_counts[3]}, itemStyle: {{ color: "{rl_bar_colors[3]}", borderRadius: [4, 4, 0, 0] }}, label: {{ show: true, position: "top", color: "{_T}", fontSize: 9, fontWeight: "700", formatter: "{rl_counts[3]}\\n{rl_pcts[3]}%" }} }}
+                        {{
+                            value: {rl_counts[0]},
+                            itemStyle: {{
+                                color: {{
+                                    type: "linear", x: 0, y: 0, x2: 0, y2: 1,
+                                    colorStops: [
+                                        {{ offset: 0, color: "#1db87b" }},
+                                        {{ offset: 1, color: "{rl_bar_colors[0]}" }}
+                                    ]
+                                }},
+                                borderRadius: [5, 5, 0, 0],
+                                shadowBlur: 4,
+                                shadowColor: "rgba(19,118,89,0.15)"
+                            }},
+                            label: {{ show: true, position: "top", color: "{_T}", fontSize: 9, fontWeight: "700", fontFamily: "Inter, sans-serif", formatter: "{rl_counts[0]}\\n{rl_pcts[0]}%" }}
+                        }},
+                        {{
+                            value: {rl_counts[1]},
+                            itemStyle: {{
+                                color: {{
+                                    type: "linear", x: 0, y: 0, x2: 0, y2: 1,
+                                    colorStops: [
+                                        {{ offset: 0, color: "#148c6a" }},
+                                        {{ offset: 1, color: "{rl_bar_colors[1]}" }}
+                                    ]
+                                }},
+                                borderRadius: [5, 5, 0, 0],
+                                shadowBlur: 4,
+                                shadowColor: "rgba(10,77,52,0.15)"
+                            }},
+                            label: {{ show: true, position: "top", color: "{_T}", fontSize: 9, fontWeight: "700", fontFamily: "Inter, sans-serif", formatter: "{rl_counts[1]}\\n{rl_pcts[1]}%" }}
+                        }},
+                        {{
+                            value: {rl_counts[2]},
+                            itemStyle: {{
+                                color: {{
+                                    type: "linear", x: 0, y: 0, x2: 0, y2: 1,
+                                    colorStops: [
+                                        {{ offset: 0, color: "#d4b44a" }},
+                                        {{ offset: 1, color: "{rl_bar_colors[2]}" }}
+                                    ]
+                                }},
+                                borderRadius: [5, 5, 0, 0],
+                                shadowBlur: 4,
+                                shadowColor: "rgba(192,156,46,0.15)"
+                            }},
+                            label: {{ show: true, position: "top", color: "{_T}", fontSize: 9, fontWeight: "700", fontFamily: "Inter, sans-serif", formatter: "{rl_counts[2]}\\n{rl_pcts[2]}%" }}
+                        }},
+                        {{
+                            value: {rl_counts[3]},
+                            itemStyle: {{
+                                color: {{
+                                    type: "linear", x: 0, y: 0, x2: 0, y2: 1,
+                                    colorStops: [
+                                        {{ offset: 0, color: "#e57373" }},
+                                        {{ offset: 1, color: "{rl_bar_colors[3]}" }}
+                                    ]
+                                }},
+                                borderRadius: [5, 5, 0, 0],
+                                shadowBlur: 4,
+                                shadowColor: "rgba(198,40,40,0.15)"
+                            }},
+                            label: {{ show: true, position: "top", color: "{_T}", fontSize: 9, fontWeight: "700", fontFamily: "Inter, sans-serif", formatter: "{rl_counts[3]}\\n{rl_pcts[3]}%" }}
+                        }}
                     ],
                     barWidth: "45%"
                 }}]

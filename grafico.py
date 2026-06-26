@@ -274,6 +274,13 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
     if df_monthly.empty:
         return None, df_monthly
 
+    fecha_ini = st.session_state.get('fecha_inicio_state')
+    if fecha_ini is not None:
+        df_monthly = df_monthly[df_monthly['Mes'] >= pd.to_datetime(fecha_ini).normalize()].copy()
+
+    if df_monthly.empty:
+        return None, df_monthly
+
     # Normalizar índices defensivamente (Lógica intacta)
     for col in ['Indice_Falla_ON', 'Indice_Falla_ON_ALS', 'Indice_Falla_ON_1500', 'Indice_Falla_ON_ALS_1500']:
         if col in df_monthly.columns:
@@ -326,7 +333,6 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
         name='POZOS INACTIVOS', 
         marker=dict(color=COLOR_POZOS_OFF, line=dict(width=1), opacity=1),
         offsetgroup=0.5, 
-        base=df_monthly['Pozos_ON'],
         hovertemplate='<b>[ESTADO: INACTIVOS]</b><br>CANTIDAD: %{y}<extra></extra>'
     )) 
 

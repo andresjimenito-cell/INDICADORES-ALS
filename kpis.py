@@ -29,6 +29,52 @@ COLOR_TEXTO_DATOS = '#475569'
 COLOR_TEXTO_PRINCIPAL = '#1f221e'
 
 def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resumen_df=None, mtbf_global=None, mtbf_als=None, df_forma9=None, fecha_evaluacion=None):
+    # Cargar bases de datos crudas sin el filtro de fecha de inicio para los KPIs superiores
+    df_bd_raw = st.session_state.get('df_bd_calculated')
+    df_forma9_raw = st.session_state.get('df_forma9_calculated')
+    
+    if fecha_evaluacion is None:
+        try:
+            fecha_evaluacion = pd.to_datetime(st.session_state.get('fecha_evaluacion_state'))
+        except Exception:
+            fecha_evaluacion = datetime.datetime.now()
+    else:
+        try:
+            fecha_evaluacion = pd.to_datetime(fecha_evaluacion)
+        except Exception:
+            fecha_evaluacion = datetime.datetime.now()
+
+    fecha_eval_date = pd.to_datetime(fecha_evaluacion).normalize()
+
+    if df_bd_raw is not None:
+        df_bd = df_bd_raw.copy()
+        if 'ACTIVO' in df_bd.columns:
+            df_bd = df_bd[df_bd['ACTIVO'].astype(str).str.upper().str.strip() != 'ECUADOR']
+        # Aplicar filtros del sidebar
+        _filtros = {
+            'ACTIVO':    st.session_state.get('general_activo_filter',    'TODOS'),
+            'BLOQUE':    st.session_state.get('general_bloque_filter',    'TODOS'),
+            'CAMPO':     st.session_state.get('general_campo_filter',     'TODOS'),
+            'ALS':       st.session_state.get('general_als_filter',       'TODOS'),
+            'PROVEEDOR': st.session_state.get('general_proveedor_filter', 'TODOS'),
+            'NICK':      st.session_state.get('general_nick_filter',      'TODOS'),
+        }
+        for col, val in _filtros.items():
+            if val != 'TODOS' and col in df_bd.columns:
+                df_bd = df_bd[df_bd[col] == val]
+        
+        # Filtrar hasta fecha_evaluacion
+        df_bd['FECHA_RUN_TEMP'] = pd.to_datetime(df_bd['FECHA_RUN'], errors='coerce')
+        df_bd = df_bd[df_bd['FECHA_RUN_TEMP'].dt.normalize() <= fecha_eval_date].copy()
+        df_bd['FECHA_FALLA'] = pd.to_datetime(df_bd['FECHA_FALLA'], errors='coerce')
+        df_bd.loc[df_bd['FECHA_FALLA'].dt.normalize() > fecha_eval_date, 'FECHA_FALLA'] = pd.NaT
+
+    if df_forma9_raw is not None:
+        df_forma9 = df_forma9_raw.copy()
+        # Filtrar forma 9 por pozos en df_bd
+        pozos_en_bd = df_bd['POZO'].unique() if 'POZO' in df_bd.columns else []
+        df_forma9 = df_forma9[df_forma9['POZO'].isin(pozos_en_bd)].copy()
+
     # El filtro de comparativa ahora se gestiona desde el header global.
     selected_als = st.session_state.get('kpis_als_filter', 'ESP')
 
@@ -60,6 +106,12 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
         mtbf_total_val = None
 
     fecha_eval_date = pd.to_datetime(fecha_evaluacion).normalize()
+    fecha_ini_date = st.session_state.get('fecha_inicio_state')
+    if fecha_ini_date is not None:
+        fecha_ini_date = pd.to_datetime(fecha_ini_date).normalize()
+    else:
+        fecha_ini_date = fecha_eval_date - pd.Timedelta(days=30)
+
     df_bd['FECHA_RUN_DATE'] = pd.to_datetime(df_bd['FECHA_RUN'], errors='coerce').dt.normalize()
     df_bd['FECHA_PULL_DATE'] = pd.to_datetime(df_bd['FECHA_PULL'], errors='coerce').dt.normalize()
     df_bd['FECHA_FALLA_DATE'] = pd.to_datetime(df_bd['FECHA_FALLA'], errors='coerce').dt.normalize()
@@ -70,11 +122,11 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
         return df.copy()
 
     def calc_running(df, fecha_eval):
-        return df[(df['FECHA_RUN_DATE'] <= fecha_eval) & (df['FECHA_PULL_DATE'].isna() | (df['FECHA_PULL_DATE'] > fecha_eval))].shape[0]
+        return df[(df['FECHA_RUN_DATE'] <= fecha_eval) & (df['FECHA_PULL_DATE'].isna() | (df['FECHA_PULL_DATE'] > fecha_eval))]['POZO'].nunique() if 'POZO' in df.columns else 0
     def calc_fallados(df, fecha_eval):
-        return df[(df['FECHA_RUN_DATE'] <= fecha_eval) & (df['FECHA_FALLA_DATE'].notna()) & (df['FECHA_FALLA_DATE'] <= fecha_eval) & (df['FECHA_PULL_DATE'].isna() | (df['FECHA_PULL_DATE'] > fecha_eval))].shape[0]
+        return df[(df['FECHA_RUN_DATE'] <= fecha_eval) & (df['FECHA_FALLA_DATE'].notna()) & (df['FECHA_FALLA_DATE'] <= fecha_eval) & (df['FECHA_PULL_DATE'].isna() | (df['FECHA_PULL_DATE'] > fecha_eval))]['POZO'].nunique() if 'POZO' in df.columns else 0
     def calc_operativos(df, fecha_eval):
-        return df[(df['FECHA_RUN_DATE'] <= fecha_eval) & (df['FECHA_FALLA_DATE'].isna() | (df['FECHA_FALLA_DATE'] > fecha_eval)) & (df['FECHA_PULL_DATE'].isna() | (df['FECHA_PULL_DATE'] > fecha_eval))].shape[0]
+        return df[(df['FECHA_RUN_DATE'] <= fecha_eval) & (df['FECHA_FALLA_DATE'].isna() | (df['FECHA_FALLA_DATE'] > fecha_eval)) & (df['FECHA_PULL_DATE'].isna() | (df['FECHA_PULL_DATE'] > fecha_eval))]['POZO'].nunique() if 'POZO' in df.columns else 0
 
     df_bd_als_calc = filtrar_als(df_bd, selected_als)
     run_todos = calc_running(df_bd, fecha_eval_date)
@@ -94,9 +146,11 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
         if 'SISTEMA ALS' in df_forma9.columns:
             df_forma9 = df_forma9.rename(columns={'SISTEMA ALS': 'ALS'})
         
+        mes_eval = fecha_eval_date.month
+        anio_eval = fecha_eval_date.year
         df_forma9_eval = df_forma9[
-            (df_forma9['FECHA_FORMA9'].dt.normalize() >= (fecha_eval_date - pd.Timedelta(days=30))) &
-            (df_forma9['FECHA_FORMA9'].dt.normalize() <= fecha_eval_date)
+            (df_forma9['FECHA_FORMA9'].dt.month == mes_eval) &
+            (df_forma9['FECHA_FORMA9'].dt.year == anio_eval)
         ]
         
         if selected_als != 'TODOS' and 'ALS' in df_forma9_eval.columns:
@@ -336,11 +390,11 @@ def build_kpis_graph(df_bd, df_forma9=None, reporte_run_life=None, indice_resume
         return df.copy()
 
     def calc_running(df, fecha_eval):
-        return df[(df['FECHA_RUN_DATE'] <= fecha_eval) & (df['FECHA_PULL_DATE'].isna() | (df['FECHA_PULL_DATE'] > fecha_eval))].shape[0]
+        return df[(df['FECHA_RUN_DATE'] <= fecha_eval) & (df['FECHA_PULL_DATE'].isna() | (df['FECHA_PULL_DATE'] > fecha_eval))]['POZO'].nunique() if 'POZO' in df.columns else 0
     def calc_fallados(df, fecha_eval):
-        return df[(df['FECHA_RUN_DATE'] <= fecha_eval) & (df['FECHA_FALLA_DATE'].notna()) & (df['FECHA_FALLA_DATE'] <= fecha_eval) & (df['FECHA_PULL_DATE'].isna() | (df['FECHA_PULL_DATE'] > fecha_eval))].shape[0]
+        return df[(df['FECHA_RUN_DATE'] <= fecha_eval) & (df['FECHA_FALLA_DATE'].notna()) & (df['FECHA_FALLA_DATE'] <= fecha_eval) & (df['FECHA_PULL_DATE'].isna() | (df['FECHA_PULL_DATE'] > fecha_eval))]['POZO'].nunique() if 'POZO' in df.columns else 0
     def calc_operativos(df, fecha_eval):
-        return df[(df['FECHA_RUN_DATE'] <= fecha_eval) & (df['FECHA_FALLA_DATE'].isna() | (df['FECHA_FALLA_DATE'] > fecha_eval)) & (df['FECHA_PULL_DATE'].isna() | (df['FECHA_PULL_DATE'] > fecha_eval))].shape[0]
+        return df[(df['FECHA_RUN_DATE'] <= fecha_eval) & (df['FECHA_FALLA_DATE'].isna() | (df['FECHA_FALLA_DATE'] > fecha_eval)) & (df['FECHA_PULL_DATE'].isna() | (df['FECHA_PULL_DATE'] > fecha_eval))]['POZO'].nunique() if 'POZO' in df.columns else 0
 
     df_bd_als = filtrar_als(df_bd, selected_als)
     run_todos = calc_running(df_bd, fecha_eval_date)
@@ -354,7 +408,12 @@ def build_kpis_graph(df_bd, df_forma9=None, reporte_run_life=None, indice_resume
         pozo_col = next((c for c in df_forma9.columns if 'POZO' in c), None)
         if fecha_col and dias_col and pozo_col:
             df_forma9[fecha_col] = pd.to_datetime(df_forma9[fecha_col], errors='coerce')
-            df_forma9_eval = df_forma9[(df_forma9[fecha_col].dt.normalize() >= (fecha_eval_date - pd.Timedelta(days=30))) & (df_forma9[fecha_col].dt.normalize() <= fecha_eval_date)]
+            fecha_ini_date = st.session_state.get('fecha_inicio_state')
+            if fecha_ini_date is not None:
+                fecha_ini_date = pd.to_datetime(fecha_ini_date).normalize()
+            else:
+                fecha_ini_date = fecha_eval_date - pd.Timedelta(days=30)
+            df_forma9_eval = df_forma9[(df_forma9[fecha_col].dt.normalize() >= fecha_ini_date) & (df_forma9[fecha_col].dt.normalize() <= fecha_eval_date)]
             pozos_on_todos = int(df_forma9_eval[df_forma9_eval[dias_col] > 0][pozo_col].nunique())
 
     pozos_off_todos = max(0, operativos_todos - pozos_on_todos)
