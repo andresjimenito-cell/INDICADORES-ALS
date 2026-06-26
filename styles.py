@@ -153,36 +153,76 @@ def _apply_styles_internal():
             color: #137659 !important;
         }
 
+        /* ── ANIMACIÓN DE ENTRADA PARA NÚMEROS ── */
+        @keyframes countUp {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
         .kpi-card {
-            background: #ffffff;
-            border: 1px solid rgba(19, 118, 89, 0.15);
-            border-radius: 12px;
-            padding: 15px;
+            background: linear-gradient(135deg, #f8fdfb 0%, #ffffff 100%);
+            border: 1.5px solid rgba(19, 118, 89, 0.13) !important;
+            border-radius: 16px !important;
+            padding: 12px 14px !important;
             display: flex;
             flex-direction: column;
             align-items: center;
             text-align: center;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(19, 118, 89, 0.04), 0 8px 32px rgba(19, 118, 89, 0.06) !important;
             margin-bottom: 10px;
-            font-family: 'Montserrat', sans-serif !important;
+            font-family: 'Inter', sans-serif !important;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
         }
+        
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #137659, #1db87b, #137659);
+            border-radius: 16px 16px 0 0;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 6px 20px rgba(19, 118, 89, 0.10), 0 12px 40px rgba(19, 118, 89, 0.12) !important;
+            border-color: rgba(19, 118, 89, 0.25) !important;
+        }
+
         .kpi-label {
-            font-size: 0.65rem;
-            color: #5b5c55;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            font-family: 'Inter', sans-serif !important;
+            font-size: 0.62rem !important;
+            color: #455a72 !important;
+            font-weight: 800 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 1px !important;
+            margin-top: 4px;
             margin-bottom: 4px;
         }
+
         .kpi-value {
-            font-size: 1.6rem;
-            font-weight: 800;
+            font-family: 'Inter', sans-serif !important;
+            font-size: 1.7rem !important;
+            font-weight: 900 !important;
             color: #1f221e;
-            line-height: 1.2;
+            line-height: 1.1;
+            letter-spacing: -0.5px;
+            animation: countUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
         }
+
         .kpi-icon {
-            font-size: 1.2rem;
-            margin-bottom: 8px;
+            font-size: 1.3rem !important;
+            margin-bottom: 4px;
+            background: linear-gradient(135deg, #e8f5ee 0%, #c5e8d5 100%);
+            border-radius: 50%;
+            width: 38px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(19, 118, 89, 0.08);
         }
         
         /* --- DataTables HUD Customization --- */
