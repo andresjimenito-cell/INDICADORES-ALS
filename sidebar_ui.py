@@ -60,20 +60,7 @@ def _select(label: str, icon: str, options: list, key: str):
 
 SIDEBAR_CSS = """
 <style>
-/* SIDEBAR: dimensiones y fondo */
-[data-testid="stSidebar"] {
-    min-width: 220px !important;
-    max-width: 220px !important;
-    transform: none !important;
-    transition: none !important;
-    left: 0 !important;
-    visibility: visible !important;
-}
-
-[data-testid="stAppViewContainer"] {
-    display: flex !important;
-    flex-direction: row !important;
-}
+/* SIDEBAR: fondo y estilos */
 
 [data-testid="stSidebar"] {
     background: #eaf4ef !important;

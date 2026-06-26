@@ -32,28 +32,8 @@ def _apply_styles_internal():
             background-color: #f5f7f6 !important;
         }
 
-        /* FORZAR SIDEBAR ABIERTO */
-        [data-testid="stSidebar"] {
-            left: 0 !important;
-            transform: none !important;
-            visibility: visible !important;
-            min-width: 220px !important;
-            max-width: 220px !important;
-            display: block !important;
-            background-color: #eaf4ef !important;
-            border-right: 1px solid rgba(19, 118, 89, 0.15) !important;
-        }
-        [data-testid="stAppViewContainer"] {
-            display: flex !important;
-            flex-direction: row !important;
-        }
-        [data-testid="stAppViewContainer"] > section:nth-child(2) {
-            margin-left: 220px !important;
-            min-width: calc(100% - 220px) !important;
-        }
-        
         /* Ocultar elementos de Streamlit para ganar espacio */
-        header[data-testid="stHeader"] { display: none !important; }
+        .stDeployButton { display: none !important; }
         footer { display: none !important; }
         #MainMenu { display: none !important; }
         
