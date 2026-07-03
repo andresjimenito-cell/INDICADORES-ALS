@@ -7,6 +7,7 @@ SIN código de UI. SIN llamadas a st.* (excepto decoradores de caché).
 
 import unicodedata
 from datetime import timedelta
+from functools import lru_cache
 
 import numpy as np
 import pandas as pd
@@ -22,6 +23,7 @@ import tema
 # 1. CLASIFICACIÓN POR PALABRAS CLAVE
 # ===========================================================================
 
+@lru_cache(maxsize=1024)
 def clasificar_razon_ia(razon: str) -> str:
     """Clasifica la razón de pull usando palabras clave normalizadas."""
     if not isinstance(razon, str):

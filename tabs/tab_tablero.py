@@ -691,8 +691,8 @@ def render_tab_tablero(
             rl_prev_val = 0.0
 
     # Meta dinámica = valor de fin de año anterior * 1.1 (si es mayor a 0), de lo contrario meta general
-    meta_mtbf_calc = round(mtbf_prev_val * 1.1, 1) if mtbf_prev_val > 0 else float(META_MTBF)
-    meta_rl_calc = round(rl_prev_val * 1.1, 1) if rl_prev_val > 0 else float(META_RL)
+    meta_mtbf_calc = int(round(mtbf_prev_val * 1.1)) if mtbf_prev_val > 0 else int(META_MTBF)
+    meta_rl_calc = int(round(rl_prev_val * 1.1)) if rl_prev_val > 0 else int(META_RL)
 
     # ── Correlación de Producción vs Longevidad (para el gráfico de desempeño en Columna 3) ──
     rl_bins   = ['< 2 años', '2 – 4 años', '4 – 6 años', '> 6 años']
@@ -805,11 +805,13 @@ def render_tab_tablero(
         fallas_als = int((df_resumen['INDICADOR_MTBF'] == 1).sum()) if df_resumen is not None else 0
         
         if df_resumen is not None and not df_resumen.empty:
-            fallas_totales = int(df_resumen[
+            df_period = df_resumen[
                 (df_resumen['FECHA_FALLA'].notna()) &
                 (df_resumen['FECHA_FALLA'].dt.normalize() >= fecha_ini_dt) &
                 (df_resumen['FECHA_FALLA'].dt.normalize() <= fecha_eval_date)
-            ].shape[0])
+            ]
+            fallas_totales = int(df_period.shape[0])
+            pozos_fallados_periodo = int(df_period['POZO'].nunique()) if not df_period.empty else 0
             
             limit_365 = fecha_eval_date - pd.Timedelta(days=365)
             df_recent = df_resumen[df_resumen['FECHA_FALLA'] >= limit_365]
@@ -817,6 +819,7 @@ def render_tab_tablero(
             idx_sev = (len(df_recent) / pozos_fallados_rec) if pozos_fallados_rec > 0 else 0.0
         else:
             fallas_totales = 0
+            pozos_fallados_periodo = 0
             idx_sev = 0.0
 
         # Barras verticales ALS con animación CSS
@@ -881,13 +884,13 @@ def render_tab_tablero(
     <div class="tbl-card-base tbl-card-fallados">
       <div class="tbl-icon-circle-red">⚠️</div>
       <div>
-        <div class="tbl-fallados-lbl">Pozos Fallados En Fondo</div>
+        <div class="tbl-fallados-lbl">Pozos Fallados con ALS en fondo a hoy. </div>
         <div class="tbl-fallados-val">{als_fallados:,}</div>
       </div>
       
       <div class="tbl-fallados-atrib">
-        <div class="tbl-fallados-atrib-lbl">Fallas Periodo</div>
-        <div class="tbl-fallados-atrib-val">{fallas_totales}</div>
+        <div class="tbl-fallados-atrib-lbl"># fallas / #pozos fallados</div>
+        <div class="tbl-fallados-atrib-val">{fallas_totales} / {pozos_fallados_periodo}</div>
       </div>
       
       <div class="tbl-fallados-atrib" style="border-top: 1px dashed rgba(198,40,40,0.2); padding-top: 6px; width: 100%;">

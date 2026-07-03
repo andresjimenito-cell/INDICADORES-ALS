@@ -188,7 +188,7 @@ def render_tab_fallas(df_bd_filtered, fecha_evaluacion):
                 fp_str = fp.strftime('%Y-%m-%d') if pd.notna(fp) else '<span style="color:#137659; font-weight:bold;">PENDIENTE</span>'
                 razon = row.get(col_razon, '') if col_razon else ''
                 run_val = row.get('RUN', 1)
-                tipo_badge = '<span class="badge-custom badge-nuevo">NUEVO</span>' if run_val == 1 else '<span class="badge-custom badge-ws">WELL SERVICE</span>'
+                tipo_badge = '<span class="badge-custom badge-nuevo">PERFORADO</span>' if run_val == 1 else '<span class="badge-custom badge-ws">WELL SERVICE</span>'
                 if pd.notna(ff):
                     estado_badge = '<span class="badge-custom badge-fallado">⚠️ FALLADO</span>'
                     run_life = (ff - fr).days if pd.notna(fr) else '-'
