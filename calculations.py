@@ -47,6 +47,15 @@ def clasificar_razon_ia(razon: str) -> str:
         return 'Yacimiento'
     return 'Otros'
 
+def clasificar_runlife(rl):
+    """Categoriza el Run Life en etapas HUD."""
+    try: rl = float(rl)
+    except: return 'N/A'
+    if rl <= 30: return 'Infantil'
+    if rl <= 90: return 'Prematura'
+    if rl <= 1100: return 'En Garantía'
+    return 'Sin Garantía'
+
 
 # ===========================================================================
 # 2. CÁLCULOS INICIALES (Run Life, NICK, PROVEEDOR en FORMA9)

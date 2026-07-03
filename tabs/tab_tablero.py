@@ -472,6 +472,16 @@ def render_tab_tablero(
     mes_eval        = fecha_eval_dt.month
     anio_eval       = fecha_eval_dt.year
 
+    # Definir los filtros del sidebar para usarlos globalmente
+    _filtros = {
+        'ACTIVO':    st.session_state.get('general_activo_filter',    'TODOS'),
+        'BLOQUE':    st.session_state.get('general_bloque_filter',    'TODOS'),
+        'CAMPO':     st.session_state.get('general_campo_filter',     'TODOS'),
+        'ALS':       st.session_state.get('general_als_filter',       'TODOS'),
+        'PROVEEDOR': st.session_state.get('general_proveedor_filter', 'TODOS'),
+        'NICK':      st.session_state.get('general_nick_filter',      'TODOS'),
+    }
+
     # ── Ignorar fecha_ini y usar sólo fecha_evaluacion para el Tablero ──────
     df_raw = st.session_state.get('df_bd_calculated')
     if df_raw is not None:
@@ -485,14 +495,6 @@ def render_tab_tablero(
         df_resumen.loc[df_resumen['FECHA_FALLA'].dt.normalize() > fecha_eval_date, 'FECHA_FALLA'] = pd.NaT
         
         # Aplicar filtros del sidebar
-        _filtros = {
-            'ACTIVO':    st.session_state.get('general_activo_filter',    'TODOS'),
-            'BLOQUE':    st.session_state.get('general_bloque_filter',    'TODOS'),
-            'CAMPO':     st.session_state.get('general_campo_filter',     'TODOS'),
-            'ALS':       st.session_state.get('general_als_filter',       'TODOS'),
-            'PROVEEDOR': st.session_state.get('general_proveedor_filter', 'TODOS'),
-            'NICK':      st.session_state.get('general_nick_filter',      'TODOS'),
-        }
         for col, val in _filtros.items():
             if val != 'TODOS' and col in df_resumen.columns:
                 df_resumen = df_resumen[df_resumen[col] == val]
@@ -559,7 +561,7 @@ def render_tab_tablero(
     uso_oper     = als_operativos / max(als_fondo, 1) * 100
 
     # ── Serie IF mensual ─
-    if_cats, if_vals, on_vals, off_vals = [], [], [], []
+    if_cats, if_vals, if_tot_vals, on_vals, off_vals = [], [], [], [], []
     if_actual = 0.0
 
     try:
@@ -579,6 +581,10 @@ def render_tab_tablero(
             on_m   = int(row.get('Pozos ON', 0))
             if_roll = float(row.get('Indice_Falla_Rolling_ALS_ON', 0.0)) * 100.0
             if_vals.append(if_roll)
+            
+            if_tot_roll = float(row.get('Indice_Falla_Rolling_ON', 0.0)) * 100.0
+            if_tot_vals.append(if_tot_roll)
+            
             on_vals.append(on_m)
             off_m  = max(int(row.get('Pozos Operativos', on_m)) - on_m, 0)
             off_vals.append(off_m)
@@ -602,6 +608,10 @@ def render_tab_tablero(
             fallas_m = int(df[
                 (df['_FALL'].dt.month == m) & (df['_FALL'].dt.year == y)
             ].shape[0])
+            fallas_als_m = int(df[
+                (df['_FALL'].dt.month == m) & (df['_FALL'].dt.year == y) & (df['INDICADOR_MTBF'] == 1)
+            ].shape[0]) if 'INDICADOR_MTBF' in df.columns else fallas_m
+            
             on_m = 0
             if not df_forma9_untr.empty and 'FECHA_FORMA9' in df_forma9_untr.columns:
                 df_f9c = df_forma9_untr.copy()
@@ -617,13 +627,18 @@ def render_tab_tablero(
                 (df['_PULL'].isna() | (df['_PULL'] > end_m_ts))
             ]['POZO'].nunique()) if 'POZO' in df.columns else 0
             if_cats.append(f"{_MESES[m - 1]}-{str(y)[2:4]}")
-            if_m = (fallas_m / max(on_m, 1)) * 100.0
+            
+            if_m = (fallas_als_m / max(on_m, 1)) * 100.0
             if_vals.append(if_m)
+            
+            if_tot_m = (fallas_m / max(on_m, 1)) * 100.0
+            if_tot_vals.append(if_tot_m)
+            
             on_vals.append(on_m)
             off_vals.append(max(op_m - on_m, 0))
         if_actual = if_vals[-1] if if_vals else 0.0
 
-    if_max = max(max(if_vals) * 1.3, META_IF * 2, 20) if if_vals else 20
+    if_max = max(max(if_vals + if_tot_vals) * 1.3, META_IF * 2, 20) if (if_vals and if_tot_vals) else 20
 
     # ── MTBF ─────────────────────────────────────────────────────────────────
     try:
@@ -638,17 +653,138 @@ def render_tab_tablero(
     if np.isnan(rl_val):
         rl_val = 0.0
 
-    # ── Distribución RunLife ─────────────────────────────────────────────────
-    rl_bins   = ['< 2 años', '2 – 4 años', '4 – 6 años', '> 6 años']
-    rl_limites = [0, 730, 1460, 2190, 99999]
-    rl_counts  = [0, 0, 0, 0]
-    if rl_col:
-        rl_data = df_fondo[rl_col].dropna()
-        for i in range(4):
-            rl_counts[i] = int(((rl_data >= rl_limites[i]) & (rl_data < rl_limites[i+1])).sum())
+    # ── Calcular metas dinámicas para el Campo/Activo seleccionado ──────────
+    anio_prev = anio_eval - 1
+    fecha_prev_fin = pd.to_datetime(f"{anio_prev}-12-31").normalize()
 
-    mtbf_max = max(mtbf_val * 1.4, META_MTBF * 1.5, 3000)
-    rl_max   = max(rl_val   * 1.4, META_RL   * 1.5, 2500)
+    mtbf_prev_val = 0.0
+    rl_prev_val = 0.0
+
+    if df_raw is not None:
+        df_prev = df_raw.copy()
+        if 'ACTIVO' in df_prev.columns:
+            df_prev = df_prev[df_prev['ACTIVO'].astype(str).str.upper().str.strip() != 'ECUADOR']
+        for col_dt in ('FECHA_RUN', 'FECHA_FALLA', 'FECHA_PULL'):
+            if col_dt in df_prev.columns:
+                df_prev[col_dt] = pd.to_datetime(df_prev[col_dt], errors='coerce')
+        
+        # Filtro hasta el último día del año anterior
+        df_prev = df_prev[df_prev['FECHA_RUN'].dt.normalize() <= fecha_prev_fin].copy()
+        df_prev.loc[df_prev['FECHA_FALLA'].dt.normalize() > fecha_prev_fin, 'FECHA_FALLA'] = pd.NaT
+        
+        # Aplicar los mismos filtros que en la pestaña actual
+        for col_f, val_f in _filtros.items():
+            if val_f != 'TODOS' and col_f in df_prev.columns:
+                df_prev = df_prev[df_prev[col_f] == val_f]
+        
+        # Calcular MTBF a fecha_prev_fin
+        try:
+            mtbf_p, _ = mtbf_mod.calcular_mtbf(df_prev, f"{anio_prev}-12-31")
+            mtbf_prev_val = float(mtbf_p) if mtbf_p and not np.isnan(float(mtbf_p)) else 0.0
+        except Exception:
+            mtbf_prev_val = 0.0
+            
+        # Calcular Run Life a fecha_prev_fin
+        rl_col_prev = next((c for c in ('RUN LIFE', 'RUN_LIFE', 'RUNLIFE') if c in df_prev.columns), None)
+        rl_prev_val = float(df_prev[rl_col_prev].dropna().mean()) if rl_col_prev else 0.0
+        if np.isnan(rl_prev_val):
+            rl_prev_val = 0.0
+
+    # Meta dinámica = valor de fin de año anterior * 1.1 (si es mayor a 0), de lo contrario meta general
+    meta_mtbf_calc = round(mtbf_prev_val * 1.1, 1) if mtbf_prev_val > 0 else float(META_MTBF)
+    meta_rl_calc = round(rl_prev_val * 1.1, 1) if rl_prev_val > 0 else float(META_RL)
+
+    # ── Correlación de Producción vs Longevidad (para el gráfico de desempeño en Columna 3) ──
+    rl_bins   = ['< 2 años', '2 – 4 años', '4 – 6 años', '> 6 años']
+    pozos_perf_data = [0, 0, 0, 0]
+    bopd_perf_data = [0.0, 0.0, 0.0, 0.0]
+    try:
+        df_f9_perf = df_forma9_untr.copy()
+        df_f9_perf['FECHA_FORMA9'] = pd.to_datetime(df_f9_perf.get('FECHA_FORMA9'), errors='coerce')
+        df_month_perf = df_f9_perf[
+            (df_f9_perf['FECHA_FORMA9'].dt.year == anio_eval) & 
+            (df_f9_perf['FECHA_FORMA9'].dt.month == mes_eval)
+        ].copy()
+        
+        bopd_col = next((c for c in df_month_perf.columns if 'BOPD' in str(c).upper()), None)
+        if bopd_col:
+            df_month_perf[bopd_col] = pd.to_numeric(df_month_perf[bopd_col], errors='coerce').fillna(0)
+            df_on_perf = df_month_perf[df_month_perf[bopd_col] > 0].copy()
+            df_sum_perf = df_on_perf.groupby('POZO', as_index=False).agg({bopd_col: 'mean'}) 
+            df_sum_perf.rename(columns={bopd_col: 'BOPD'}, inplace=True)
+        else:
+            df_sum_perf = pd.DataFrame(columns=['POZO', 'BOPD'])
+        
+        bd_perf = df_resumen.copy()
+        
+        results_perf = []
+        for _, row in df_sum_perf.iterrows():
+            pozo = row['POZO']
+            bopd = row['BOPD']
+            pozo_data = bd_perf[bd_perf['POZO'] == pozo].sort_values('FECHA_RUN', ascending=False)
+            if not pozo_data.empty:
+                rl = pozo_data.iloc[0].get('RUN LIFE', 0)
+                years = rl / 365.25 if rl else 0
+                if years < 2: rango = '< 2 años'
+                elif years < 4: rango = '2 – 4 años'
+                elif years < 6: rango = '4 – 6 años'
+                else: rango = '> 6 años'
+                results_perf.append({'POZO': pozo, 'BOPD': bopd, 'RUN_LIFE': rl, 'RANGO': rango})
+
+        if results_perf:
+            df_perf_res = pd.DataFrame(results_perf)
+            df_range_perf = df_perf_res.groupby('RANGO').agg({'POZO': 'count', 'BOPD': 'sum'}).reindex(rl_bins).fillna(0)
+            pozos_perf_data = [int(x) for x in df_range_perf['POZO'].tolist()]
+            bopd_perf_data = [round(float(x), 1) for x in df_range_perf['BOPD'].tolist()]
+    except Exception as _e_perf:
+        pass
+
+    # Construir datos coloreados para mantener la estética de barra individual anterior
+    pozos_perf_colored = [
+        {
+            "value": pozos_perf_data[0],
+            "itemStyle": {
+                "color": {
+                    "type": "linear", "x": 0, "y": 0, "x2": 0, "y2": 1,
+                    "colorStops": [{"offset": 0, "color": "#1db87b"}, {"offset": 1, "color": _G}]
+                },
+                "borderRadius": [5, 5, 0, 0]
+            }
+        },
+        {
+            "value": pozos_perf_data[1],
+            "itemStyle": {
+                "color": {
+                    "type": "linear", "x": 0, "y": 0, "x2": 0, "y2": 1,
+                    "colorStops": [{"offset": 0, "color": "#148c6a"}, {"offset": 1, "color": _G2}]
+                },
+                "borderRadius": [5, 5, 0, 0]
+            }
+        },
+        {
+            "value": pozos_perf_data[2],
+            "itemStyle": {
+                "color": {
+                    "type": "linear", "x": 0, "y": 0, "x2": 0, "y2": 1,
+                    "colorStops": [{"offset": 0, "color": "#d4b44a"}, {"offset": 1, "color": _Y}]
+                },
+                "borderRadius": [5, 5, 0, 0]
+            }
+        },
+        {
+            "value": pozos_perf_data[3],
+            "itemStyle": {
+                "color": {
+                    "type": "linear", "x": 0, "y": 0, "x2": 0, "y2": 1,
+                    "colorStops": [{"offset": 0, "color": "#e57373"}, {"offset": 1, "color": _R}]
+                },
+                "borderRadius": [5, 5, 0, 0]
+            }
+        }
+    ]
+
+    mtbf_max = max(mtbf_val * 1.4, meta_mtbf_calc * 1.5, 3000)
+    rl_max   = max(rl_val   * 1.4, meta_rl_calc * 1.5, 2500)
 
     # ═════════════════════════════════════════════════════════════════════════
     # LAYOUT DE 3 COLUMNAS SIMÉTRICAS
@@ -745,7 +881,7 @@ def render_tab_tablero(
     <div class="tbl-card-base tbl-card-fallados">
       <div class="tbl-icon-circle-red">⚠️</div>
       <div>
-        <div class="tbl-fallados-lbl">Pozos Fallados</div>
+        <div class="tbl-fallados-lbl">Pozos Fallados En Fondo</div>
         <div class="tbl-fallados-val">{als_fallados:,}</div>
       </div>
       
@@ -964,7 +1100,7 @@ def render_tab_tablero(
                     extraCssText: "box-shadow: 0 4px 16px rgba(19,118,89,0.12);"
                 }},
                 legend: {{
-                    data: ["Pozos ON", "Pozos OFF", "IF (%)"],
+                    data: ["Pozos ON", "Pozos OFF", "IF ALS ON (%)", "IF Total ON (%)"],
                     bottom: 0,
                     itemHeight: 7,
                     itemGap: 12,
@@ -1026,13 +1162,18 @@ def render_tab_tablero(
                         }}
                     }},
                     {{
-                        name: "IF (%)",
+                        name: "IF ALS ON (%)",
                         type: "line",
                         yAxisIndex: 1,
                         data: {json.dumps(if_vals)},
                         smooth: 0.5,
                         symbol: "circle",
                         symbolSize: 6,
+                        tooltip: {{
+                            valueFormatter: function(val) {{
+                                return val != null ? val.toFixed(2) + "%" : "-";
+                            }}
+                        }},
                         lineStyle: {{ color: "{_R}", width: 2.5, shadowBlur: 6, shadowColor: "rgba(198,40,40,0.2)" }},
                         itemStyle: {{ color: "{_R}", borderColor: "#fff", borderWidth: 2 }},
                         areaStyle: {{
@@ -1057,6 +1198,32 @@ def render_tab_tablero(
                                 position: "end"
                             }}
                         }}
+                    }},
+                    {{
+                        name: "IF Total ON (%)",
+                        type: "line",
+                        yAxisIndex: 1,
+                        data: {json.dumps(if_tot_vals)},
+                        smooth: 0.5,
+                        symbol: "circle",
+                        symbolSize: 6,
+                        tooltip: {{
+                            valueFormatter: function(val) {{
+                                return val != null ? val.toFixed(2) + "%" : "-";
+                            }}
+                        }},
+                        lineStyle: {{ color: "{_T}", width: 2.5, shadowBlur: 6, shadowColor: "rgba(31,34,30,0.2)" }},
+                        itemStyle: {{ color: "{_T}", borderColor: "#fff", borderWidth: 2 }},
+                        areaStyle: {{
+                            color: {{
+                                type: "linear",
+                                x: 0, y: 0, x2: 0, y2: 1,
+                                colorStops: [
+                                    {{ offset: 0, color: "rgba(31,34,30,0.12)" }},
+                                    {{ offset: 1, color: "rgba(31,34,30,0.01)" }}
+                                ]
+                            }}
+                        }}
                     }}
                 ]
             }};
@@ -1076,12 +1243,9 @@ def render_tab_tablero(
         components.html(col2_html, height=480, scrolling=False)
 
     # ─────────────────────────────────────────────────────────────────────────
-    # COLUMNA 3: GAUGES MTBF + RUNLIFE + DISTRIBUCIÓN
+    # COLUMNA 3: GAUGES MTBF + RUNLIFE + CORRELACIÓN PRODUCCIÓN VS LONGEVIDAD
     # ─────────────────────────────────────────────────────────────────────────
     with col_r:
-        rl_bar_colors = [_G, _G2, _Y, _R]
-        total_rl = max(sum(rl_counts), 1)
-        rl_pcts  = [round(v / total_rl * 100, 1) for v in rl_counts]
 
         col3_html = f"""
 <!DOCTYPE html>
@@ -1159,7 +1323,7 @@ def render_tab_tablero(
     <script>
         (function() {{
             var mtbfVal = {mtbf_val};
-            var mtbfMeta = {META_MTBF};
+            var mtbfMeta = {meta_mtbf_calc};
             var mtbfMax = {mtbf_max};
             var mtbfMetaPct = mtbfMeta / mtbfMax;
             
@@ -1241,7 +1405,7 @@ def render_tab_tablero(
             ));
 
             var rlVal = {rl_val};
-            var rlMeta = {META_RL};
+            var rlMeta = {meta_rl_calc};
             var rlMetaPct = rlMeta / {rl_max};
             var rlColors = [[rlMetaPct, "{_R}"], [1.0, "{_G}"]];
             var rlColor = (rlVal >= rlMeta) ? "{_G}" : "{_R}";
@@ -1259,20 +1423,22 @@ def render_tab_tablero(
                 animationEasing: "cubicOut",
                 tooltip: {{
                     trigger: "axis",
-                    axisPointer: {{ type: "shadow" }},
+                    axisPointer: {{ type: "cross", crossStyle: {{ color: "rgba(19,118,89,0.3)" }} }},
                     backgroundColor: "rgba(255,255,255,0.98)",
                     borderColor: "rgba(19,118,89,0.2)",
                     borderWidth: 1,
                     borderRadius: 10,
                     padding: [8, 12],
                     textStyle: {{ color: "{_T}", fontSize: 11, fontFamily: "Inter, sans-serif" }},
-                    extraCssText: "box-shadow: 0 4px 16px rgba(19,118,89,0.12);",
-                    formatter: function(p) {{
-                        var b = p[0];
-                        return b.name + "<br/>Pozos: <b>" + b.value + "</b>";
-                    }}
+                    extraCssText: "box-shadow: 0 4px 16px rgba(19,118,89,0.12);"
                 }},
-                grid: {{ top: "14%", left: "2%", right: "4%", bottom: "14%", containLabel: true }},
+                legend: {{
+                    data: ["POZOS", "BOPD TOTAL"],
+                    textStyle: {{ color: "{_T2}", fontSize: 9, fontFamily: "Inter, sans-serif" }},
+                    bottom: 0,
+                    icon: "circle"
+                }},
+                grid: {{ top: "15%", left: "5%", right: "5%", bottom: "18%", containLabel: true }},
                 xAxis: {{
                     type: "category",
                     data: {json.dumps(rl_bins)},
@@ -1280,81 +1446,117 @@ def render_tab_tablero(
                     axisLine: {{ lineStyle: {{ color: "rgba(19,118,89,0.12)" }} }},
                     axisTick: {{ show: false }}
                 }},
-                yAxis: {{
-                    type: "value",
-                    axisLabel: {{ color: "{_T2}", fontSize: 8 }},
-                    splitLine: {{ lineStyle: {{ color: "rgba(19,118,89,0.06)", type: "dashed" }} }}
-                }},
-                series: [{{
-                    type: "bar",
-                    data: [
-                        {{
-                            value: {rl_counts[0]},
-                            itemStyle: {{
-                                color: {{
-                                    type: "linear", x: 0, y: 0, x2: 0, y2: 1,
-                                    colorStops: [
-                                        {{ offset: 0, color: "#1db87b" }},
-                                        {{ offset: 1, color: "{rl_bar_colors[0]}" }}
-                                    ]
-                                }},
-                                borderRadius: [5, 5, 0, 0],
-                                shadowBlur: 4,
-                                shadowColor: "rgba(19,118,89,0.15)"
-                            }},
-                            label: {{ show: true, position: "top", color: "{_T}", fontSize: 9, fontWeight: "700", fontFamily: "Inter, sans-serif", formatter: "{rl_counts[0]}\\n{rl_pcts[0]}%" }}
+                yAxis: [
+                    {{
+                        type: "value",
+                        name: "POZOS",
+                        nameTextStyle: {{ color: "{_T2}", fontSize: 8 }},
+                        axisLabel: {{ color: "{_T2}", fontSize: 8 }},
+                        splitLine: {{ lineStyle: {{ color: "rgba(19,118,89,0.06)", type: "dashed" }} }}
+                    }}, 
+                    {{
+                        type: "value",
+                        name: "BOPD TOTAL",
+                        nameTextStyle: {{ color: "{_Y}", fontSize: 8 }},
+                        axisLabel: {{ color: "{_Y}", fontSize: 8 }},
+                        splitLine: {{ show: false }}
+                    }}
+                ],
+                series: [
+                    {{
+                        name: "POZOS",
+                        type: "bar",
+                        barWidth: "40%",
+                        label: {{
+                            show: true,
+                            position: "insideTop",
+                            color: "#ffffff",
+                            fontWeight: "bold",
+                            fontSize: 9,
+                            formatter: function(params) {{
+                                return params.value > 0 ? params.value : "";
+                            }}
                         }},
-                        {{
-                            value: {rl_counts[1]},
-                            itemStyle: {{
-                                color: {{
-                                    type: "linear", x: 0, y: 0, x2: 0, y2: 1,
-                                    colorStops: [
-                                        {{ offset: 0, color: "#148c6a" }},
-                                        {{ offset: 1, color: "{rl_bar_colors[1]}" }}
-                                    ]
-                                }},
-                                borderRadius: [5, 5, 0, 0],
-                                shadowBlur: 4,
-                                shadowColor: "rgba(10,77,52,0.15)"
+                        markLine: {{
+                            silent: true,
+                            symbol: "none",
+                            lineStyle: {{
+                                color: "#137659",
+                                type: "dashed",
+                                width: 1.5
                             }},
-                            label: {{ show: true, position: "top", color: "{_T}", fontSize: 9, fontWeight: "700", fontFamily: "Inter, sans-serif", formatter: "{rl_counts[1]}\\n{rl_pcts[1]}%" }}
+                            data: [
+                                {{
+                                    xAxis: 2,
+                                    name: "Meta RunLife",
+                                    label: {{
+                                        show: true,
+                                        position: "end",
+                                        formatter: "Meta RL\\n(1500d)",
+                                        fontSize: 8,
+                                        color: "#137659",
+                                        fontWeight: "bold"
+                                    }}
+                                }},
+                                {{
+                                    xAxis: 3,
+                                    name: "Meta MTBF",
+                                    lineStyle: {{
+                                        color: "#c62828",
+                                        type: "dashed",
+                                        width: 1.5
+                                    }},
+                                    label: {{
+                                        show: true,
+                                        position: "end",
+                                        formatter: "Meta MTBF\\n(2190d)",
+                                        fontSize: 8,
+                                        color: "#c62828",
+                                        fontWeight: "bold"
+                                    }}
+                                }}
+                            ]
                         }},
-                        {{
-                            value: {rl_counts[2]},
-                            itemStyle: {{
-                                color: {{
-                                    type: "linear", x: 0, y: 0, x2: 0, y2: 1,
-                                    colorStops: [
-                                        {{ offset: 0, color: "#d4b44a" }},
-                                        {{ offset: 1, color: "{rl_bar_colors[2]}" }}
-                                    ]
-                                }},
-                                borderRadius: [5, 5, 0, 0],
-                                shadowBlur: 4,
-                                shadowColor: "rgba(192,156,46,0.15)"
-                            }},
-                            label: {{ show: true, position: "top", color: "{_T}", fontSize: 9, fontWeight: "700", fontFamily: "Inter, sans-serif", formatter: "{rl_counts[2]}\\n{rl_pcts[2]}%" }}
+                        data: {json.dumps(pozos_perf_colored)}
+                    }},
+                    {{
+                        name: "BOPD TOTAL",
+                        type: "line",
+                        yAxisIndex: 1,
+                        smooth: true,
+                        symbol: "none",
+                        lineStyle: {{ width: 0 }},
+                        itemStyle: {{ color: "#000000" }},
+                        label: {{
+                            show: true,
+                            position: "top",
+                            distance: 8,
+                            color: "#1f221e",
+                            fontWeight: "bold",
+                            fontSize: 9,
+                            backgroundColor: "#f8fdfb",
+                            borderColor: "rgba(19,118,89,0.25)",
+                            borderWidth: 1,
+                            borderRadius: 6,
+                            padding: [4, 7],
+                            shadowBlur: 4,
+                            shadowColor: "rgba(0,0,0,0.06)",
+                            formatter: function(params) {{
+                                if (params.value > 0) {{
+                                    var valFormatted = Math.round(params.value).toString().replace(/\\B(?=(\\d{{3}})+(?!\\d))/g, ".");
+                                    return valFormatted + " BOPD";
+                                }}
+                                return "";
+                            }}
                         }},
-                        {{
-                            value: {rl_counts[3]},
-                            itemStyle: {{
-                                color: {{
-                                    type: "linear", x: 0, y: 0, x2: 0, y2: 1,
-                                    colorStops: [
-                                        {{ offset: 0, color: "#e57373" }},
-                                        {{ offset: 1, color: "{rl_bar_colors[3]}" }}
-                                    ]
-                                }},
-                                borderRadius: [5, 5, 0, 0],
-                                shadowBlur: 4,
-                                shadowColor: "rgba(198,40,40,0.15)"
-                            }},
-                            label: {{ show: true, position: "top", color: "{_T}", fontSize: 9, fontWeight: "700", fontFamily: "Inter, sans-serif", formatter: "{rl_counts[3]}\\n{rl_pcts[3]}%" }}
-                        }}
-                    ],
-                    barWidth: "45%"
-                }}]
+                        tooltip: {{
+                            valueFormatter: function(val) {{
+                                return val != null ? val.toFixed(1) + " BOPD" : "-";
+                            }}
+                        }},
+                        data: {json.dumps(bopd_perf_data)}
+                    }}
+                ]
             }};
             
             var chartDist = echarts.init(document.getElementById('chart_rl'));

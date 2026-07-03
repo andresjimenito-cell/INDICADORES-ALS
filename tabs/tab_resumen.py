@@ -299,7 +299,7 @@ def render_tab_resumen(
             val_extraidos  = df_camp[df_camp['FECHA_PULL'].notna()].shape[0]
             val_activos    = val_total_corr - val_extraidos
 
-    col_vida, col_oper, col_camp = st.columns(3)
+    col_vida, col_oper = st.columns([1, 1.6], gap="medium")
 
     with col_vida:
         _section_title("▸ Tiempo de Vida", _CYAN)
@@ -314,130 +314,6 @@ def render_tab_resumen(
             render_premium_echarts_pozos(df_monthly_summary, titulo="")
         else:
             st.info("Sin datos.")
-
-    with col_camp:
-        _section_title("▸ Campaña Rango General", _CYAN)
-        if df_camp.empty:
-            st.info("Sin corridas en el rango seleccionado.")
-        else:
-            m1, m2 = st.columns(2)
-            with m1:
-                st.markdown(_mini_metric("Nuevos", str(val_nuevos), _CYAN), unsafe_allow_html=True)
-            with m2:
-                st.markdown(_mini_metric("WS", str(val_ws), _MAGENTA), unsafe_allow_html=True)
-
-            st.markdown("<div style='height:4px;'></div>", unsafe_allow_html=True)
-
-            opts_camp = {
-                "backgroundColor": "#ffffff",
-                "tooltip": {
-                    "trigger": "axis",
-                    "axisPointer": {"type": "shadow"},
-                    "backgroundColor": "rgba(255,255,255,0.95)",
-                    "borderColor": "rgba(19,118,89,0.15)",
-                    "textStyle": {"color": "#1f221e", "fontSize": 11},
-                },
-                "legend": {
-                    "data": ["Nuevos", "Well Service", "Fallas Nuevos", "Fallas WS"],
-                    "textStyle": {"color": "#1f221e", "fontSize": 8},
-                    "bottom": 0,
-                    "itemHeight": 6,
-                    "itemGap": 10,
-                },
-                "grid": {
-                    "top": "8%", "left": "2%", "right": "2%",
-                    "bottom": "20%", "containLabel": True,
-                },
-                "xAxis": {
-                    "type": "category",
-                    "data": cats,
-                    "axisLabel": {"color": "#1f221e", "fontSize": 7},
-                    "axisLine": {"lineStyle": {"color": "rgba(19,118,89,0.15)"}},
-                    "axisTick": {"show": False},
-                },
-                "yAxis": {
-                    "type": "value",
-                    "axisLabel": {"color": "#1f221e", "fontSize": 7},
-                    "splitLine": {"lineStyle": {"color": "rgba(19,118,89,0.06)", "type": "dashed"}},
-                },
-                "series": [
-                    {
-                        "name": "Nuevos", "type": "bar", "stack": "total",
-                        "data": d_nv, "barMaxWidth": 18,
-                        "itemStyle": {
-                            "color": {"type": "linear", "x": 0, "y": 0, "x2": 0, "y2": 1,
-                                      "colorStops": [
-                                          {"offset": 0, "color": "#137659"},
-                                          {"offset": 1, "color": "#095139"},
-                                      ]}
-                        }
-                    },
-                    {
-                        "name": "Well Service", "type": "bar", "stack": "total",
-                        "data": d_ws, "barMaxWidth": 18,
-                        "itemStyle": {
-                            "color": {"type": "linear", "x": 0, "y": 0, "x2": 0, "y2": 1,
-                                      "colorStops": [
-                                          {"offset": 0, "color": "#c09c2e"},
-                                          {"offset": 1, "color": "#9b791e"},
-                                      ]}
-                        }
-                    },
-                    {
-                        "name": "Fallas Nuevos", "type": "line",
-                        "data": d_fl_nuevo, "smooth": True,
-                        "symbol": "circle", "symbolSize": 5,
-                        "lineStyle": {"width": 2, "color": "#c62828"},
-                        "itemStyle": {"color": "#c62828", "borderWidth": 2, "borderColor": "#fff"}
-                    },
-                    {
-                        "name": "Fallas WS", "type": "line",
-                        "data": d_fl_ws, "smooth": True,
-                        "symbol": "circle", "symbolSize": 5,
-                        "lineStyle": {"width": 2, "color": "#ff7043", "type": "dashed"},
-                        "itemStyle": {"color": "#ff7043", "borderWidth": 2, "borderColor": "#fff"}
-                    }
-                ]
-            }
-
-            opts_run_stats = {
-                "backgroundColor": "#ffffff",
-                "title": {
-                    "text": "📊 EJECUCIÓN",
-                    "left": "center", "top": 2,
-                    "textStyle": {"color": "#137659", "fontSize": 9, "fontFamily": "Arial, sans-serif", "fontWeight": "bold"}
-                },
-                "tooltip": {
-                    "trigger": "axis",
-                    "axisPointer": {"type": "shadow"},
-                    "backgroundColor": "rgba(255,255,255,0.95)",
-                    "borderColor": "rgba(19,118,89,0.15)",
-                    "textStyle": {"color": "#1f221e"}
-                },
-                "grid": {"top": "18%", "left": "3%", "right": "18%", "bottom": "8%", "containLabel": True},
-                "xAxis": {"type": "value", "splitLine": {"show": False}, "axisLabel": {"show": False}},
-                "yAxis": {
-                    "type": "category",
-                    "data": ["EXTRAÍDOS", "ACTIVOS", "FALLAS", "WS", "NUEVOS", "TOTAL"],
-                    "axisLabel": {"color": "#455a72", "fontSize": 7, "fontFamily": "Arial, sans-serif"}
-                },
-                "series": [{
-                    "type": "bar",
-                    "data": [
-                        {"value": val_extraidos,   "itemStyle": {"color": "#94a3b8"}},
-                        {"value": val_activos,     "itemStyle": {"color": "#137659"}},
-                        {"value": val_fallas,      "itemStyle": {"color": "#c62828"}},
-                        {"value": val_ws,          "itemStyle": {"color": "#c09c2e"}},
-                        {"value": val_nuevos,      "itemStyle": {"color": "#8fbc8f"}},
-                        {"value": val_total_corr,  "itemStyle": {"color": "#5b8c5a"}}
-                    ],
-                    "label": {"show": True, "position": "right", "color": "#1f221e", "fontSize": 8, "fontFamily": "Arial, sans-serif"},
-                    "barMaxWidth": 12,
-                    "itemStyle": {"borderRadius": [0, 4, 4, 0]}
-                }]
-            }
-
-            components.html(_echarts_html(opts_camp, 320, "chart_campana"), height=335)
 
     st.markdown("<div style='height:6px;'></div>", unsafe_allow_html=True)
 
