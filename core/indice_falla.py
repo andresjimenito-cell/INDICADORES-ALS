@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import streamlit as st
-from theme import get_colors, get_plotly_layout
+from ui.theme import get_colors, get_plotly_layout
 from datetime import timedelta
 
 _colors = get_colors()

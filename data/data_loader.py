@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from config import CACHE_DIR, CACHE_FILE
+from data.config import CACHE_DIR, CACHE_FILE
 
 
 # ===========================================================================

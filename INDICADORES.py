@@ -48,13 +48,13 @@ import pandas as pd
 from datetime import datetime
 import kpis
 
-from config import COLOR_PRINCIPAL
-from styles import apply_all_styles
+from data.config import COLOR_PRINCIPAL
+from ui.styles import apply_all_styles
 
-from header_ui import render_header
-from sidebar_ui import render_sidebar
-from upload_ui import render_upload_section
-from data_loader import load_cached_data
+from ui.header_ui import render_header
+from ui.sidebar_ui import render_sidebar
+from ui.upload_ui import render_upload_section
+from data.data_loader import load_cached_data
 
 from tabs.tab_resumen import render_tab_resumen
 from tabs.tab_performance import render_tab_performance
@@ -371,7 +371,7 @@ if st.session_state.get('reporte_runes') is not None:
     
     f1, f2, f3 = st.columns([0.35, 0.3, 0.35])
     with f2:
-        from descargar import exportar_resumen_performance
+        from ui.descargar import exportar_resumen_performance
         df_ms = st.session_state.get('df_monthly_summary')
         if df_ms is not None and not df_ms.empty:
             excel_bytes = exportar_resumen_performance(df_ms)

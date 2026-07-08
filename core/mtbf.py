@@ -1,8 +1,9 @@
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 import plotly.express as px
 import json
-from theme import get_colors, get_plotly_layout, styled_title, plotly_styled_title
+from ui.theme import get_colors, get_plotly_layout, styled_title, plotly_styled_title
 
 _colors = get_colors()
 COLOR_PRINCIPAL = _colors.get('primary', '#00ff99')
@@ -84,7 +85,7 @@ def calcular_mtbf(df_bd, fecha_evaluacion, col_life='RUN LIFE @ FALLA', col_indi
             rti_dt.append(r * (dt[i] - dt[i-1]))
     df['R(Ti)*dt'] = rti_dt
     
-    mtbf = df['R(Ti)*dt'].sum()
+    mtbf = sum(df['R(Ti)*dt'])
     return mtbf, df[['ITEM', col_life, 'R(ti/Ti-1)', 'R(Ti)', 'R(Ti)*dt']]
 
 def mostrar_mtbf(mtbf_global, mtbf_por_pozo, mtbf_efectivo=None, df_bd=None, fecha_evaluacion=None):
@@ -164,7 +165,7 @@ def mostrar_mtbf(mtbf_global, mtbf_por_pozo, mtbf_efectivo=None, df_bd=None, fec
                     }})();
                 </script>
                 """
-                st.components.v1.html(html_val, height=340)
+                components.html(html_val, height=340)
         else:
             st.info("No hay datos suficientes para generar el gráfico de valores TMEF.")
 
