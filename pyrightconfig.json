@@ -1,0 +1,8 @@
+{
+  "extraPaths": [
+    "core",
+    "data",
+    "ui",
+    "tabs"
+  ]
+}
