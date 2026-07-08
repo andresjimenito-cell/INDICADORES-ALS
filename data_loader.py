@@ -13,6 +13,7 @@ import os
 import re
 import html as html_module
 import pickle
+import hashlib
 
 import requests
 import numpy as np
@@ -173,6 +174,38 @@ def cargar_y_limpiar_datos(forma9_file, bd_file):
     if forma9_file is None or bd_file is None:
         return None, None
 
+    # --- Persistent JSON Cache check ---
+    f9_hash, bd_hash = "", ""
+    cache_f9, cache_bd = None, None
+    try:
+        forma9_file.seek(0)
+        forma9_bytes = forma9_file.read()
+        f9_hash = hashlib.sha256(forma9_bytes).hexdigest()
+        forma9_file.seek(0)
+
+        bd_file.seek(0)
+        bd_bytes = bd_file.read()
+        bd_hash = hashlib.sha256(bd_bytes).hexdigest()
+        bd_file.seek(0)
+
+        CACHE_DIR.mkdir(exist_ok=True)
+        cache_f9 = CACHE_DIR / f"clean_f9_{f9_hash}.json"
+        cache_bd = CACHE_DIR / f"clean_bd_{bd_hash}.json"
+
+        if cache_f9.exists() and cache_bd.exists():
+            df_forma9 = pd.read_json(cache_f9)
+            df_bd = pd.read_json(cache_bd)
+
+            # Convert date columns back to datetime
+            df_forma9['FECHA_FORMA9'] = pd.to_datetime(df_forma9['FECHA_FORMA9'], errors='coerce')
+            df_bd['FECHA_RUN'] = pd.to_datetime(df_bd['FECHA_RUN'], errors='coerce')
+            df_bd['FECHA_FALLA'] = pd.to_datetime(df_bd['FECHA_FALLA'], errors='coerce')
+            df_bd['FECHA_PULL'] = pd.to_datetime(df_bd['FECHA_PULL'], errors='coerce')
+
+            return df_forma9, df_bd
+    except Exception:
+        pass
+
     try:
         forma9_header_row = find_header(forma9_file, ['FECHA', 'DIAS', 'POZO'])
         if forma9_header_row is None:
@@ -269,6 +302,14 @@ def cargar_y_limpiar_datos(forma9_file, bd_file):
     # Filtrar 'ECUADOR' ya que el usuario indica que ya no existe
     if 'ACTIVO' in df_bd.columns:
         df_bd = df_bd[df_bd['ACTIVO'].astype(str).str.upper().str.strip() != 'ECUADOR'].copy()
+
+    # Save to JSON cache
+    if cache_f9 and cache_bd:
+        try:
+            df_forma9.to_json(cache_f9, date_format='iso', orient='records')
+            df_bd.to_json(cache_bd, date_format='iso', orient='records')
+        except Exception:
+            pass
 
     return df_forma9, df_bd
 
