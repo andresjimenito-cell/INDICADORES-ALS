@@ -217,6 +217,9 @@ def cargar_y_limpiar_datos(forma9_file, bd_file):
             st.error("No se pudo encontrar el encabezado en BD. Revisa las columnas '# RUN', 'FECHA RUN' y 'POZO'.")
             return None, None
 
+        forma9_header_row = int(forma9_header_row)
+        bd_header_row = int(bd_header_row)
+
         if forma9_file.name.endswith('.csv'):
             df_forma9 = pd.read_csv(forma9_file, header=forma9_header_row, encoding='latin1', low_memory=False)
         else:

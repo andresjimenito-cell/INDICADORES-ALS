@@ -5,7 +5,7 @@ import plotly.express as px
 import plotly.io as pio
 import copy
 from datetime import datetime
-from theme import get_colors, get_plotly_layout, plotly_styled_title as theme_plotly_styled_title
+from ui.theme import get_colors, get_plotly_layout, plotly_styled_title as theme_plotly_styled_title
 import plotly.graph_objects as _go
 import streamlit as st
 
@@ -52,7 +52,7 @@ def plotly_styled_title(text: str) -> str:
     except Exception:
         return f"<b>{text.upper()}</b>"
 
-from indice_falla import calcular_indice_falla_anual # Asegúrate de que esta función realmente existe y es necesaria
+from core.indice_falla import calcular_indice_falla_anual # Asegúrate de que esta función realmente existe y es necesaria
 
 # --- Función Auxiliar (Eliminada, solo se usa la canónica de indice_falla.py) ---
 
@@ -119,8 +119,8 @@ def generar_resumen_mensual(df_bd, df_forma9, fecha_evaluacion):
     if os.getcwd() not in sys.path:
         sys.path.append(os.getcwd())
 
-    from mtbf import calcular_mtbf
-    from run_life_efectivo import calcular_run_life_efectivo
+    from core.mtbf import calcular_mtbf
+    from core.run_life_efectivo import calcular_run_life_efectivo
 
     runlife_rows = []
     
@@ -458,7 +458,7 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
         x_start = pd.to_datetime('2019-01-01')
         x_end = pd.to_datetime(fecha_evaluacion)
 
-    from theme import get_plotly_layout
+    from ui.theme import get_plotly_layout
     layout = get_plotly_layout()
     if titulo:
         layout['title'] = plotly_styled_title(titulo)
