@@ -12,3 +12,5 @@ xlrd>=2.0.1
 XlsxWriter>=3.1.2
 # Optional / recommended (used in some helper paths)
 python-magic>=0.4.27
+reportlab>=3.6.0
+kaleido>=0.2.1

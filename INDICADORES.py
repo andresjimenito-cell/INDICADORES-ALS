@@ -28,7 +28,7 @@ import importlib
 # Forzar recarga de módulos locales para evitar problemas de caché con el wrapper app.py
 _modules = [
     'header_ui', 'sidebar_ui', 'upload_ui', 'data_loader', 'styles', 
-    'calculations', 'kpis', 'processing', 'descargar',
+    'calculations', 'kpis', 'descargar',
     'tabs.tab_resumen', 'tabs.tab_performance', 'tabs.tab_mtbf', 
     'tabs.tab_fallas', 'tabs.tab_indices', 'tabs.tab_tablero', 'tabs.tab_campanas'
 ]
