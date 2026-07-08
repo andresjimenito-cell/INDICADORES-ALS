@@ -46,7 +46,7 @@ for _m in _modules:
 
 import pandas as pd
 from datetime import datetime
-import kpis
+from ui import kpis
 
 from data.config import COLOR_PRINCIPAL
 from ui.styles import apply_all_styles

@@ -123,7 +123,7 @@ def load_cached_data():
 # ===========================================================================
 
 @st.cache_data
-def find_header(file_obj, keywords, max_rows: int = 50):
+def find_header(file_obj, keywords, max_rows: int = 50) -> int | None:
     """
     Busca la fila del encabezado que contiene todas las palabras clave dadas.
     Retorna el índice de la fila (int) o None si no se encontró.
@@ -157,7 +157,7 @@ def find_header(file_obj, keywords, max_rows: int = 50):
         row_cols = [_norm(c) for c in row.tolist() if pd.notna(c)]
         if all(any(nk in col for col in row_cols) for nk in norm_keywords):
             file_obj.seek(0)
-            return i
+            return int(i)
 
     file_obj.seek(0)
     return None
@@ -236,7 +236,7 @@ def cargar_y_limpiar_datos(forma9_file, bd_file):
 
     # --- Limpieza FORMA 9 ---
     df_forma9.columns = [
-        " ".join(re.sub(r'[^A-Z0-9]', ' ', str(col).upper()).split()).replace('POZO NO', 'POZO')
+        " ".join(re.sub(r'[^A-Z0-9]', ' ', f"{col}".upper()).split()).replace('POZO NO', 'POZO')
         for col in df_forma9.columns
     ]
     fecha_col_forma9 = next((col for col in df_forma9.columns if 'FECHA' in col), None)
@@ -254,7 +254,7 @@ def cargar_y_limpiar_datos(forma9_file, bd_file):
 
     # --- Limpieza BD ---
     df_bd.columns = [
-        " ".join(re.sub(r'[^A-Z0-9]', ' ', str(col).upper()).split())
+        " ".join(re.sub(r'[^A-Z0-9]', ' ', f"{col}".upper()).split())
         for col in df_bd.columns
     ]
     run_col_bd       = next((col for col in df_bd.columns if 'RUN'             in col), None)
