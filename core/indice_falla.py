@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import streamlit as st
 from theme import get_colors, get_plotly_layout
 from datetime import timedelta
 
@@ -13,6 +14,7 @@ else:
 get_color_sequence = _colors.get('color_sequence', lambda mode=None: [COLOR_PRINCIPAL, '#00cfff', '#FFDE31', '#5AFFDA'])
 get_plotly_layout = get_plotly_layout
 
+@st.cache_data(show_spinner=False)
 def calcular_indice_falla_anual(df_bd, df_forma9, fecha_evaluacion, fecha_inicio=None):
     """
     Calcula los índices de falla para el rango especificado o los últimos 12 años por defecto,

@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
+import streamlit as st
 
+@st.cache_data(show_spinner=False)
 def calcular_run_life_efectivo(df_bd, df_forma9, fecha_evaluacion=None):
     """
     Calcula el Run Life Efectivo (tiempo real trabajado acumulado) para cada corrida (RUN).

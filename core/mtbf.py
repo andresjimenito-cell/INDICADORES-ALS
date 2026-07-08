@@ -22,6 +22,7 @@ get_color_sequence = _colors.get('color_sequence', lambda mode=None: [
 get_plotly_layout = get_plotly_layout
 styled_title = styled_title
 
+@st.cache_data(show_spinner=False)
 def calcular_mtbf(df_bd, fecha_evaluacion, col_life='RUN LIFE @ FALLA', col_indicador='INDICADOR_MTBF'):
     """
     Calcula el MTBF usando el método solicitado: filtrado, orden, columnas auxiliares y fórmula especial.

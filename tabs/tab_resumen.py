@@ -150,9 +150,133 @@ def _echarts_html(options: dict, height: int, chart_id: str) -> str:
 </script>"""
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# RENDER PRINCIPAL
-# ─────────────────────────────────────────────────────────────────────────────
+@st.cache_data(show_spinner=False)
+def obtener_tabla_resumen_mensual_calculada(df_bd_filtered, df_bd_als, unique_months, df_res, df_camp, df_forma9_filtered, selected_als):
+    import calendar
+    df_mensual = pd.DataFrame(index=unique_months)
+    _MES_COMPLETO = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+    df_mensual['Mes'] = [f"{_MES_COMPLETO[int(m[5:7]) - 1]} {m[:4]}" for m in df_mensual.index]
+    
+    # Fallas Totales del mes
+    df_mensual['Fallas Totales'] = [
+        df_bd_filtered[
+            (df_bd_filtered['FECHA_FALLA'].dt.month == int(m[5:7])) &
+            (df_bd_filtered['FECHA_FALLA'].dt.year == int(m[:4]))
+        ].shape[0] for m in df_mensual.index
+    ]
+    
+    # Fallas ALS del mes (para el ALS seleccionado)
+    df_mensual[f'Fallas {selected_als}'] = [
+        df_bd_als[
+            (df_bd_als['FECHA_FALLA'].dt.month == int(m[5:7])) &
+            (df_bd_als['FECHA_FALLA'].dt.year == int(m[:4]))
+        ].shape[0] for m in df_mensual.index
+    ]
+    
+    pozos_operativos_lista = []
+    pozos_on_lista = []
+    pozos_off_lista = []
+    pozos_operativos_als_lista = []
+    pozos_nuevos_lista = []
+    pozos_ws_lista = []
+    pozos_reactivados_lista = []
+    
+    df_bd_f = df_bd_filtered.copy()
+    df_bd_f['FECHA_RUN_DATE'] = df_bd_f['FECHA_RUN'].dt.normalize()
+    df_bd_f['FECHA_FALLA_DATE'] = df_bd_f['FECHA_FALLA'].dt.normalize()
+    df_bd_f['FECHA_PULL_DATE'] = df_bd_f['FECHA_PULL'].dt.normalize()
+    
+    df_bd_als_c = df_bd_als.copy()
+    df_bd_als_c['FECHA_RUN_DATE'] = df_bd_als_c['FECHA_RUN'].dt.normalize()
+    df_bd_als_c['FECHA_FALLA_DATE'] = df_bd_als_c['FECHA_FALLA'].dt.normalize()
+    df_bd_als_c['FECHA_PULL_DATE'] = df_bd_als_c['FECHA_PULL'].dt.normalize()
+    
+    df_forma9_f = df_forma9_filtered.copy()
+    df_forma9_f['FECHA_FORMA9_DATE'] = df_forma9_f['FECHA_FORMA9'].dt.normalize()
+    
+    for m_str in unique_months:
+        y = int(m_str[:4])
+        m = int(m_str[5:7])
+        last_day = calendar.monthrange(y, m)[1]
+        date_limit = pd.Timestamp(year=y, month=m, day=last_day).normalize()
+        
+        # 1. Pozos Operativos Totales
+        op_tot = df_bd_f[
+            (df_bd_f['FECHA_RUN_DATE'] <= date_limit) &
+            (df_bd_f['FECHA_FALLA_DATE'].isna() | (df_bd_f['FECHA_FALLA_DATE'] > date_limit)) &
+            (df_bd_f['FECHA_PULL_DATE'].isna() | (df_bd_f['FECHA_PULL_DATE'] > date_limit))
+        ]['POZO'].nunique()
+        pozos_operativos_lista.append(op_tot)
+        
+        # 2. Pozos ON
+        pozos_on = df_forma9_f[
+            (df_forma9_f['FECHA_FORMA9_DATE'].dt.month == m) &
+            (df_forma9_f['FECHA_FORMA9_DATE'].dt.year == y) &
+            (df_forma9_f['DIAS TRABAJADOS'] > 0)
+        ]['POZO'].nunique()
+        pozos_on_lista.append(pozos_on)
+        
+        # 3. Pozos OFF
+        pozos_off = max(0, op_tot - pozos_on)
+        pozos_off_lista.append(pozos_off)
+        
+        # 4. Pozos Operativos ALS
+        op_als = df_bd_als_c[
+            (df_bd_als_c['FECHA_RUN_DATE'] <= date_limit) &
+            (df_bd_als_c['FECHA_FALLA_DATE'].isna() | (df_bd_als_c['FECHA_FALLA_DATE'] > date_limit)) &
+            (df_bd_als_c['FECHA_PULL_DATE'].isna() | (df_bd_als_c['FECHA_PULL_DATE'] > date_limit))
+        ]['POZO'].nunique()
+        pozos_operativos_als_lista.append(op_als)
+        
+        # 5. Pozos nuevos e intervenciones (WS)
+        n_nuevo = df_res.loc[m_str, 'Nuevo'] if 'Nuevo' in df_res.columns and m_str in df_res.index else 0
+        n_ws = df_res.loc[m_str, 'WS'] if 'WS' in df_res.columns and m_str in df_res.index else 0
+        pozos_nuevos_lista.append(n_nuevo)
+        pozos_ws_lista.append(n_ws)
+        
+        # 6. Reactivaciones (ON en este mes, no ON en el anterior, sin nuevas corridas / WS en este mes)
+        prev_month = 12 if m == 1 else m - 1
+        prev_year = y - 1 if m == 1 else y
+        
+        wells_on_m = set(df_forma9_f[
+            (df_forma9_f['FECHA_FORMA9_DATE'].dt.month == m) &
+            (df_forma9_f['FECHA_FORMA9_DATE'].dt.year == y) &
+            (df_forma9_f['DIAS TRABAJADOS'] > 0)
+        ]['POZO'].astype(str).str.strip().unique())
+        
+        wells_on_prev = set(df_forma9_f[
+            (df_forma9_f['FECHA_FORMA9_DATE'].dt.month == prev_month) &
+            (df_forma9_f['FECHA_FORMA9_DATE'].dt.year == prev_year) &
+            (df_forma9_f['DIAS TRABAJADOS'] > 0)
+        ]['POZO'].astype(str).str.strip().unique())
+        
+        runs_m = df_camp[df_camp['Mes'] == m_str]
+        wells_new_m = set(runs_m[runs_m['RUN'] == 1]['POZO'].astype(str).str.strip().unique()) if 'RUN' in runs_m.columns else set()
+        wells_ws_m = set(runs_m[runs_m['RUN'] > 1]['POZO'].astype(str).str.strip().unique()) if 'RUN' in runs_m.columns else set()
+        
+        wells_reactivated = wells_on_m - wells_on_prev - wells_new_m - wells_ws_m
+        pozos_reactivados_lista.append(len(wells_reactivated))
+    
+    df_mensual['Pozos Operativos'] = pozos_operativos_lista
+    df_mensual['Pozos ON'] = pozos_on_lista
+    df_mensual['Pozos OFF'] = pozos_off_lista
+    df_mensual[f'Pozos Operativos {selected_als}'] = pozos_operativos_als_lista
+    
+    df_mensual['Índice Falla ON'] = [
+        f"{(t / o):.2%}" if o > 0 else "0.00%"
+        for t, o in zip(df_mensual['Fallas Totales'], df_mensual['Pozos ON'])
+    ]
+    df_mensual[f'Índice Falla {selected_als} ON'] = [
+        f"{(a / o):.2%}" if o > 0 else "0.00%"
+        for a, o in zip(df_mensual[f'Fallas {selected_als}'], df_mensual['Pozos ON'])
+    ]
+    
+    df_mensual['Pozos Nuevos'] = pozos_nuevos_lista
+    df_mensual['Pozos WS'] = pozos_ws_lista
+    df_mensual['Pozos Reactivados'] = pozos_reactivados_lista
+    return df_mensual
+
 
 def render_tab_resumen(
     df_bd_filtered,
@@ -329,130 +453,16 @@ def render_tab_resumen(
             else:
                 df_bd_als = df_bd_filtered.copy()
 
-            df_mensual = pd.DataFrame(index=unique_months)
-            _MES_COMPLETO = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-                             'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
-            df_mensual['Mes'] = [f"{_MES_COMPLETO[int(m[5:7]) - 1]} {m[:4]}" for m in df_mensual.index]
-            
-            # Fallas Totales del mes
-            df_mensual['Fallas Totales'] = [
-                df_bd_filtered[
-                    (df_bd_filtered['FECHA_FALLA'].dt.month == int(m[5:7])) &
-                    (df_bd_filtered['FECHA_FALLA'].dt.year == int(m[:4]))
-                ].shape[0] for m in df_mensual.index
-            ]
-            
-            # Fallas ALS del mes (para el ALS seleccionado)
-            df_mensual[f'Fallas {selected_als}'] = [
-                df_bd_als[
-                    (df_bd_als['FECHA_FALLA'].dt.month == int(m[5:7])) &
-                    (df_bd_als['FECHA_FALLA'].dt.year == int(m[:4]))
-                ].shape[0] for m in df_mensual.index
-            ]
-            
-            import calendar
-            pozos_operativos_lista = []
-            pozos_on_lista = []
-            pozos_off_lista = []
-            pozos_operativos_als_lista = []
-            pozos_nuevos_lista = []
-            pozos_ws_lista = []
-            pozos_reactivados_lista = []
-            
-            df_bd_f = df_bd_filtered.copy()
-            df_bd_f['FECHA_RUN_DATE'] = df_bd_f['FECHA_RUN'].dt.normalize()
-            df_bd_f['FECHA_FALLA_DATE'] = df_bd_f['FECHA_FALLA'].dt.normalize()
-            df_bd_f['FECHA_PULL_DATE'] = df_bd_f['FECHA_PULL'].dt.normalize()
-            
-            df_bd_als_c = df_bd_als.copy()
-            df_bd_als_c['FECHA_RUN_DATE'] = df_bd_als_c['FECHA_RUN'].dt.normalize()
-            df_bd_als_c['FECHA_FALLA_DATE'] = df_bd_als_c['FECHA_FALLA'].dt.normalize()
-            df_bd_als_c['FECHA_PULL_DATE'] = df_bd_als_c['FECHA_PULL'].dt.normalize()
-            
-            df_forma9_f = df_forma9_filtered.copy()
-            df_forma9_f['FECHA_FORMA9_DATE'] = df_forma9_f['FECHA_FORMA9'].dt.normalize()
-            
-            for m_str in unique_months:
-                y = int(m_str[:4])
-                m = int(m_str[5:7])
-                last_day = calendar.monthrange(y, m)[1]
-                date_limit = pd.Timestamp(year=y, month=m, day=last_day).normalize()
-                
-                # 1. Pozos Operativos Totales
-                op_tot = df_bd_f[
-                    (df_bd_f['FECHA_RUN_DATE'] <= date_limit) &
-                    (df_bd_f['FECHA_FALLA_DATE'].isna() | (df_bd_f['FECHA_FALLA_DATE'] > date_limit)) &
-                    (df_bd_f['FECHA_PULL_DATE'].isna() | (df_bd_f['FECHA_PULL_DATE'] > date_limit))
-                ]['POZO'].nunique()
-                pozos_operativos_lista.append(op_tot)
-                
-                # 2. Pozos ON
-                pozos_on = df_forma9_f[
-                    (df_forma9_f['FECHA_FORMA9_DATE'].dt.month == m) &
-                    (df_forma9_f['FECHA_FORMA9_DATE'].dt.year == y) &
-                    (df_forma9_f['DIAS TRABAJADOS'] > 0)
-                ]['POZO'].nunique()
-                pozos_on_lista.append(pozos_on)
-                
-                # 3. Pozos OFF
-                pozos_off = max(0, op_tot - pozos_on)
-                pozos_off_lista.append(pozos_off)
-                
-                # 4. Pozos Operativos ALS
-                op_als = df_bd_als_c[
-                    (df_bd_als_c['FECHA_RUN_DATE'] <= date_limit) &
-                    (df_bd_als_c['FECHA_FALLA_DATE'].isna() | (df_bd_als_c['FECHA_FALLA_DATE'] > date_limit)) &
-                    (df_bd_als_c['FECHA_PULL_DATE'].isna() | (df_bd_als_c['FECHA_PULL_DATE'] > date_limit))
-                ]['POZO'].nunique()
-                pozos_operativos_als_lista.append(op_als)
-                
-                # 5. Pozos nuevos e intervenciones (WS)
-                n_nuevo = df_res.loc[m_str, 'Nuevo'] if 'Nuevo' in df_res.columns and m_str in df_res.index else 0
-                n_ws = df_res.loc[m_str, 'WS'] if 'WS' in df_res.columns and m_str in df_res.index else 0
-                pozos_nuevos_lista.append(n_nuevo)
-                pozos_ws_lista.append(n_ws)
-                
-                # 6. Reactivaciones (ON en este mes, no ON en el anterior, sin nuevas corridas / WS en este mes)
-                prev_month = 12 if m == 1 else m - 1
-                prev_year = y - 1 if m == 1 else y
-                
-                wells_on_m = set(df_forma9_f[
-                    (df_forma9_f['FECHA_FORMA9_DATE'].dt.month == m) &
-                    (df_forma9_f['FECHA_FORMA9_DATE'].dt.year == y) &
-                    (df_forma9_f['DIAS TRABAJADOS'] > 0)
-                ]['POZO'].astype(str).str.strip().unique())
-                
-                wells_on_prev = set(df_forma9_f[
-                    (df_forma9_f['FECHA_FORMA9_DATE'].dt.month == prev_month) &
-                    (df_forma9_f['FECHA_FORMA9_DATE'].dt.year == prev_year) &
-                    (df_forma9_f['DIAS TRABAJADOS'] > 0)
-                ]['POZO'].astype(str).str.strip().unique())
-                
-                runs_m = df_camp[df_camp['Mes'] == m_str]
-                wells_new_m = set(runs_m[runs_m['RUN'] == 1]['POZO'].astype(str).str.strip().unique()) if 'RUN' in runs_m.columns else set()
-                wells_ws_m = set(runs_m[runs_m['RUN'] > 1]['POZO'].astype(str).str.strip().unique()) if 'RUN' in runs_m.columns else set()
-                
-                wells_reactivated = wells_on_m - wells_on_prev - wells_new_m - wells_ws_m
-                pozos_reactivados_lista.append(len(wells_reactivated))
-            
-            df_mensual['Pozos Operativos'] = pozos_operativos_lista
-            df_mensual['Pozos ON'] = pozos_on_lista
-            df_mensual['Pozos OFF'] = pozos_off_lista
-            df_mensual[f'Pozos Operativos {selected_als}'] = pozos_operativos_als_lista
-            
-            df_mensual['Índice Falla ON'] = [
-                f"{(t / o):.2%}" if o > 0 else "0.00%"
-                for t, o in zip(df_mensual['Fallas Totales'], df_mensual['Pozos ON'])
-            ]
-            df_mensual[f'Índice Falla {selected_als} ON'] = [
-                f"{(a / o):.2%}" if o > 0 else "0.00%"
-                for a, o in zip(df_mensual[f'Fallas {selected_als}'], df_mensual['Pozos ON'])
-            ]
-            
-            df_mensual['Pozos Nuevos'] = pozos_nuevos_lista
-            df_mensual['Pozos WS'] = pozos_ws_lista
-            df_mensual['Pozos Reactivados'] = pozos_reactivados_lista
-            
+            df_mensual = obtener_tabla_resumen_mensual_calculada(
+                df_bd_filtered,
+                df_bd_als,
+                unique_months,
+                df_res,
+                df_camp,
+                df_forma9_filtered,
+                selected_als
+            )
+
             render_hud_table(df_mensual, table_id="tabla_resumen_mensual_campana")
 
     st.markdown("<div style='height:4px;'></div>", unsafe_allow_html=True)
