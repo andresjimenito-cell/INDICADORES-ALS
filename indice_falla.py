@@ -26,6 +26,9 @@ def calcular_indice_falla_anual(df_bd, df_forma9, fecha_evaluacion, fecha_inicio
     else:
         start_date = end_date - timedelta(days=365 * 12)
     
+    # Start 12 months earlier to have history for rolling averages
+    calc_start_date = start_date - pd.DateOffset(months=12)
+    
     # Asegurar que las columnas de fecha son datetime
     df_bd = df_bd.copy()
     df_bd['FECHA_RUN'] = pd.to_datetime(df_bd['FECHA_RUN'])
@@ -41,7 +44,7 @@ def calcular_indice_falla_anual(df_bd, df_forma9, fecha_evaluacion, fecha_inicio
     df_bd['RUN_LIFE_EFECTIVO'] = pd.to_numeric(df_bd['RUN_LIFE_EFECTIVO'], errors='coerce').fillna(0)
     
     monthly_data = []
-    current_month_date = start_date.replace(day=1)
+    current_month_date = calc_start_date.replace(day=1)
     
     while current_month_date <= end_date:
         fecha_fin_mes = (pd.to_datetime(current_month_date) + pd.offsets.MonthEnd(0)).normalize()
@@ -167,6 +170,9 @@ def calcular_indice_falla_anual(df_bd, df_forma9, fecha_evaluacion, fecha_inicio
     df_mensual['Indice_Falla_Rolling_ALS_ON_1500'] = (
         df_mensual['Fallas_ALS_1500_Rolling'] / df_mensual['Pozos_ON_1500_Rolling_Avg']
     ).replace([np.inf, -np.inf], np.nan).fillna(0)
+    
+    # Filter the final monthly dataframe to only contain the requested date range for the chart/output
+    df_mensual = df_mensual[df_mensual['Mes'] >= start_date.strftime('%Y-%m')].copy()
     
     # --- 3. CÁLCULO DE LA TABLA DE RESUMEN (FINAL) ---
     df_last_12 = df_mensual.tail(12).copy()

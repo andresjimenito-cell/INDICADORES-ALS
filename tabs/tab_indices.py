@@ -176,10 +176,38 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
         st.warning("Datos insuficientes para calcular índices.")
         return
 
+    # Use the full history (date-unfiltered) for accurate rolling average calculations
+    df_raw = st.session_state.get('df_bd_calculated')
+    df_f9_raw = st.session_state.get('df_forma9_calculated')
+    
+    if df_raw is not None and df_f9_raw is not None:
+        df_bd_untr = df_raw.copy()
+        if 'ACTIVO' in df_bd_untr.columns:
+            df_bd_untr = df_bd_untr[df_bd_untr['ACTIVO'].astype(str).str.upper().str.strip() != 'ECUADOR']
+        
+        _filtros = {
+            'ACTIVO':    st.session_state.get('general_activo_filter',    'TODOS'),
+            'BLOQUE':    st.session_state.get('general_bloque_filter',    'TODOS'),
+            'CAMPO':     st.session_state.get('general_campo_filter',     'TODOS'),
+            'ALS':       st.session_state.get('general_als_filter',       'TODOS'),
+            'PROVEEDOR': st.session_state.get('general_proveedor_filter', 'TODOS'),
+            'NICK':      st.session_state.get('general_nick_filter',      'TODOS'),
+        }
+        for col, val in _filtros.items():
+            if val != 'TODOS' and col in df_bd_untr.columns:
+                df_bd_untr = df_bd_untr[df_bd_untr[col] == val]
+                
+        df_forma9_untr = df_f9_raw.copy()
+        pozos_en_resumen = df_bd_untr['POZO'].unique() if 'POZO' in df_bd_untr.columns else []
+        df_forma9_untr = df_forma9_untr[df_forma9_untr['POZO'].isin(pozos_en_resumen)].copy()
+    else:
+        df_bd_untr = df_bd_filtered.copy()
+        df_forma9_untr = df_forma9_filtered.copy()
+
     try:
         indice_resumen_df, df_mensual_hist = calcular_indice_falla_anual(
-            df_bd_filtered,
-            df_forma9_filtered,
+            df_bd_untr,
+            df_forma9_untr,
             fecha_evaluacion,
             fecha_inicio
         )

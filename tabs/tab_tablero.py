@@ -567,7 +567,7 @@ def render_tab_tablero(
     try:
         from indice_falla import calcular_indice_falla_anual
         _, df_mensual_if = calcular_indice_falla_anual(
-            df.copy(), df_forma9_untr.copy(), fecha_evaluacion
+            df.copy(), df_forma9_untr.copy(), fecha_evaluacion, st.session_state.get('fecha_inicio_state')
         )
 
         _MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
@@ -579,10 +579,10 @@ def render_tab_tablero(
             label = f"{_MESES[m_idx]}-{m_str[2:4]}"
             if_cats.append(label)
             on_m   = int(row.get('Pozos ON', 0))
-            if_roll = float(row.get('Indice_Falla_Rolling_ALS_ON', 0.0)) * 100.0
+            if_roll = float(row.get('Indice_Falla_Rolling_ALS_Total', 0.0)) * 100.0
             if_vals.append(if_roll)
             
-            if_tot_roll = float(row.get('Indice_Falla_Rolling_ON', 0.0)) * 100.0
+            if_tot_roll = float(row.get('Indice_Falla_Rolling_Total', 0.0)) * 100.0
             if_tot_vals.append(if_tot_roll)
             
             on_vals.append(on_m)
@@ -591,7 +591,7 @@ def render_tab_tablero(
 
         last_row = df_mensual_if.tail(1)
         if not last_row.empty:
-            if_actual = float(last_row['Indice_Falla_Rolling_ALS_ON'].iloc[0]) * 100.0
+            if_actual = float(last_row['Indice_Falla_Rolling_ALS_Total'].iloc[0]) * 100.0
         elif if_vals:
             if_actual = if_vals[-1]
 
@@ -628,10 +628,10 @@ def render_tab_tablero(
             ]['POZO'].nunique()) if 'POZO' in df.columns else 0
             if_cats.append(f"{_MESES[m - 1]}-{str(y)[2:4]}")
             
-            if_m = (fallas_als_m / max(on_m, 1)) * 100.0
+            if_m = (fallas_als_m / max(op_m, 1)) * 100.0
             if_vals.append(if_m)
             
-            if_tot_m = (fallas_m / max(on_m, 1)) * 100.0
+            if_tot_m = (fallas_m / max(op_m, 1)) * 100.0
             if_tot_vals.append(if_tot_m)
             
             on_vals.append(on_m)
@@ -660,6 +660,7 @@ def render_tab_tablero(
     mtbf_prev_val = 0.0
     rl_prev_val = 0.0
 
+    df_raw = st.session_state.get('df_bd_calculated')
     if df_raw is not None:
         df_prev = df_raw.copy()
         if 'ACTIVO' in df_prev.columns:
@@ -999,7 +1000,7 @@ def render_tab_tablero(
 </head>
 <body>
     <div class="tbl-panel">
-        <div class="tbl-sec-title">Índice de Falla (IF ALS ON)</div>
+        <div class="tbl-sec-title">Índice de Falla (I.F. ALS)</div>
         <div id="gauge_if" class="chart-container" style="height: 190px;"></div>
         <div id="chart_if_anual" class="chart-container" style="height: 230px;"></div>
     </div>
@@ -1103,7 +1104,7 @@ def render_tab_tablero(
                     extraCssText: "box-shadow: 0 4px 16px rgba(19,118,89,0.12);"
                 }},
                 legend: {{
-                    data: ["Pozos ON", "Pozos OFF", "IF ALS ON (%)", "IF Total ON (%)"],
+                    data: ["Pozos ON", "Pozos OFF", "I.F. ALS (%)", "I.F. Total (%)"],
                     bottom: 0,
                     itemHeight: 7,
                     itemGap: 12,
@@ -1165,7 +1166,7 @@ def render_tab_tablero(
                         }}
                     }},
                     {{
-                        name: "IF ALS ON (%)",
+                        name: "I.F. ALS (%)",
                         type: "line",
                         yAxisIndex: 1,
                         data: {json.dumps(if_vals)},
@@ -1203,7 +1204,7 @@ def render_tab_tablero(
                         }}
                     }},
                     {{
-                        name: "IF Total ON (%)",
+                        name: "I.F. Total (%)",
                         type: "line",
                         yAxisIndex: 1,
                         data: {json.dumps(if_tot_vals)},
@@ -1470,6 +1471,7 @@ def render_tab_tablero(
                         name: "POZOS",
                         type: "bar",
                         barWidth: "40%",
+                        itemStyle: {{ color: "{_G}" }},
                         label: {{
                             show: true,
                             position: "insideTop",
@@ -1527,9 +1529,10 @@ def render_tab_tablero(
                         type: "line",
                         yAxisIndex: 1,
                         smooth: true,
-                        symbol: "none",
-                        lineStyle: {{ width: 0 }},
-                        itemStyle: {{ color: "#000000" }},
+                        symbol: "diamond",
+                        symbolSize: 8,
+                        lineStyle: {{ width: 3, color: "{_Y}" }},
+                        itemStyle: {{ color: "{_Y}" }},
                         label: {{
                             show: true,
                             position: "top",
