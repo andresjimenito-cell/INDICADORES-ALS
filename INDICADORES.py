@@ -23,7 +23,15 @@ except Exception:
     pass
 
 import sys
+import os
 import importlib
+
+# Ajustar sys.path para soportar las subcarpetas del proyecto
+base_dir = os.path.dirname(__file__)
+for subfolder in ['core', 'data', 'ui', 'tabs']:
+    path_dir = os.path.abspath(os.path.join(base_dir, subfolder))
+    if path_dir not in sys.path:
+        sys.path.append(path_dir)
 
 # Forzar recarga de módulos locales para evitar problemas de caché con el wrapper app.py
 _modules = [

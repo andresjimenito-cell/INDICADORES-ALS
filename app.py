@@ -1,9 +1,17 @@
 # === IMPORTS ===
+import sys
+import os
+
+# Ajustar sys.path para soportar las subcarpetas del proyecto
+base_dir = os.path.dirname(__file__)
+for subfolder in ['core', 'data', 'ui', 'tabs']:
+    path_dir = os.path.abspath(os.path.join(base_dir, subfolder))
+    if path_dir not in sys.path:
+        sys.path.append(path_dir)
+
 import streamlit as st
 import time
 import subprocess
-import sys
-import os
 import importlib.util
 import tema
 
