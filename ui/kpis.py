@@ -8,10 +8,10 @@ except ImportError:
 
 import datetime 
 import pandas as pd 
-from theme import get_colors
-import mtbf as mtbf_mod
+from ui.theme import get_colors
+import core.mtbf as mtbf_mod
 
-import tema
+import ui.tema as tema
 
 _colors = get_colors()
 # Usar Magenta Neon como color principal para KPIs
@@ -84,7 +84,7 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
         df_bd_als = df_bd.copy()
 
     # === SOLUCIÓN: Premium KPI Hierarchy Map v5.0 (Vibrant & Interactive) ===
-    from run_life_efectivo import calcular_run_life_efectivo
+    from core.run_life_efectivo import calcular_run_life_efectivo
     import streamlit.components.v1 as components
     
     if fecha_evaluacion is None:
@@ -172,7 +172,7 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
     rl_label = f"TOTAL: {rl_todos:.2f} Días\n{selected_als}: {rl_als:.2f} Días"
 
     try:
-        from run_life_efectivo import calcular_run_life_efectivo
+        from core.run_life_efectivo import calcular_run_life_efectivo
         rle_total_val, _ = calcular_run_life_efectivo(df_bd, df_forma9, fecha_evaluacion)
         _, df_bd_als_rle = calcular_run_life_efectivo(df_bd_als_calc, df_forma9, fecha_evaluacion)
         rle_als_val = df_bd_als_rle['RUN_LIFE_EFECTIVO'].mean() if 'RUN_LIFE_EFECTIVO' in df_bd_als_rle.columns else 0
@@ -194,7 +194,7 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
                 return str(row['Valor'].values[0])
         return "N/D"
         
-    from indice_falla import calcular_indice_falla_anual
+    from core.indice_falla import calcular_indice_falla_anual
     if_on = get_if_val(indice_resumen_df, 'Índice de Falla ON')
     
     try:

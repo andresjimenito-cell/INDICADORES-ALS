@@ -11,9 +11,9 @@ from datetime import timedelta
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
-from config import COLOR_PRINCIPAL
-from calculations import clasificar_razon_ia, highlight_problema
-from styles import render_hud_table
+from data.config import COLOR_PRINCIPAL
+from core.calculations import clasificar_razon_ia, highlight_problema
+from ui.styles import render_hud_table
 
 def clasificar_runlife(rl):
     """Categoriza el Run Life en etapas HUD."""
