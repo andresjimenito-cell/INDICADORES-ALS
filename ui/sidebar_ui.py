@@ -127,6 +127,18 @@ section[data-testid="stSidebar"] .stButton > button:hover {
     background: #d97706 !important;
     color: #ffffff !important;
 }
+
+/* POPOVER en sidebar — separación clara */
+section[data-testid="stSidebar"] div[data-testid="stPopover"] {
+    margin-top: 6px !important;
+    margin-bottom: 6px !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stPopover"] > button {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 36px !important;
+    padding: 6px 12px !important;
+}
 </style>
 """
 
@@ -210,6 +222,16 @@ def render_sidebar() -> dict:
             opts = _ensure(_unique_options(df_calc, col), _FILTER_KEYS[col])
             _select(_FILTER_LABELS[col], _FILTER_ICONS[col], opts, _FILTER_KEYS[col])
 
+    st.sidebar.markdown('</div>', unsafe_allow_html=True)
+
+    # ── Separador + herramientas ─────────────────────────────────────────────
+    st.sidebar.markdown(_divider(), unsafe_allow_html=True)
+
+    st.sidebar.markdown(_section_header("Herramientas"), unsafe_allow_html=True)
+    st.sidebar.markdown('<div style="padding: 4px 10px 8px 10px;">', unsafe_allow_html=True)
+
+    # Upload de configuración
+    render_upload_section(sidebar=True)
     st.sidebar.markdown('</div>', unsafe_allow_html=True)
 
     # ── Separador + estado de filtros activos ────────────────────────────────

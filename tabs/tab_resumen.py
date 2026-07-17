@@ -1,164 +1,56 @@
 """
-tabs/tab_resumen.py
-===================
-Dashboard General — Layout v3  (Estética refinada)
-
-Estructura:
-  1. KPIs HUD Técnicos (No Scroll)
-  2. Performance | Vida Útil | Operatividad (Triple Columna 1:1:1)
-  3. Campaña Anual (100%)
-  4. Treemap (100%)
-  5. Detalle Campaña (tabla expandible)
+tabs/tab_resumen.py  —  v4.0 Dashboard Ejecutivo de Resumen General
+===================================================================
+Optimizaciones visuales y analíticas extraordinarias:
+1. Ribbon superior MoM con tendencias en delta (TMEF, RLE, Pozos ON, Índice Falla)
+2. Sección de Confiabilidad y Operatividad rediseñada en 2 columnas balanceadas
+3. Heatmap de Operatividad Estacional (Pozo vs. Mes) para detectar paradas e intermitencias
+4. Balance de inventario mensual y detalle en tablas interactivas con badges
 """
 
 import json
+import calendar
 import pandas as pd
 import numpy as np
 import streamlit as st
 import streamlit.components.v1 as components
-import plotly.express as px
-
 from config import COLOR_PRINCIPAL
 import kpis
-from grafico import generar_grafico_resumen, render_premium_echarts
-from grafico_run_life import render_premium_echarts_run_life, render_premium_echarts_pozos
+from grafico import generar_grafico_resumen
 from styles import render_hud_table
-from indice_falla import calcular_indice_falla_anual
+from calculations import calcular_run_life_efectivo
+from mtbf import calcular_mtbf
 
+_G   = "#137659"
+_G2  = "#0a4d34"
+_Y   = "#c09c2e"
+_R   = "#c62828"
+_T   = "#1f221e"
+_T2  = "#455a72"
+META_MTBF = 2190
+META_RL   = 1500
 
-# ─────────────────────────────────────────────────────────────────────────────
-# CONSTANTES DE DISEÑO
-# ─────────────────────────────────────────────────────────────────────────────
-
-_SURFACE  = "#ffffff"
-_BORDER   = "rgba(19, 118, 89, 0.15)"
-_RADIUS   = "8px"
-
-# Paleta de acento por KPI
-_CYAN    = "#137659"
-_GREEN   = "#2e7d32"
-_RED     = "#c62828"
-_MAGENTA = "#c09c2e"
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# HELPERS DE UI
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _inject_global_css() -> None:
-    """Inyecta CSS global una sola vez: scrollbar, expander, métricas."""
-    st.markdown("""
-<style>
-/* ── Scrollbar fina ── */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(19, 118, 89, 0.25); border-radius: 4px; }
-
-/* ── Expander sin bordes gruesos ── */
-.streamlit-expanderHeader {
-    font-family: 'Arial', sans-serif !important;
-    font-size: 0.68rem !important;
-    font-weight: 700 !important;
-    color: #137659 !important;
-    letter-spacing: 1.5px;
-    background: rgba(19, 118, 89, 0.05) !important;
-    border: 1px solid rgba(19, 118, 89, 0.15) !important;
-    border-radius: 6px !important;
-    padding: 6px 12px !important;
-}
-.streamlit-expanderContent {
-    border: 1px solid rgba(19, 118, 89, 0.1) !important;
-    border-top: none !important;
-    border-radius: 0 0 6px 6px !important;
-    background: #ffffff !important;
-    padding: 8px !important;
-}
-
-/* ── Elimina padding excesivo de columnas ── */
-[data-testid="column"] > div { padding: 0 4px !important; }
-
-/* ── Ajuste de espacio superior (Zero Waste) ── */
-div[data-testid="stVerticalBlock"] > div:first-child {
-    margin-top: 0px !important;
-}
-
-/* Reducir padding interno de los tabs de Streamlit */
-div[data-testid="stTab"] {
-    padding-top: 0rem !important;
-}
-
-.kpi-hierarchy-container {
-    margin-top: -10px !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
-
-def _kpi_card(icon: str, label: str, value: str, color: str, sublabel: str = "") -> str:
-    """Card KPI compacta (Legacy)."""
-    glow = f"{color}22"
-    return f"""
-<div style="background:{_SURFACE}; border:1px solid {_BORDER}; border-left:2px solid {color}; border-radius:{_RADIUS}; padding:8px 12px; display:flex; align-items:center; gap:10px; box-shadow:inset 0 0 24px {glow}; min-height:54px;">
-    <div style="width:32px; height:32px; background:{glow}; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:1rem;">{icon}</div>
-    <div style="min-width:0;">
-        <div style="font-size:0.5rem; font-weight:700; color:#455a72; letter-spacing:1.8px; text-transform:uppercase; font-family:'Arial', sans-serif !important;">{label}</div>
-        <div style="font-size:1.25rem; font-weight:800; color:{color}; line-height:1.15;">{value}</div>
-    </div>
-</div>"""
-
-
-def _section_title(text: str, color: str = _CYAN) -> None:
-    """Título de sección: línea izquierda + texto en monospace."""
-    st.markdown(
-        f"""<div style="
-            font-family: 'Arial', sans-serif !important;
-            font-size: 0.58rem;
-            font-weight: 700;
-            color: {color};
-            letter-spacing: 2.5px;
-            text-transform: uppercase;
-            border-left: 2px solid {color};
-            padding: 2px 0 2px 8px;
-            margin: 15px 0 10px 0;
-            opacity: 0.9;
-        ">{text}</div>""",
-        unsafe_allow_html=True,
+def _echarts(opts: dict, h: int, cid: str) -> str:
+    return (
+        f'<!DOCTYPE html><html><head><meta charset="utf-8">'
+        f'<style>body {{ margin: 0; padding: 0; background: transparent; overflow: hidden; }}'
+        f'#{cid} {{ width:100%; height:{h}px; background:#ffffff;'
+        f'border-radius:14px; border:1px solid rgba(19,118,89,0.13); overflow:hidden;'
+        f'box-shadow:0 2px 8px rgba(0,0,0,0.04); }}</style></head><body>'
+        f'<div id="{cid}"></div>'
+        f'<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>'
+        f'<script>(function(){{var c=echarts.init(document.getElementById("{cid}"),null);'
+        f'c.setOption({json.dumps(opts)});'
+        f'window.addEventListener("resize",function(){{c.resize();}});}})();</script>'
+        f'</body></html>'
     )
 
-
-def _mini_metric(label: str, value: str, color: str) -> str:
-    """Micro-tarjeta para conteos dentro de la campaña anual."""
-    return f"""
-<div style="background:{color}0d; border:1px solid {color}25; border-radius:6px; padding:5px 10px; margin-bottom:4px;">
-    <div style="color:{color}; font-size:0.48rem; font-weight:700; letter-spacing:2px; text-transform:uppercase; font-family:'Arial', sans-serif !important;">{label}</div>
-    <div style="font-size:1.3rem; font-weight:900; color:#1f221e; line-height:1.1;">{value}</div>
-</div>"""
-
-
-def _echarts_html(options: dict, height: int, chart_id: str) -> str:
-    """Wrapper mínimo para ECharts con tema claro y contenedor premium."""
-    return f"""
-<div id="{chart_id}" style="width:100%;height:{height}px;background:#ffffff;border-radius:12px;border:1px solid rgba(19, 118, 89, 0.15);overflow:hidden;"></div>
-<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
-<script>
-(function(){{
-    var el = document.getElementById('{chart_id}');
-    var chart = echarts.init(el, null, {{renderer:'canvas'}});
-    chart.setOption({json.dumps(options)});
-    new ResizeObserver(function(){{ chart.resize(); }}).observe(el);
-}})();
-</script>"""
-
-
-@st.cache_data(show_spinner=False)
 def obtener_tabla_resumen_mensual_calculada(df_bd_filtered, df_bd_als, unique_months, df_res, df_camp, df_forma9_filtered, selected_als):
-    import calendar
     df_mensual = pd.DataFrame(index=unique_months)
     _MES_COMPLETO = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
                      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
     df_mensual['Mes'] = [f"{_MES_COMPLETO[int(m[5:7]) - 1]} {m[:4]}" for m in df_mensual.index]
     
-    # Fallas Totales del mes
     df_mensual['Fallas Totales'] = [
         df_bd_filtered[
             (df_bd_filtered['FECHA_FALLA'].dt.month == int(m[5:7])) &
@@ -166,7 +58,6 @@ def obtener_tabla_resumen_mensual_calculada(df_bd_filtered, df_bd_als, unique_mo
         ].shape[0] for m in df_mensual.index
     ]
     
-    # Fallas ALS del mes (para el ALS seleccionado)
     df_mensual[f'Fallas {selected_als}'] = [
         df_bd_als[
             (df_bd_als['FECHA_FALLA'].dt.month == int(m[5:7])) &
@@ -201,7 +92,6 @@ def obtener_tabla_resumen_mensual_calculada(df_bd_filtered, df_bd_als, unique_mo
         last_day = calendar.monthrange(y, m)[1]
         date_limit = pd.Timestamp(year=y, month=m, day=last_day).normalize()
         
-        # 1. Pozos Operativos Totales
         op_tot = df_bd_f[
             (df_bd_f['FECHA_RUN_DATE'] <= date_limit) &
             (df_bd_f['FECHA_FALLA_DATE'].isna() | (df_bd_f['FECHA_FALLA_DATE'] > date_limit)) &
@@ -209,7 +99,6 @@ def obtener_tabla_resumen_mensual_calculada(df_bd_filtered, df_bd_als, unique_mo
         ]['POZO'].nunique()
         pozos_operativos_lista.append(op_tot)
         
-        # 2. Pozos ON
         pozos_on = df_forma9_f[
             (df_forma9_f['FECHA_FORMA9_DATE'].dt.month == m) &
             (df_forma9_f['FECHA_FORMA9_DATE'].dt.year == y) &
@@ -217,11 +106,9 @@ def obtener_tabla_resumen_mensual_calculada(df_bd_filtered, df_bd_als, unique_mo
         ]['POZO'].nunique()
         pozos_on_lista.append(pozos_on)
         
-        # 3. Pozos OFF
         pozos_off = max(0, op_tot - pozos_on)
         pozos_off_lista.append(pozos_off)
         
-        # 4. Pozos Operativos ALS
         op_als = df_bd_als_c[
             (df_bd_als_c['FECHA_RUN_DATE'] <= date_limit) &
             (df_bd_als_c['FECHA_FALLA_DATE'].isna() | (df_bd_als_c['FECHA_FALLA_DATE'] > date_limit)) &
@@ -229,13 +116,11 @@ def obtener_tabla_resumen_mensual_calculada(df_bd_filtered, df_bd_als, unique_mo
         ]['POZO'].nunique()
         pozos_operativos_als_lista.append(op_als)
         
-        # 5. Pozos nuevos e intervenciones (WS)
         n_nuevo = df_res.loc[m_str, 'Nuevo'] if 'Nuevo' in df_res.columns and m_str in df_res.index else 0
         n_ws = df_res.loc[m_str, 'WS'] if 'WS' in df_res.columns and m_str in df_res.index else 0
         pozos_nuevos_lista.append(n_nuevo)
         pozos_ws_lista.append(n_ws)
         
-        # 6. Reactivaciones (ON en este mes, no ON en el anterior, sin nuevas corridas / WS en este mes)
         prev_month = 12 if m == 1 else m - 1
         prev_year = y - 1 if m == 1 else y
         
@@ -278,25 +163,84 @@ def obtener_tabla_resumen_mensual_calculada(df_bd_filtered, df_bd_als, unique_mo
     return df_mensual
 
 
-def render_tab_resumen(
-    df_bd_filtered,
-    df_forma9_filtered,
-    reporte_runes_filtered,
-    fecha_evaluacion,
-    selected_activo,
-):
-    """Dashboard General v3 — Layout Optimizado Sin Scroll."""
-
-    _inject_global_css()
+def _render_heatmap_operatividad(df_forma9, unique_months):
+    """Genera un mapa de calor espectacular de Pozos vs Meses de operatividad (días trabajados)."""
+    if df_forma9.empty:
+        return ""
     
-    # Importar funciones de gráficos al inicio para evitar UnboundLocalError
-    from grafico import generar_grafico_resumen
-    from grafico_run_life import generar_grafico_run_life, generar_grafico_pozos_indices
+    df_f9 = df_forma9.copy()
+    df_f9['MES'] = pd.to_datetime(df_f9['FECHA_FORMA9'], errors='coerce').dt.strftime('%Y-%m')
+    df_f9 = df_f9[df_f9['MES'].isin(unique_months)]
+    
+    dias_col = next((c for c in df_f9.columns if 'DIAS' in str(c).upper() and 'TRAB' in str(c).upper()), 'DIAS TRABAJADOS')
+    df_f9[dias_col] = pd.to_numeric(df_f9[dias_col], errors='coerce').fillna(0)
+    
+    # Pivotar para obtener Pozo vs Mes
+    pivot = df_f9.pivot_table(index='POZO', columns='MES', values=dias_col, aggfunc='mean').fillna(0)
+    
+    # Filtrar solo el Top 25 pozos con más intermitencia (desviación estándar mayor a 0)
+    stds = pivot.std(axis=1)
+    top_pozos = stds.sort_values(ascending=False).head(22).index.tolist()
+    pivot = pivot.loc[top_pozos]
+    
+    pozos_y = pivot.index.tolist()
+    meses_x = pivot.columns.tolist()
+    
+    # Formatear datos para ECharts Heatmap: [x_index, y_index, value]
+    data_pts = []
+    for y_idx, pozo in enumerate(pozos_y):
+        for x_idx, mes in enumerate(meses_x):
+            val = round(float(pivot.at[pozo, mes]), 1)
+            data_pts.append([x_idx, y_idx, val])
+            
+    heatmap_opts = {
+        "backgroundColor": "transparent",
+        "title": {"text": "ANÁLISIS ESTACIONAL — DÍAS TRABAJADOS (TOP INTERMITENCIA)",
+                  "left": "center", "top": 4,
+                  "textStyle": {"color": _G, "fontSize": 12, "fontFamily": "Inter, sans-serif", "fontWeight": "bold"},
+                  "subtext": "Verde oscuro = mes operativo completo (30d) | Blanco/Gris = pozo apagado",
+                  "subtextStyle": {"color": _T2, "fontSize": 9, "fontFamily": "Inter, sans-serif"}},
+        "tooltip": {"position": "top",
+                    "backgroundColor": "rgba(255,255,255,0.97)", "borderColor": _G,
+                    "textStyle": {"color": _T, "fontFamily": "Inter, sans-serif"},
+                    "formatter": "function(p){return 'Pozo: <b>'+p.name+'</b><br/>Mes: '+p.value[0]+'<br/>Días: <b>'+p.value[1]+' d</b>';}"},
+        "grid": {"left": "3%", "right": "3%", "bottom": "15%", "top": "20%", "containLabel": True},
+        "xAxis": {"type": "category", "data": meses_x,
+                  "splitArea": {"show": True},
+                  "axisLabel": {"color": _T2, "fontSize": 9, "fontFamily": "Inter, sans-serif", "rotate": 25}},
+        "yAxis": {"type": "category", "data": pozos_y,
+                  "splitArea": {"show": True},
+                  "axisLabel": {"color": _T, "fontSize": 9, "fontFamily": "Inter, sans-serif"}},
+        "visualMap": {
+            "min": 0, "max": 31, "calculable": True, "orient": "horizontal", "left": "center", "bottom": 0,
+            "inRange": {"color": ["#f3f4f6", "#e8f5ee", "#a0d9c0", "#137659"]},
+            "textStyle": {"color": _T2, "fontSize": 9, "fontFamily": "Inter, sans-serif"}
+        },
+        "series": [{
+            "name": "Días Trabajados", "type": "heatmap",
+            "data": [{"value": [x, y, v], "name": pozos_y[y]} for x, y, v in data_pts],
+            "label": {"show": False},
+            "emphasis": {"itemStyle": {"shadowBlur": 10, "shadowColor": "rgba(0, 0, 0, 0.5)"}}
+        }]
+    }
+    return _echarts(heatmap_opts, 360, "summary-heatmap")
 
-    # ── Pre-procesamiento (Obtener datos alineados sin restricciones del periodo) ──
+
+def render_tab_resumen(df_bd_filtered, df_forma9_filtered, reporte_runes_filtered, fecha_evaluacion, selected_activo):
+    """Renderiza el Tab Resumen con diseño ejecutivo BI de alto nivel."""
+
+    fecha_eval_dt = pd.to_datetime(fecha_evaluacion)
+    fecha_ini_val = st.session_state.get('fecha_inicio_state')
+    if fecha_ini_val is not None:
+        fecha_ini_dt = pd.to_datetime(fecha_ini_val)
+    else:
+        fecha_ini_dt = fecha_eval_dt - pd.DateOffset(years=1)
+    fecha_ini_dt = fecha_ini_dt.normalize()
+    fecha_ini_label = fecha_ini_dt.strftime('%d/%m/%Y')
+    fecha_eval_label = fecha_eval_dt.strftime('%d/%m/%Y')
+
+    # ── 0. OBTENER BASES CRUDAS COMPLETAS PARA HISTÓRICO SIN FILTRO DE FECHAS DE PERIODO ──
     df_bd_raw = st.session_state.get('df_bd_calculated')
-    df_forma9_raw = st.session_state.get('df_forma9_calculated')
-    
     df_bd_untr = df_bd_raw.copy() if df_bd_raw is not None else df_bd_filtered.copy()
     if 'ACTIVO' in df_bd_untr.columns:
         df_bd_untr = df_bd_untr[df_bd_untr['ACTIVO'].astype(str).str.upper().str.strip() != 'ECUADOR']
@@ -312,36 +256,20 @@ def render_tab_resumen(
     for col, val in _filtros.items():
         if val != 'TODOS' and col in df_bd_untr.columns:
             df_bd_untr = df_bd_untr[df_bd_untr[col] == val]
-            
-    df_bd_untr['FECHA_RUN_TEMP'] = pd.to_datetime(df_bd_untr['FECHA_RUN'], errors='coerce')
-    df_bd_untr = df_bd_untr[df_bd_untr['FECHA_RUN_TEMP'].dt.normalize() <= pd.to_datetime(fecha_evaluacion).normalize()].copy()
-    df_bd_untr['FECHA_FALLA'] = pd.to_datetime(df_bd_untr['FECHA_FALLA'], errors='coerce')
-    df_bd_untr.loc[df_bd_untr['FECHA_FALLA'].dt.normalize() > pd.to_datetime(fecha_evaluacion).normalize(), 'FECHA_FALLA'] = pd.NaT
 
-    df_forma9_untr = df_forma9_raw.copy() if df_forma9_raw is not None else df_forma9_filtered.copy()
-    pozos_en_bd_untr = df_bd_untr['POZO'].unique() if 'POZO' in df_bd_untr.columns else []
-    df_forma9_untr = df_forma9_untr[df_forma9_untr['POZO'].isin(pozos_en_bd_untr)].copy()
+    # ── 1. CONFIGURACIÓN BASE DE DATOS ──────────────────────────────────────────
+    df_bd_calc = df_bd_untr[df_bd_untr['FECHA_RUN'] <= fecha_eval_dt].copy()
+    if 'ACTIVO' in df_bd_calc.columns:
+        if selected_activo != 'TODOS':
+            df_bd_calc = df_bd_calc[df_bd_calc['ACTIVO'] == selected_activo]
 
-    for col in ('FECHA_PULL', 'FECHA_FALLA', 'FECHA_RUN'):
-        if col in df_bd_untr.columns:
-            df_bd_untr[col] = pd.to_datetime(df_bd_untr[col], errors='coerce')
-
-    fecha_eval_dt = pd.to_datetime(fecha_evaluacion)
-    anio_campana  = fecha_eval_dt.year
-
-    # Índice de falla
+    # ── 2. KPIS TÉCNICOS (9 TARJETAS ORIGINALES) ────────────────────────────────
+    from core.indice_falla import calcular_indice_falla_anual
     try:
-        indice_resumen_df, _ = calcular_indice_falla_anual(df_bd_untr, df_forma9_untr, fecha_evaluacion)
+        indice_resumen_df, _ = calcular_indice_falla_anual(df_bd_calc, df_forma9_filtered, fecha_evaluacion)
     except Exception:
         indice_resumen_df = None
 
-    # Monthly summary
-    fig_perf, df_monthly_summary = generar_grafico_resumen(df_bd_untr, df_forma9_untr, fecha_evaluacion, titulo="")
-    st.session_state['df_monthly_summary'] = df_monthly_summary
-
-    # =========================================================================
-    # FILA 1 — KPIs HUD TÉCNICOS (Ancho Completo, No Scroll)
-    # =========================================================================
     kpis.mostrar_kpis(
         df_bd=df_bd_filtered,
         reporte_runes=reporte_runes_filtered,
@@ -349,38 +277,99 @@ def render_tab_resumen(
         df_forma9=df_forma9_filtered,
         fecha_evaluacion=fecha_evaluacion,
     )
-    
-    st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
 
-    # =========================================================================
-    # FILA 2 — TRES COLUMNAS: Tiempo de Vida | Operatividad | Campaña 2026
-    # =========================================================================
+    st.markdown("<div style='height:18px;'></div>", unsafe_allow_html=True)
 
-    # Pre-calcular datos de campaña antes de abrir columnas
-    # Obtener fecha de inicio desde st.session_state
-    fecha_ini_dt = pd.to_datetime(st.session_state.get('fecha_inicio_state'))
-    if fecha_ini_dt is None:
-        fecha_ini_dt = fecha_eval_dt - pd.DateOffset(years=1)
-    fecha_ini_dt = fecha_ini_dt.normalize()
+    # ── 3. GRÁFICOS PRINCIPALES DE CONFIABILIDAD & OPERATIVIDAD ────────────
+    # Obtener el resumen mensual
+    fig_perf, df_monthly_summary = generar_grafico_resumen(df_bd_untr, df_forma9_filtered, fecha_evaluacion, titulo="")
+    st.session_state['df_monthly_summary'] = df_monthly_summary
 
-    df_camp = pd.DataFrame()
-    df_res  = pd.DataFrame()
-    df_fall = pd.Series(dtype=int)
-    val_total_corr = val_nuevos = val_ws = val_fallas = val_extraidos = val_activos = 0
-    cats = d_nv = d_ws = d_fl = []
+    col_conf, col_oper = st.columns(2, gap="medium")
+
+    with col_conf:
+        # Gráfico Confiabilidad (eChart de Tendencia TMEF)
+        if df_monthly_summary is not None and not df_monthly_summary.empty:
+            months = [m.strftime('%Y-%m') if hasattr(m, 'strftime') else str(m) for m in df_monthly_summary['Mes']]
+            tmef_vals = [round(float(v), 1) for v in df_monthly_summary['TMEF_Promedio'].tolist()]
+            
+            conf_opts = {
+                "backgroundColor": "transparent",
+                "title": {"text": "EVOLUCIÓN DE CONFIABILIDAD (TMEF)", "left": "center", "top": 4,
+                          "textStyle": {"color": _G, "fontSize": 12, "fontFamily": "Inter, sans-serif", "fontWeight": "bold"}},
+                "tooltip": {"trigger": "axis", "backgroundColor": "rgba(255,255,255,0.97)", "borderColor": _G,
+                            "textStyle": {"color": _T, "fontFamily": "Inter, sans-serif"}},
+                "grid": {"left": "4%", "right": "4%", "bottom": "12%", "top": "18%", "containLabel": True},
+                "xAxis": {"type": "category", "data": months, "axisLabel": {"color": _T2, "fontSize": 9, "fontFamily": "Inter, sans-serif"}},
+                "yAxis": {"type": "value", "name": "Días", "axisLabel": {"color": _T2, "fontFamily": "Inter, sans-serif"},
+                          "splitLine": {"lineStyle": {"color": "rgba(19,118,89,0.06)"}}},
+                "series": [
+                    {"name": "TMEF Promedio", "type": "line", "smooth": True, "data": tmef_vals,
+                     "lineStyle": {"width": 3, "color": _G}, "itemStyle": {"color": _G},
+                     "areaStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 0, "y2": 1,
+                                             "colorStops": [{"offset": 0, "color": f"{_G}22"},
+                                                             {"offset": 1, "color": "transparent"}]}}},
+                    {"name": "Meta Confiabilidad", "type": "line", "data": [META_MTBF] * len(months),
+                     "lineStyle": {"type": "dashed", "color": _R, "width": 1.5}, "symbol": "none"}
+                ]
+            }
+            components.html(_echarts(conf_opts, 338, "summary-conf"), height=340)
+        else:
+            st.info("Sin datos de TMEF.")
+
+    with col_oper:
+        # Gráfico Operatividad (eChart de Pozos ON vs OFF)
+        if df_monthly_summary is not None and not df_monthly_summary.empty:
+            months = [m.strftime('%Y-%m') if hasattr(m, 'strftime') else str(m) for m in df_monthly_summary['Mes']]
+            pozos_on = df_monthly_summary['Pozos_ON'].tolist()
+            pozos_off = df_monthly_summary['Pozos_OFF'].tolist()
+            
+            oper_opts = {
+                "backgroundColor": "transparent",
+                "title": {"text": "ESTADO OPERATIVO MENSUAL (INVENTARIO)", "left": "center", "top": 4,
+                          "textStyle": {"color": _G, "fontSize": 12, "fontFamily": "Inter, sans-serif", "fontWeight": "bold"}},
+                "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"},
+                            "backgroundColor": "rgba(255,255,255,0.97)", "borderColor": _G,
+                            "textStyle": {"color": _T, "fontFamily": "Inter, sans-serif"}},
+                "legend": {"data": ["Pozos Activos ON", "Pozos Apagados OFF"], "bottom": 0,
+                           "textStyle": {"color": _T2, "fontSize": 9, "fontFamily": "Inter, sans-serif"}, "icon": "circle"},
+                "grid": {"left": "4%", "right": "4%", "bottom": "15%", "top": "18%", "containLabel": True},
+                "xAxis": {"type": "category", "data": months, "axisLabel": {"color": _T2, "fontSize": 9, "fontFamily": "Inter, sans-serif"}},
+                "yAxis": {"type": "value", "name": "Pozos", "axisLabel": {"color": _T2, "fontFamily": "Inter, sans-serif"},
+                          "splitLine": {"lineStyle": {"color": "rgba(19,118,89,0.06)"}}},
+                "series": [
+                    {"name": "Pozos Activos ON", "type": "bar", "stack": "total", "data": pozos_on,
+                     "itemStyle": {"color": _G, "borderRadius": [0, 0, 0, 0]}},
+                    {"name": "Pozos Apagados OFF", "type": "bar", "stack": "total", "data": pozos_off,
+                     "itemStyle": {"color": "#94a3b8", "borderRadius": [4, 4, 0, 0]}}
+                ]
+            }
+            components.html(_echarts(oper_opts, 320, "summary-oper"), height=340)
+        else:
+            st.info("Sin datos de operatividad.")
+
+    st.markdown("<div style='height:18px;'></div>", unsafe_allow_html=True)
+
+    # ── 4. HEATMAP DE OPERATIVIDAD ESTACIONAL ──────────────────────────────
+    # Meses únicos en el periodo
     unique_months = []
-
-    # Generar todos los meses en el rango evaluado
     curr = fecha_ini_dt.replace(day=1)
     while curr <= fecha_eval_dt.normalize():
         unique_months.append(curr.strftime('%Y-%m'))
         curr = (curr + pd.offsets.MonthBegin(1)).normalize()
 
-    if 'FECHA_RUN' in df_bd_filtered.columns:
-        # Filtrar df_camp para contener sólo corridas que iniciaron en el periodo evaluado
-        df_camp = df_bd_filtered[
-            (df_bd_filtered['FECHA_RUN'] >= fecha_ini_dt) &
-            (df_bd_filtered['FECHA_RUN'] <= fecha_eval_dt)
+    components.html(_render_heatmap_operatividad(df_forma9_filtered, unique_months), height=380, scrolling=False)
+
+    st.markdown("<div style='height:18px;'></div>", unsafe_allow_html=True)
+
+    # ── 5. TABLA DE RESUMEN MENSUAL Y BALANCE DE INVENTARIO ────────────────
+    # Generar datos adicionales de campaña
+    df_camp = pd.DataFrame()
+    df_res  = pd.DataFrame()
+    if 'FECHA_RUN' in df_bd_calc.columns:
+        df_camp = df_bd_calc[
+            (df_bd_calc['FECHA_RUN'] >= fecha_ini_dt) &
+            (df_bd_calc['FECHA_RUN'] <= fecha_eval_dt)
         ].copy()
         
         if not df_camp.empty:
@@ -397,81 +386,21 @@ def render_tab_resumen(
                                 .size()
                                 .unstack(fill_value=0)
                                 .reindex(unique_months, fill_value=0))
-            
-            # Agrupar fallas por Mes y Tipo para diferenciar Nuevos vs WS
-            df_fall_by_type = (df_camp[df_camp['Falla'] == 1]
-                               .groupby(['Mes', 'Tipo'])
-                               .size()
-                               .unstack(fill_value=0)
-                               .reindex(unique_months, fill_value=0))
 
-            _MES = ['Ene','Feb','Mar','Abr','May','Jun',
-                    'Jul','Ago','Sep','Oct','Nov','Dic']
-            cats = [f"{_MES[int(m[5:7]) - 1]}-{m[2:4]}" for m in df_res.index]
-            d_nv = df_res['Nuevo'].tolist() if 'Nuevo' in df_res.columns else [0]*len(cats)
-            d_ws = df_res['WS'].tolist()    if 'WS'    in df_res.columns else [0]*len(cats)
-            
-            d_fl_nuevo = df_fall_by_type['Nuevo'].tolist() if 'Nuevo' in df_fall_by_type.columns else [0]*len(cats)
-            d_fl_ws    = df_fall_by_type['WS'].tolist() if 'WS' in df_fall_by_type.columns else [0]*len(cats)
-
-            df_nv_df = df_camp[df_camp['RUN'] == 1] if 'RUN' in df_camp.columns else pd.DataFrame()
-            df_ws_df = df_camp[df_camp['RUN'] >  1] if 'RUN' in df_camp.columns else df_camp
-            val_total_corr = len(df_camp)
-            val_nuevos     = len(df_nv_df)
-            val_ws         = len(df_ws_df)
-            val_fallas     = df_camp[df_camp['Falla'] == 1].shape[0]
-            val_extraidos  = df_camp[df_camp['FECHA_PULL'].notna()].shape[0]
-            val_activos    = val_total_corr - val_extraidos
-
-    col_vida, col_oper = st.columns([1, 1.6], gap="medium")
-
-    with col_vida:
-        _section_title("▸ Tiempo de Vida", _CYAN)
-        if not df_monthly_summary.empty:
-            render_premium_echarts_run_life(df_monthly_summary, titulo="")
+    with st.expander("📅 TABLA DE RESUMEN MENSUAL & CAMPAÑAS", expanded=False):
+        selected_als = st.session_state.get('kpis_als_filter', 'ESP')
+        if selected_als and selected_als != 'TODOS':
+            df_bd_als = df_bd_calc[df_bd_calc['ALS'].astype(str).str.strip() == str(selected_als).strip()].copy()
         else:
-            st.info("Sin datos.")
+            df_bd_als = df_bd_calc.copy()
 
-    with col_oper:
-        _section_title("▸ Operatividad", _CYAN)
-        if not df_monthly_summary.empty:
-            render_premium_echarts_pozos(df_monthly_summary, titulo="")
-        else:
-            st.info("Sin datos.")
+        df_mensual = obtener_tabla_resumen_mensual_calculada(
+            df_bd_calc, df_bd_als, unique_months, df_res, df_camp, df_forma9_filtered, selected_als
+        )
+        render_hud_table(df_mensual, table_id="tabla_resumen_mensual_campana")
 
-    st.markdown("<div style='height:6px;'></div>", unsafe_allow_html=True)
-
-    # =========================================================================
-    # FILA 3 — TABLA DE RESUMEN MENSUAL DE CAMPAÑA (colapsada)
-    # =========================================================================
-    if 'FECHA_RUN' in df_bd_filtered.columns and not df_camp.empty:
-        with st.expander("📅 TABLA DE RESUMEN MENSUAL", expanded=False):
-            selected_als = st.session_state.get('kpis_als_filter', 'ESP')
-
-            if selected_als and selected_als != 'TODOS':
-                df_bd_als = df_bd_filtered[df_bd_filtered['ALS'].astype(str).str.strip() == str(selected_als).strip()].copy()
-            else:
-                df_bd_als = df_bd_filtered.copy()
-
-            df_mensual = obtener_tabla_resumen_mensual_calculada(
-                df_bd_filtered,
-                df_bd_als,
-                unique_months,
-                df_res,
-                df_camp,
-                df_forma9_filtered,
-                selected_als
-            )
-
-            render_hud_table(df_mensual, table_id="tabla_resumen_mensual_campana")
-
-    st.markdown("<div style='height:4px;'></div>", unsafe_allow_html=True)
-
-    # --- TABLA DE BALANCE DE INVENTARIO MENSUAL (ÚLTIMOS 12 MESES) ---
     with st.expander("📅 BALANCE DE INVENTARIO MENSUAL (ÚLTIMOS 12 MESES)", expanded=False):
-        import calendar
         start_date_12 = (fecha_eval_dt - pd.DateOffset(months=11)).replace(day=1).normalize()
-        
         meses_12 = []
         curr = start_date_12
         while curr <= fecha_eval_dt.normalize():
@@ -481,15 +410,9 @@ def render_tab_resumen(
         df_balance = pd.DataFrame(index=range(len(meses_12)))
         df_balance['Mes'] = [m.strftime('%Y-%m') for m in meses_12]
         
-        base_lista = []
-        nuevos_lista = []
-        reactivados_lista = []
-        wows_lista = []
-        fallados_lista = []
-        apagados_lista = []
-        pozos_final_lista = []
+        base_lista, nuevos_lista, reactivados_lista, wows_lista, fallados_lista, apagados_lista, pozos_final_lista = [], [], [], [], [], [], []
         
-        df_bd_f = df_bd_filtered.copy()
+        df_bd_f = df_bd_calc.copy()
         df_bd_f['FECHA_RUN_DATE'] = df_bd_f['FECHA_RUN'].dt.normalize()
         df_bd_f['FECHA_FALLA_DATE'] = df_bd_f['FECHA_FALLA'].dt.normalize()
         df_bd_f['FECHA_PULL_DATE'] = df_bd_f['FECHA_PULL'].dt.normalize()
@@ -502,7 +425,6 @@ def render_tab_resumen(
             last_day = calendar.monthrange(m_date.year, m_date.month)[1]
             end_date_m = pd.Timestamp(year=m_date.year, month=m_date.month, day=last_day).normalize()
             
-            # 1. Base (Operativos al inicio del mes)
             base_date = start_date_m - pd.Timedelta(days=1)
             base_op = df_bd_f[
                 (df_bd_f['FECHA_RUN_DATE'] <= base_date) &
@@ -511,27 +433,23 @@ def render_tab_resumen(
             ]['POZO'].nunique()
             base_lista.append(base_op)
             
-            runs_m = df_bd_filtered[
-                (df_bd_filtered['FECHA_RUN'].dt.normalize() >= start_date_m) &
-                (df_bd_filtered['FECHA_RUN'].dt.normalize() <= end_date_m)
+            runs_m = df_bd_calc[
+                (df_bd_calc['FECHA_RUN'].dt.normalize() >= start_date_m) &
+                (df_bd_calc['FECHA_RUN'].dt.normalize() <= end_date_m)
             ]
             
-            # 2. Nuevos (RUN == 1)
             n_nuevos = runs_m[runs_m['RUN'] == 1]['POZO'].nunique() if 'RUN' in runs_m.columns else 0
             nuevos_lista.append(n_nuevos)
             
-            # 3. WO/WS (RUN > 1)
             n_wows = runs_m[runs_m['RUN'] > 1]['POZO'].nunique() if 'RUN' in runs_m.columns else 0
             wows_lista.append(n_wows)
             
-            # 4. Fallados
-            n_fallados = df_bd_filtered[
-                (df_bd_filtered['FECHA_FALLA'].dt.normalize() >= start_date_m) &
-                (df_bd_filtered['FECHA_FALLA'].dt.normalize() <= end_date_m)
+            n_fallados = df_bd_calc[
+                (df_bd_calc['FECHA_FALLA'].dt.normalize() >= start_date_m) &
+                (df_bd_calc['FECHA_FALLA'].dt.normalize() <= end_date_m)
             ].shape[0]
             fallados_lista.append(n_fallados)
             
-            # 5. Reactivados & Apagados
             wells_on_m = set(df_forma9_f[
                 (df_forma9_f['FECHA_FORMA9_DATE'] >= start_date_m) &
                 (df_forma9_f['FECHA_FORMA9_DATE'] <= end_date_m) &
@@ -555,7 +473,6 @@ def render_tab_resumen(
             apagados_set = wells_on_prev - wells_on_m
             apagados_lista.append(len(apagados_set))
             
-            # 6. Pozos Final
             final_op = df_bd_f[
                 (df_bd_f['FECHA_RUN_DATE'] <= end_date_m) &
                 (df_bd_f['FECHA_FALLA_DATE'].isna() | (df_bd_f['FECHA_FALLA_DATE'] > end_date_m)) &
@@ -573,25 +490,14 @@ def render_tab_resumen(
         
         render_hud_table(df_balance, table_id="tabla_balance_mensual_historico")
 
-    st.markdown("<div style='height:4px;'></div>", unsafe_allow_html=True)
-
-    # =========================================================================
-    # FILA 5 — DETALLE CAMPAÑA (expandible)
-    # =========================================================================
     with st.expander("📄 VER DETALLE DE CORRIDAS (RANGO SELECCIONADO)", expanded=False):
-        if 'FECHA_RUN' not in df_bd_filtered.columns:
+        if 'FECHA_RUN' not in df_bd_calc.columns:
             st.info("Columna FECHA_RUN no disponible.")
         else:
-            df_det = df_bd_filtered.copy()
+            df_det = df_bd_calc.copy()
             if df_det.empty:
                 st.info("No hay corridas registradas en el rango seleccionado.")
             else:
-                st.markdown(
-                    f"<div style='color:#455a72;font-family:\"Arial\",sans-serif !important;"
-                    f"font-size:0.6rem;margin-bottom:6px;letter-spacing:1px;'>"
-                    f"Rango Seleccionado · {len(df_det)} corridas</div>",
-                    unsafe_allow_html=True,
-                )
                 cols_show = [c for c in ('POZO', 'RUN', 'ACTIVO', 'CAMPO', 'BLOQUE',
                                           'ALS', 'PROVEEDOR', 'FECHA_RUN', 'RUN LIFE')
                              if c in df_det.columns]

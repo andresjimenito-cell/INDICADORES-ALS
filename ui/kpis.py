@@ -35,7 +35,11 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
     
     if fecha_evaluacion is None:
         try:
-            fecha_evaluacion = pd.to_datetime(st.session_state.get('fecha_evaluacion_state'))
+            state_val = st.session_state.get('fecha_evaluacion_state')
+            if state_val is not None:
+                fecha_evaluacion = pd.to_datetime(state_val)
+            else:
+                fecha_evaluacion = datetime.datetime.now()
         except Exception:
             fecha_evaluacion = datetime.datetime.now()
     else:
@@ -140,6 +144,9 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
     fallado_label = f"TOTAL: {fallado_todos}\n{selected_als}: {fallado_als}"
     operativos_label = f"TOTAL: {operativos_todos}\n{selected_als}: {operativos_als}"
 
+    on_label = f"TOTAL: 0\n{selected_als}: 0"
+    off_label = f"TOTAL: 0\n{selected_als}: 0"
+
     if df_forma9 is not None:
         df_forma9['FECHA_FORMA9'] = pd.to_datetime(df_forma9['FECHA_FORMA9'], errors='coerce')
         df_forma9['DIAS TRABAJADOS'] = pd.to_numeric(df_forma9['DIAS TRABAJADOS'], errors='coerce').fillna(0)
@@ -175,7 +182,9 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
         from core.run_life_efectivo import calcular_run_life_efectivo
         rle_total_val, _ = calcular_run_life_efectivo(df_bd, df_forma9, fecha_evaluacion)
         _, df_bd_als_rle = calcular_run_life_efectivo(df_bd_als_calc, df_forma9, fecha_evaluacion)
-        rle_als_val = df_bd_als_rle['RUN_LIFE_EFECTIVO'].mean() if 'RUN_LIFE_EFECTIVO' in df_bd_als_rle.columns else 0
+        rle_als_val = 0
+        if df_bd_als_rle is not None and 'RUN_LIFE_EFECTIVO' in df_bd_als_rle.columns:
+            rle_als_val = df_bd_als_rle['RUN_LIFE_EFECTIVO'].mean()
         rle_label = f"TOTAL: {rle_total_val:.2f} Días\n{selected_als}: {rle_als_val:.2f} Días"
     except Exception:
         rle_label = f"TOTAL: {rl_todos:.1f} D\n{selected_als}: {rl_als:.1f} D"
@@ -270,7 +279,8 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
         
         body {{ 
-            background: transparent; 
+            background-color: #f5f7f6 !important; 
+            background: #f5f7f6 !important; 
             font-family: 'Inter', sans-serif !important; 
             margin: 0; 
             padding: 4px; 

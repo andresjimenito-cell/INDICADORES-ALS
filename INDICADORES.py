@@ -72,106 +72,154 @@ apply_all_styles()
 
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
-/* ── TABS HUD CENTRALIZADOS Y VIBRANTES ── */
-div[data-baseweb="tab-list"] {
+/* ── Streamlit padding reducido ── */
+.block-container { padding-top: 1rem !important; padding-bottom: 60px !important; }
+section[data-testid="stSidebar"] > div { padding-top: 0.5rem !important; }
+
+/* ── TABS CORPORATIVOS PAREX (Verde / Dorado — Tema Claro) ── */
+div[data-testid="stTabs"] [role="tablist"] {
+    position: fixed !important;
+    bottom: 16px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    z-index: 999999 !important;
+    background: rgba(255, 255, 255, 0.96) !important;
+    backdrop-filter: blur(20px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+    padding: 5px 16px !important;
+    border-radius: 50px !important;
+    border: 1.5px solid rgba(19, 118, 89, 0.2) !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(19,118,89,0.08) !important;
+    width: auto !important;
+    min-width: 480px !important;
     display: flex !important;
     justify-content: center !important;
-    gap: 15px !important;
-    border-bottom: none !important;
-    padding: 5px 0 !important;
-    margin-bottom: 0px !important; /* MINIMIZADO AL MÁXIMO */
+    gap: 2px !important;
+    order: 2 !important;
+}
+
+/* Orden: contenido primero, barra de tabs después */
+div[data-testid="stTabContent"] {
+    order: 1 !important;
+    background: transparent !important;
+    border: none !important;
+    padding-top: 0px !important;
     width: 100% !important;
 }
-[data-baseweb="tab"] {
-    background-color: rgba(15, 23, 42, 0.95) !important;
-    background-image: none !important;
-    border: 1px solid rgba(0, 217, 255, 0.4) !important;
-    border-radius: 10px !important;
-    padding: 12px 28px !important;
-    font-family: 'Arial', sans-serif !important;
-    font-size: 0.8rem !important;
-    font-weight: 800 !important;
-    color: #94a3b8 !important;
-    text-transform: uppercase !important;
-    transition: all 0.3s !important;
-}
-[data-baseweb="tab"]:hover {
-    color: #fff !important;
-    background-color: rgba(0, 217, 255, 0.2) !important;
-    border-color: #00D9FF !important;
-}
-[aria-selected="true"][data-baseweb="tab"] {
-    color: #fff !important;
-    background: linear-gradient(135deg, #00D9FF 0%, #FF00FF 100%) !important;
-    border: none !important;
-    box-shadow: 0 0 20px rgba(0, 217, 255, 0.5) !important;
-}
-/* Forzar visibilidad del botón en Streamlit moderno */
-[data-baseweb="tab"] > div {
+
+/* Tabs no seleccionados */
+div[data-testid="stTabs"] button[data-baseweb="tab"] {
     background: transparent !important;
+    border: none !important;
+    padding: 6px 14px !important;
+    color: #5b5c55 !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 0.66rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 1.0px !important;
+    text-transform: uppercase !important;
+    transition: all 0.25s ease !important;
+    border-radius: 30px !important;
+    height: auto !important;
+    white-space: nowrap !important;
 }
-/* Ocultar la línea y el resalte por defecto */
-div[data-baseweb="tab-border"], div[data-baseweb="tab-highlight"], [data-testid="stTabHighlight"] {
+
+/* Hover tab */
+div[data-testid="stTabs"] button[data-baseweb="tab"]:hover {
+    color: #137659 !important;
+    background: rgba(19, 118, 89, 0.07) !important;
+}
+
+/* Tab activo */
+div[data-testid="stTabs"] button[aria-selected="true"] {
+    color: #ffffff !important;
+    background: linear-gradient(135deg, #137659 0%, #0a4d34 100%) !important;
+    box-shadow: 0 4px 12px rgba(19, 118, 89, 0.35) !important;
+    border: none !important;
+}
+
+/* Ocultar highlight y borde por defecto */
+div[data-baseweb="tab-border"],
+div[data-baseweb="tab-highlight"],
+[data-testid="stTabHighlight"] {
     display: none !important;
 }
-
-/* ── Toast ── */
-div[data-testid="stToast"] {
-    font-family: 'Arial', sans-serif !important;
-    font-size: 0.75rem !important;
-    letter-spacing: 1px !important;
+div[data-testid="stTabs"] {
+    display: flex !important;
+    flex-direction: column !important;
 }
 
-/* ── Scrollbar delgada ── */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
-::-webkit-scrollbar-thumb { background: rgba(0,217,255,0.25); border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(0,217,255,0.5); }
+/* ── Toast notificaciones ── */
+div[data-testid="stToast"] {
+    font-family: 'Inter', sans-serif !important;
+    font-size: 0.75rem !important;
+    background: rgba(255,255,255,0.97) !important;
+    border: 1px solid rgba(19,118,89,0.2) !important;
+    border-left: 3px solid #137659 !important;
+    color: #1f221e !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08) !important;
+}
 
-/* ── Info box sin datos ── */
+/* ── Scrollbar elegante ── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(19,118,89,0.25); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(19,118,89,0.5); }
+
+/* ── Toolbar buttons ── */
+div[data-testid="stPopover"] > button {
+    background: rgba(255,255,255,0.95) !important;
+    border: 1.5px solid rgba(19, 118, 89, 0.25) !important;
+    border-radius: 8px !important;
+    padding: 5px 14px !important;
+    font-size: 0.72rem !important;
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 600 !important;
+    color: #137659 !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04) !important;
+    transition: all 0.2s ease !important;
+}
+div[data-testid="stPopover"] > button:hover {
+    border-color: rgba(19, 118, 89, 0.45) !important;
+    box-shadow: 0 2px 8px rgba(19, 118, 89, 0.1) !important;
+    background: rgba(19, 118, 89, 0.04) !important;
+}
+
+/* ── Info box sin datos (tema claro) ── */
 .als-empty-state {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 16px;
-    padding: 48px 32px;
-    border: 1px dashed rgba(0,217,255,0.2);
-    border-radius: 14px;
-    background: radial-gradient(ellipse at 50% 0%, rgba(0,217,255,0.04) 0%, transparent 70%);
-    text-align: center;
-    margin-top: 24px;
+    gap: 16px; padding: 40px 30px;
+    border: 1.5px dashed rgba(19,118,89,0.2);
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(19,118,89,0.02) 0%, rgba(192,156,46,0.02) 100%);
+    text-align: center; margin-top: 12px;
 }
-.als-empty-icon { font-size: 3rem; opacity: 0.6; }
+.als-empty-icon { font-size: 2.8rem; opacity: 0.7; }
 .als-empty-title {
-    font-family: 'Arial', sans-serif; font-size: 1rem; font-weight: 700;
-    background: linear-gradient(135deg, #00D9FF, #FF00FF);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    letter-spacing: 2px;
+    font-family: 'Inter', sans-serif; font-size: 1.0rem; font-weight: 800;
+    color: #137659; letter-spacing: 2px; text-transform: uppercase;
 }
 .als-empty-sub {
-    font-family: 'Arial', sans-serif; font-size: 0.8rem; font-weight: 500;
-    color: #475569; letter-spacing: 1px; max-width: 420px; line-height: 1.6;
+    font-family: 'Inter', sans-serif; font-size: 0.82rem; font-weight: 500;
+    color: #5b5c55; max-width: 400px; line-height: 1.6;
 }
 .als-empty-steps {
-    display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
-    margin-top: 4px;
+    display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 6px;
 }
 .als-step {
-    display: flex; align-items: center; gap: 8px;
-    padding: 8px 14px;
-    background: rgba(255,255,255,0.02);
-    border: 1px solid rgba(0,217,255,0.12);
-    border-radius: 8px;
-    font-family: 'Arial', sans-serif; font-size: 0.72rem;
-    font-weight: 600; color: #64748B; letter-spacing: 1px;
+    display: flex; align-items: center; gap: 8px; padding: 8px 14px;
+    background: rgba(19,118,89,0.04); border: 1px solid rgba(19,118,89,0.12);
+    border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 0.70rem;
+    font-weight: 600; color: #455a72; letter-spacing: 0.5px;
 }
 .als-step-num {
     width: 20px; height: 20px; border-radius: 50%;
-    background: rgba(0,217,255,0.12);
-    border: 1px solid rgba(0,217,255,0.25);
+    background: rgba(19,118,89,0.1); border: 1.5px solid rgba(19,118,89,0.3);
     display: flex; align-items: center; justify-content: center;
-    font-family: 'Arial', sans-serif; font-size: 0.5rem;
-    font-weight: 700; color: #00D9FF; flex-shrink: 0;
+    font-family: 'Inter', sans-serif; font-size: 0.58rem;
+    font-weight: 800; color: #137659; flex-shrink: 0;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -198,38 +246,8 @@ if st.session_state.get('reporte_runes') is None:
 
 filters = render_sidebar()
 
-# ── HEADER & CONFIG ──────────────────────────────────────────────────────────
-col_head, col_als, col_cfg = st.columns([0.90, 0.05, 0.05], gap="small")
-with col_head:
-    header_container = st.empty()
-
-with col_als:
-    with st.popover("🏷️", help="Comparativa ALS en KPIs"):
-        df_bd_raw = st.session_state.get('df_bd_calculated')
-        if df_bd_raw is not None and not df_bd_raw.empty:
-            als_opts = sorted([str(x).strip() for x in df_bd_raw['ALS'].dropna().unique() if str(x).strip() != ''])
-            # Excluir 'ECUADOR'
-            als_opts = [o for o in als_opts if o.upper() != 'ECUADOR']
-            als_options = ['ESP'] + als_opts
-            
-            # Buscamos el índice actual en session state
-            cur = st.session_state.get('kpis_als_filter', 'ESP')
-            try:
-                idx = als_options.index(str(cur)) if str(cur) in als_options else 0
-            except:
-                idx = 0
-                
-            st.selectbox(
-                'Sistema a comparar:',
-                als_options,
-                key='kpis_als_filter',
-                index=idx
-            )
-        else:
-            st.info("Carga datos para filtrar.")
-
-with col_cfg:
-    render_upload_section()
+# ── HEADER ───────────────────────────────────────────────────────────────────
+header_container = st.empty()
 
 # ── LÓGICA PRINCIPAL ─────────────────────────────────────────────────────────
 
@@ -334,7 +352,6 @@ if st.session_state.get('reporte_runes') is not None:
         )
 
     with tab_perf:
-        st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
         col_left, col_right = st.columns(2, gap="medium")
         with col_left:
             from tabs.tab_performance import render_tab_performance
@@ -350,12 +367,10 @@ if st.session_state.get('reporte_runes') is not None:
             )
 
     with tab_fallas:
-        st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
         from tabs.tab_fallas import render_tab_fallas
         render_tab_fallas(df_bd_calc, fecha_eval)
 
     with tab_indices:
-        st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
         from tabs.tab_indices import render_tab_indices
         render_tab_indices(
             df_bd_calc,
@@ -364,24 +379,20 @@ if st.session_state.get('reporte_runes') is not None:
             filters['selected_activo']
         )
 
-    # ─────────────────────────────────────────────────────────────────────────────
-    # FOOTER DE EXPORTACIÓN GLOBAL
-    # ─────────────────────────────────────────────────────────────────────────────
-    st.markdown("<br><hr style='border:0; height:1px; background:linear-gradient(to right, transparent, rgba(0,217,255,0.1), transparent); margin: 30px 0;'>", unsafe_allow_html=True)
-    
-    f1, f2, f3 = st.columns([0.35, 0.3, 0.35])
-    with f2:
-        from ui.descargar import exportar_resumen_performance
-        df_ms = st.session_state.get('df_monthly_summary')
-        if df_ms is not None and not df_ms.empty:
+    # ── FOOTER EXPORT ───────────────────────────────────────────────────────
+    from ui.descargar import exportar_resumen_performance
+    df_ms = st.session_state.get('df_monthly_summary')
+    if df_ms is not None and not df_ms.empty:
+        st.markdown("<hr style='border:0;height:1px;background:linear-gradient(to right,transparent,rgba(19,118,89,0.15),transparent);margin:16px 0 10px 0;'>", unsafe_allow_html=True)
+        _fc1, _fc2, _fc3 = st.columns([0.3, 0.4, 0.3])
+        with _fc2:
             excel_bytes = exportar_resumen_performance(df_ms)
             st.download_button(
-                label="📥 DESCARGAR REPORTE EXCEL (DASHBOARD)",
+                label="📥 DESCARGAR REPORTE EXCEL",
                 data=excel_bytes,
                 file_name=f"REPORTE_INDICADORES_ALS_{datetime.now().strftime('%Y%m%d')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 use_container_width=True,
-                help="Genera un archivo Excel con todo el resumen de KPIs y Performance"
             )
 
 # ─────────────────────────────────────────────────────────────────────────────

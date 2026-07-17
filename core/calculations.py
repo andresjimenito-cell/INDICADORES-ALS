@@ -100,22 +100,36 @@ def perform_initial_calculations(df_forma9, df_bd, fecha_evaluacion):
     df_forma9_copy = df_forma9.copy()
     df_bd_filtered = df_bd[df_bd['FECHA_RUN'] <= fecha_evaluacion].copy()
 
-    merged_df = pd.merge(
-        df_forma9_copy.reset_index(),
-        df_bd_filtered[['POZO', 'RUN', 'PROVEEDOR', 'FECHA_RUN', 'FECHA_PULL']],
-        on='POZO', how='left',
-    )
-    merged_df['is_match'] = (
-        (merged_df['FECHA_FORMA9'] >= merged_df['FECHA_RUN']) &
-        (merged_df['FECHA_FORMA9'] <  merged_df['FECHA_PULL'].fillna(pd.to_datetime(fecha_evaluacion)))
-    )
-    best_matches_idx = merged_df[merged_df['is_match']].groupby('index')['FECHA_RUN'].idxmax()
-    best_matches_df  = merged_df.loc[best_matches_idx]
+    # pd.merge_asof optimization:
+    # Asociar cada FECHA_FORMA9 con la última FECHA_RUN <= FECHA_FORMA9 para cada pozo.
+    df_forma9_copy['original_index'] = df_forma9_copy.index
+    df_bd_filtered['index_bd'] = df_bd_filtered.index
+    df_bd_sorted = df_bd_filtered[['index_bd', 'POZO', 'RUN', 'PROVEEDOR', 'FECHA_RUN', 'FECHA_PULL']].sort_values('FECHA_RUN')
+    df_forma9_sorted = df_forma9_copy.sort_values('FECHA_FORMA9')
 
-    df_forma9_copy['RUN']      = best_matches_df.set_index('index')['RUN']
-    df_forma9_copy['PROVEEDOR'] = best_matches_df.set_index('index')['PROVEEDOR']
-    df_forma9_copy[['RUN', 'PROVEEDOR']] = df_forma9_copy[['RUN', 'PROVEEDOR']].fillna('NO DATA✍️')
+    merged_asof = pd.merge_asof(
+        df_forma9_sorted,
+        df_bd_sorted,
+        left_on='FECHA_FORMA9',
+        right_on='FECHA_RUN',
+        by='POZO',
+        direction='backward'
+    )
+
+    # Validar el límite superior de vigencia: FECHA_FORMA9 < FECHA_PULL.fillna(fecha_evaluacion)
+    is_match = (
+        merged_asof['FECHA_RUN'].notna() &
+        (merged_asof['FECHA_FORMA9'] < merged_asof['FECHA_PULL'].fillna(fecha_evaluacion))
+    )
+
+    merged_asof.loc[~is_match, 'RUN'] = 'NO DATA✍️'
+    merged_asof.loc[~is_match, 'PROVEEDOR'] = 'NO DATA✍️'
+
+    # Re-establecer el orden e índice original de Forma 9
+    df_forma9_copy = merged_asof.sort_values('original_index').set_index('original_index')
+    df_forma9_copy.index.name = None
     df_forma9_copy['NICK'] = df_forma9_copy['POZO'].astype(str) + '-' + df_forma9_copy['RUN'].astype(str)
+    df_forma9_copy.drop(columns=['FECHA_RUN', 'FECHA_PULL', 'original_index', 'index_bd'], inplace=True, errors='ignore')
 
     run_life_efectivo_promedio = 0.0
     try:
@@ -142,10 +156,10 @@ def calcular_indicadores_finales(df_forma9, df_bd):
     df_bd = pd.merge(df_bd, run_life_operativo, on='NICK', how='left').fillna({'RUN LIFE OPERATIVO': 0})
 
     df_fallas = df_bd[df_bd['FECHA_FALLA'].notna()].copy()
-    df_fallas['MES'] = df_fallas['FECHA_FALLA'].dt.to_period('M')
+    df_fallas['MES'] = pd.PeriodIndex(df_fallas['FECHA_FALLA'], freq='M')
     fallas_mensuales = df_fallas.groupby('MES')['NICK'].count().reset_index()
     fallas_mensuales.rename(columns={'NICK': 'Numero de Fallas'}, inplace=True)
-    fallas_mensuales['MES'] = fallas_mensuales['MES'].dt.to_timestamp()
+    fallas_mensuales['MES'] = pd.PeriodIndex(fallas_mensuales['MES'], freq='M').to_timestamp()
 
     df_trabajo = df_bd.copy()
     return df_trabajo, fallas_mensuales
@@ -225,10 +239,13 @@ def generar_reporte_completo(df_bd, df_forma9, fecha_evaluacion):
 
     try:
         run_life_efectivo_val, df_rle_result = calcular_run_life_efectivo(df_bd_eval, df_forma9, fecha_evaluacion)
-        rle_fallados_val = (
-            df_rle_result[mask_ended_eval]['RUN_LIFE_EFECTIVO'].mean()
-            if not df_rle_result[mask_ended_eval].empty else 0.0
-        )
+        if df_rle_result is not None:
+            rle_fallados_val = (
+                df_rle_result[mask_ended_eval]['RUN_LIFE_EFECTIVO'].mean()
+                if not df_rle_result[mask_ended_eval].empty else 0.0
+            )
+        else:
+            rle_fallados_val = 0.0
         reporte_run_life = pd.concat([
             reporte_run_life,
             pd.DataFrame({
@@ -259,8 +276,15 @@ def generar_historico_run_life(df_bd_calculated, fecha_evaluacion):
     historico  = []
 
     df_bd = df_bd_calculated.copy()
-    df_bd['FECHA_PULL_DT']  = pd.to_datetime(df_bd.get('FECHA_PULL'),  errors='coerce') if 'FECHA_PULL'  in df_bd.columns else pd.NaT
-    df_bd['FECHA_FALLA_DT'] = pd.to_datetime(df_bd.get('FECHA_FALLA'), errors='coerce') if 'FECHA_FALLA' in df_bd.columns else pd.NaT
+    if 'FECHA_PULL' in df_bd.columns:
+        df_bd['FECHA_PULL_DT'] = pd.to_datetime(df_bd['FECHA_PULL'], errors='coerce')
+    else:
+        df_bd['FECHA_PULL_DT'] = pd.Series(pd.NaT, index=df_bd.index)
+
+    if 'FECHA_FALLA' in df_bd.columns:
+        df_bd['FECHA_FALLA_DT'] = pd.to_datetime(df_bd['FECHA_FALLA'], errors='coerce')
+    else:
+        df_bd['FECHA_FALLA_DT'] = pd.Series(pd.NaT, index=df_bd.index)
 
     if 'RUN LIFE' not in df_bd.columns:
         df_bd['RUN LIFE'] = np.where(

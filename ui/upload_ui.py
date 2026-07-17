@@ -30,7 +30,7 @@ def get_last_day_of_previous_month():
     return today.replace(day=1) - timedelta(days=1)
 
 
-def render_upload_section():
+def render_upload_section(sidebar: bool = False):
     """
     Renderiza el expander de carga de archivos con sus 3 tarjetas:
     FORMA 9, BD y Parámetros de Evaluación.
@@ -38,10 +38,11 @@ def render_upload_section():
     """
     # Determinar si expandir (sin datos calculados)
     expander_state = st.session_state.get('df_bd_calculated') is None
-    
-    label_popover = "⚙️"
 
-    with st.popover(label_popover, use_container_width=False):
+    label_popover = "⚙️ Configuración"
+
+    ctx = st.sidebar if sidebar else st
+    with ctx.popover(label_popover, use_container_width=sidebar):
         st.markdown('<div class="upload-container" style="padding:10px;">', unsafe_allow_html=True)
         
         # --- Tarjeta 1: FORMA 9 ---

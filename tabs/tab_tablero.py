@@ -216,13 +216,29 @@ def _css():
     justify-content: center;
     padding: 10px;
     text-align: center;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease, border-color 0.25s ease;
+    position: relative;
+}
+
+.tbl-card-base::after {
+    content: '';
+    position: absolute;
+    left: 0; top: 12px; bottom: 12px;
+    width: 3px;
+    background: #137659;
+    border-radius: 0 4px 4px 0;
+    opacity: 0;
+    transition: opacity 0.25s ease;
 }
 
 .tbl-card-base:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(19,118,89,0.10);
     border-color: rgba(19,118,89,0.25);
+}
+
+.tbl-card-base:hover::after {
+    opacity: 1;
 }
 
 /* ── Tarjeta Fallados (Izquierda, Alta) ── */
@@ -455,6 +471,87 @@ def _css():
     animation: countUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
+/* ── Detalles finos: pulso de estado en vivo ── */
+@keyframes tblPulseDot {
+    0%   { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(29,184,123,0.7); }
+    70%  { transform: scale(1.15); box-shadow: 0 0 8px 4px rgba(29,184,123,0); }
+    100% { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(29,184,123,0); }
+}
+
+.tbl-live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #1db87b;
+    display: inline-block;
+    margin-left: 5px;
+    box-shadow: 0 0 8px #1db87b;
+    animation: tblPulseDot 1.6s ease-in-out infinite;
+    flex-shrink: 0;
+}
+
+/* ── Detalles finos: micro-badge de porcentaje ── */
+.tbl-pct-badge {
+    font-family: 'Inter', sans-serif;
+    font-size: 8.5px;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+    padding: 1.5px 6px;
+    border-radius: 20px;
+    display: inline-block;
+    margin-top: 3px;
+    line-height: 1.4;
+}
+
+.tbl-pct-badge.g { background: rgba(19,118,89,0.10); color: #0f7d58; }
+.tbl-pct-badge.y { background: rgba(192,156,46,0.14); color: #a37e19; }
+.tbl-pct-badge.r { background: rgba(198,40,40,0.10); color: #c62828; }
+
+/* ── Detalles finos: brillo diagonal sutil sobre iconos circulares al hover ── */
+.tbl-icon-circle-red,
+.tbl-icon-circle-green,
+.tbl-icon-circle-subgreen,
+.tbl-icon-circle-subyellow {
+    position: relative;
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tbl-card-base:hover .tbl-icon-circle-red,
+.tbl-card-base:hover .tbl-icon-circle-green,
+.tbl-card-base:hover .tbl-icon-circle-subgreen,
+.tbl-card-base:hover .tbl-icon-circle-subyellow {
+    transform: scale(1.07) rotate(-4deg);
+}
+
+/* ── Detalles finos: textura de grano industrial casi imperceptible ── */
+.tbl-panel-lateral,
+.tbl-kpi-fondo-card {
+    background-image:
+        radial-gradient(rgba(19,118,89,0.035) 0.6px, transparent 0.6px);
+    background-size: 14px 14px;
+    background-position: 0 0, 0 0;
+}
+.tbl-panel-lateral { background-color: #ffffff; }
+.tbl-kpi-fondo-card { background-color: transparent; }
+
+/* ── Detalles finos: separador con puntos entre título y contenido ── */
+.tbl-sec-title-lat {
+    width: 100%;
+}
+.tbl-sec-title-lat::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    margin-left: 8px;
+    background: repeating-linear-gradient(
+        90deg,
+        rgba(19,118,89,0.28) 0px,
+        rgba(19,118,89,0.28) 3px,
+        transparent 3px,
+        transparent 7px
+    );
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -506,8 +603,8 @@ def render_tab_tablero(
 
     df = df_resumen.copy()
     df['_RUN']  = df['FECHA_RUN'].dt.normalize()
-    df['_FALL'] = df['FECHA_FALLA'].dt.normalize() if 'FECHA_FALLA' in df.columns else pd.NaT
-    df['_PULL'] = df['FECHA_PULL'].dt.normalize()  if 'FECHA_PULL'  in df.columns else pd.NaT
+    df['_FALL'] = df['FECHA_FALLA'].dt.normalize() if 'FECHA_FALLA' in df.columns else pd.Series(pd.NaT, index=df.index)
+    df['_PULL'] = df['FECHA_PULL'].dt.normalize()  if 'FECHA_PULL'  in df.columns else pd.Series(pd.NaT, index=df.index)
 
     # ── ALS en fondo ─────────────────────────────────────────────────────────
     mask_fondo = (df['_RUN'] <= fecha_eval_date) & (df['_PULL'].isna() | (df['_PULL'] > fecha_eval_date))
@@ -692,8 +789,8 @@ def render_tab_tablero(
             rl_prev_val = 0.0
 
     # Meta dinámica = valor de fin de año anterior * 1.1 (si es mayor a 0), de lo contrario meta general
-    meta_mtbf_calc = int(round(mtbf_prev_val * 1.1)) if mtbf_prev_val > 0 else int(META_MTBF)
-    meta_rl_calc = int(round(rl_prev_val * 1.1)) if rl_prev_val > 0 else int(META_RL)
+    meta_mtbf_calc = int(round(mtbf_prev_val * 1.1)) if mtbf_prev_val > 0 else META_MTBF
+    meta_rl_calc = int(round(rl_prev_val * 1.1)) if rl_prev_val > 0 else META_RL
 
     # ── Correlación de Producción vs Longevidad (para el gráfico de desempeño en Columna 3) ──
     rl_bins   = ['< 2 años', '2 – 4 años', '4 – 6 años', '> 6 años']
@@ -707,7 +804,7 @@ def render_tab_tablero(
             (df_f9_perf['FECHA_FORMA9'].dt.month == mes_eval)
         ].copy()
         
-        bopd_col = next((c for c in df_month_perf.columns if 'BOPD' in str(c).upper()), None)
+        bopd_col = next((c for c in df_month_perf.columns if 'BOPD' in str(c).upper() or 'PETROLEO DIA' in str(c).upper() or 'PETROLEO_DIA' in str(c).upper()), None)
         if bopd_col:
             df_month_perf[bopd_col] = pd.to_numeric(df_month_perf[bopd_col], errors='coerce').fillna(0)
             df_on_perf = df_month_perf[df_month_perf[bopd_col] > 0].copy()
@@ -842,7 +939,7 @@ def render_tab_tablero(
 
         kpi_panel_html = f"""
 <div class="tbl-panel-lateral">
-  <div class="tbl-sec-title-lat">Resumen Operativo</div>
+  <div class="tbl-sec-title-lat">Resumen Operativo<span class="tbl-live-dot" title="Datos en vivo"></span></div>
   
   <!-- ALS EN FONDO PANEL -->
   <div class="tbl-kpi-fondo-card">
@@ -887,6 +984,7 @@ def render_tab_tablero(
       <div>
         <div class="tbl-fallados-lbl">Pozos Fallados con ALS en fondo a hoy. </div>
         <div class="tbl-fallados-val">{als_fallados:,}</div>
+        <span class="tbl-pct-badge r">{(als_fallados/max(1,als_fondo)*100):.0f}% del fondo</span>
       </div>
       
       <div class="tbl-fallados-atrib">
@@ -908,6 +1006,7 @@ def render_tab_tablero(
         <div class="tbl-op-info">
           <div class="tbl-op-lbl">ALS OPERATIVOS</div>
           <div class="tbl-op-val">{als_operativos:,}</div>
+          <span class="tbl-pct-badge g">{uso_oper:.0f}% del fondo</span>
         </div>
       </div>
       
@@ -918,6 +1017,7 @@ def render_tab_tablero(
           <div>
             <div class="tbl-sub-lbl">ACTIVOS</div>
             <div class="tbl-sub-val" style="color: #0f7d58;">{activos:,}</div>
+            <span class="tbl-pct-badge g">{disp_oper:.0f}%</span>
           </div>
         </div>
         
@@ -926,6 +1026,7 @@ def render_tab_tablero(
           <div>
             <div class="tbl-sub-lbl">INACTIVOS</div>
             <div class="tbl-sub-val" style="color: #c09c2e;">{inactivos:,}</div>
+            <span class="tbl-pct-badge y">{(inactivos/total_pozos*100):.0f}%</span>
           </div>
         </div>
         
@@ -992,6 +1093,19 @@ def render_tab_tablero(
             align-items: center;
             gap: 6px;
         }}
+        .tbl-live-dot {{
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #1db87b;
+            display: inline-block;
+            animation: tblPulseDot2 2.2s ease-out infinite;
+        }}
+        @keyframes tblPulseDot2 {{
+            0%   {{ box-shadow: 0 0 0 0 rgba(19,118,89,0.45); }}
+            70%  {{ box-shadow: 0 0 0 6px rgba(19,118,89,0); }}
+            100% {{ box-shadow: 0 0 0 0 rgba(19,118,89,0); }}
+        }}
         .chart-container {{
             width: 100%;
             flex-shrink: 0;
@@ -1000,7 +1114,7 @@ def render_tab_tablero(
 </head>
 <body>
     <div class="tbl-panel">
-        <div class="tbl-sec-title">Índice de Falla (I.F. ALS)</div>
+        <div class="tbl-sec-title">Índice de Falla (I.F. ALS) <span class="tbl-live-dot"></span></div>
         <div id="gauge_if" class="chart-container" style="height: 190px;"></div>
         <div id="chart_if_anual" class="chart-container" style="height: 230px;"></div>
     </div>
@@ -1031,18 +1145,19 @@ def render_tab_tablero(
                     radius: "82%",
                     splitNumber: 4,
                     axisLine: {{
+                        roundCap: true,
                         lineStyle: {{
                             width: 10,
                             color: arcColors,
-                            shadowBlur: 4,
-                            shadowColor: "rgba(19,118,89,0.15)"
+                            shadowBlur: 6,
+                            shadowColor: "rgba(19,118,89,0.18)"
                         }}
                     }},
                     progress: {{
                         show: false
                     }},
                     pointer: {{
-                        itemStyle: {{ color: "{_T}", shadowBlur: 4, shadowColor: "rgba(31,34,30,0.3)" }},
+                        itemStyle: {{ color: "{_T}", shadowBlur: 6, shadowColor: "rgba(31,34,30,0.35)" }},
                         width: 4,
                         length: "62%"
                     }},
@@ -1296,6 +1411,22 @@ def render_tab_tablero(
             border-left: 3px solid #137659;
             padding-left: 9px;
             margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }}
+        .tbl-live-dot {{
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #1db87b;
+            display: inline-block;
+            animation: tblPulseDot3 2.2s ease-out infinite;
+        }}
+        @keyframes tblPulseDot3 {{
+            0%   {{ box-shadow: 0 0 0 0 rgba(19,118,89,0.45); }}
+            70%  {{ box-shadow: 0 0 0 6px rgba(19,118,89,0); }}
+            100% {{ box-shadow: 0 0 0 0 rgba(19,118,89,0); }}
         }}
         .gauges-row {{
             display: flex;
@@ -1315,7 +1446,7 @@ def render_tab_tablero(
 </head>
 <body>
     <div class="tbl-panel">
-        <div class="tbl-sec-title">Desempeño (MTBF &amp; RunLife)</div>
+        <div class="tbl-sec-title">Desempeño (MTBF &amp; RunLife) <span class="tbl-live-dot"></span></div>
         <div class="gauges-row">
             <div id="gauge_mtbf" class="gauge-col"></div>
             <div id="gauge_rl" class="gauge-col"></div>
@@ -1350,18 +1481,19 @@ def render_tab_tablero(
                         radius: "88%",
                         splitNumber: 3,
                         axisLine: {{
+                            roundCap: true,
                             lineStyle: {{
                                 width: 10,
                                 color: arcColors,
-                                shadowBlur: 4,
-                                shadowColor: "rgba(19,118,89,0.15)"
+                                shadowBlur: 6,
+                                shadowColor: "rgba(19,118,89,0.18)"
                             }}
                         }},
                         pointer: {{
                             itemStyle: {{
                                 color: "{_T}",
-                                shadowBlur: 4,
-                                shadowColor: "rgba(31,34,30,0.3)"
+                                shadowBlur: 6,
+                                shadowColor: "rgba(31,34,30,0.35)"
                             }},
                             width: 4,
                             length: "60%"
@@ -1580,6 +1712,434 @@ def render_tab_tablero(
 """
         components.html(col3_html, height=480, scrolling=False)
 
+    # ─────────────────────────────────────────────────────────────────────────
+    # FILA INFERIOR: CURVA DE SUPERVIVENCIA & TENDENCIA DE PRODUCCIÓN
+    # ─────────────────────────────────────────────────────────────────────────
+    st.markdown("<div style='height:20px;'></div>", unsafe_allow_html=True)
+    col_bl, col_br = st.columns([2.25, 1.25], gap="medium")
+
+    # 1. Calcular curvas de supervivencia (Kaplan-Meier) por tipo de ALS
+    curves_data = {}
+    colors_map = {
+        'ESP': '#137659',   # Verde principal
+        'PCP': '#c09c2e',   # Dorado acento
+        'EPCP': '#0a4d34',  # Verde oscuro
+        'BM': '#c62828',    # Rojo falla
+        'BH': '#455a72'     # Gris suave
+    }
+    
+    if df_resumen is not None and not df_resumen.empty:
+        for als in ALS_TIPOS:
+            sub = df_resumen[df_resumen['ALS'].astype(str).str.strip().str.upper() == als].copy()
+            ended = sub[sub['FECHA_FALLA'].notna() | sub['FECHA_PULL'].notna()].copy()
+            if ended.empty:
+                continue
+            rl = ended['RUN LIFE'].dropna().sort_values().values
+            n = len(rl)
+            surv = 1.0
+            xs = [0.0]
+            ys = [100.0]
+            for i, t in enumerate(rl):
+                surv *= (n - i - 1) / (n - i) if (n - i) > 0 else 0
+                xs.append(float(t))
+                ys.append(round(surv * 100, 1))
+            
+            # Submuestreo si hay demasiados puntos para mejorar rendimiento
+            if len(xs) > 100:
+                step = len(xs) // 100
+                xs = xs[::step]
+                ys = ys[::step]
+                
+            curves_data[als] = {
+                'x': xs,
+                'y': ys,
+                'color': colors_map.get(als, '#94a3b8')
+            }
+
+    series_survival = []
+    for als, cdata in curves_data.items():
+        points = [[x, y] for x, y in zip(cdata['x'], cdata['y'])]
+        series_survival.append({
+            "name": als,
+            "type": "line",
+            "data": points,
+            "showSymbol": False,
+            "smooth": True,
+            "lineStyle": {"width": 2.5, "color": cdata['color']},
+            "itemStyle": {"color": cdata['color']}
+        })
+
+    # 2. Calcular tendencia mensual de producción (BOPD, BWPD, BFPD & Pozos ON)
+    prod_months = []
+    prod_oil = []
+    prod_water = []
+    prod_fluid = []
+    prod_pozos = []
+    
+    try:
+        df_f9_p = df_forma9_untr.copy()
+        df_f9_p['FECHA_FORMA9'] = pd.to_datetime(df_f9_p['FECHA_FORMA9'], errors='coerce')
+        df_f9_p['MES_STR'] = df_f9_p['FECHA_FORMA9'].dt.strftime('%Y-%m')
+        
+        petr_col = next((c for c in df_f9_p.columns if 'PETROLEO DIA' in c or 'BOPD' in c), None)
+        water_col = next((c for c in df_f9_p.columns if 'AGUA DIARIA' in c or 'BWPD' in c or 'AGUA DIA' in c), None)
+        
+        meses_a_evaluar = []
+        if 'if_cats' in locals() and if_cats:
+            _MES_REV = {'Ene':1,'Feb':2,'Mar':3,'Abr':4,'May':5,'Jun':6,'Jul':7,'Ago':8,'Sep':9,'Oct':10,'Nov':11,'Dic':12}
+            for cat in if_cats:
+                p_mes, p_yr = cat.split('-')
+                mes_num = _MES_REV.get(p_mes, 1)
+                yr_num = 2000 + int(p_yr)
+                meses_a_evaluar.append(f"{yr_num}-{mes_num:02d}")
+        else:
+            from dateutil.relativedelta import relativedelta
+            start_m = fecha_eval_dt - relativedelta(months=11)
+            meses_a_evaluar = [(start_m + relativedelta(months=i)).strftime('%Y-%m') for i in range(12)]
+            
+        for mes_str in meses_a_evaluar:
+            df_m = df_f9_p[df_f9_p['MES_STR'] == mes_str]
+            if not df_m.empty and petr_col:
+                df_on = df_m[df_m[petr_col].fillna(0) > 0].copy()
+                oil_sum = float(df_on[petr_col].sum())
+                water_sum = float(df_on[water_col].sum()) if water_col else 0.0
+                fluid_sum = oil_sum + water_sum
+                pozos_on = int(df_on['POZO'].nunique())
+            else:
+                oil_sum = 0.0
+                water_sum = 0.0
+                fluid_sum = 0.0
+                pozos_on = 0
+                
+            y_str = mes_str[2:4]
+            m_idx = int(mes_str[5:7]) - 1
+            _MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+            prod_months.append(f"{_MESES[m_idx]}-{y_str}")
+            prod_oil.append(round(oil_sum, 1))
+            prod_water.append(round(water_sum, 1))
+            prod_fluid.append(round(fluid_sum, 1))
+            prod_pozos.append(pozos_on)
+    except Exception as e:
+        pass
+
+    # 3. Renderizar Panel Derecho: Curva de Supervivencia
+    with col_br:
+        bl_html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        * {{ box-sizing: border-box; }}
+        body {{
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }}
+        .tbl-panel {{
+            background: #ffffff;
+            border-radius: 20px;
+            border: 1.5px solid rgba(19,118,89,0.18);
+            box-shadow: 0 2px 8px rgba(19,118,89,0.06), 0 8px 32px rgba(19,118,89,0.08);
+            padding: 12px;
+            height: 300px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }}
+        .tbl-panel::before {{
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #137659 0%, #1db87b 50%, #137659 100%);
+            border-radius: 20px 20px 0 0;
+        }}
+        .tbl-sec-title {{
+            font-size: 10px;
+            font-weight: 800;
+            color: #137659;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            border-left: 3px solid #137659;
+            padding-left: 9px;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }}
+        .tbl-live-dot {{
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #1db87b;
+            display: inline-block;
+            animation: tblPulseDot4 2.2s ease-out infinite;
+        }}
+        @keyframes tblPulseDot4 {{
+            0%   {{ box-shadow: 0 0 0 0 rgba(19,118,89,0.45); }}
+            70%  {{ box-shadow: 0 0 0 6px rgba(19,118,89,0); }}
+            100% {{ box-shadow: 0 0 0 0 rgba(19,118,89,0); }}
+        }}
+        .chart-container {{
+            width: 100%;
+            flex: 1;
+        }}
+    </style>
+</head>
+<body>
+    <div class="tbl-panel">
+        <div class="tbl-sec-title">Curvas de Supervivencia ALS <span class="tbl-live-dot"></span></div>
+        <div id="chart_survival" class="chart-container"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script>
+        (function() {{
+            var chart = echarts.init(document.getElementById('chart_survival'));
+            var option = {{
+                backgroundColor: "transparent",
+                animation: true,
+                animationDuration: 1000,
+                tooltip: {{
+                    trigger: "axis",
+                    backgroundColor: "rgba(255,255,255,0.98)",
+                    borderColor: "rgba(19,118,89,0.2)",
+                    borderWidth: 1,
+                    textStyle: {{ color: "{_T}", fontSize: 11, fontFamily: "Inter, sans-serif" }},
+                    formatter: function(params) {{
+                        var html = '<div style="font-weight:bold;margin-bottom:4px;">Run Life: ' + Math.round(params[0].value[0]) + ' días</div>';
+                        params.forEach(function(item) {{
+                            html += '<span style="color:' + item.color + '">●</span> ' + item.seriesName + ': <b>' + item.value[1].toFixed(1) + '%</b><br/>';
+                        }});
+                        return html;
+                    }}
+                }},
+                legend: {{
+                    data: {json.dumps(list(curves_data.keys()))},
+                    textStyle: {{ color: "{_T2}", fontSize: 9, fontFamily: "Inter, sans-serif" }},
+                    bottom: 0,
+                    icon: "circle"
+                }},
+                grid: {{ top: "12%", left: "6%", right: "6%", bottom: "15%", containLabel: true }},
+                xAxis: {{
+                    type: "value",
+                    name: "DÍAS",
+                    nameTextStyle: {{ color: "{_T2}", fontSize: 8 }},
+                    axisLabel: {{ color: "{_T2}", fontSize: 8 }},
+                    axisLine: {{ lineStyle: {{ color: "rgba(19,118,89,0.12)" }} }},
+                    splitLine: {{ lineStyle: {{ color: "rgba(19,118,89,0.06)", type: "dashed" }} }}
+                }},
+                yAxis: {{
+                    type: "value",
+                    name: "SUPERVIVENCIA (%)",
+                    min: 0,
+                    max: 100,
+                    nameTextStyle: {{ color: "{_T2}", fontSize: 8 }},
+                    axisLabel: {{ color: "{_T2}", fontSize: 8, formatter: '{{value}}%' }},
+                    axisLine: {{ lineStyle: {{ color: "rgba(19,118,89,0.12)" }} }},
+                    splitLine: {{ lineStyle: {{ color: "rgba(19,118,89,0.06)", type: "dashed" }} }}
+                }},
+                series: {json.dumps(series_survival)}
+            }};
+            chart.setOption(option);
+            window.addEventListener('resize', function() {{ chart.resize(); }});
+        }})();
+    </script>
+</body>
+</html>
+"""
+        components.html(bl_html, height=300, scrolling=False)
+
+    # 4. Renderizar Panel Izquierdo: Tendencia de Producción Mensual (BOPD, BWPD, BFPD & Pozos ON)
+    with col_bl:
+        br_html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        * {{ box-sizing: border-box; }}
+        body {{
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }}
+        .tbl-panel {{
+            background: #ffffff;
+            border-radius: 20px;
+            border: 1.5px solid rgba(19,118,89,0.18);
+            box-shadow: 0 2px 8px rgba(19,118,89,0.06), 0 8px 32px rgba(19,118,89,0.08);
+            padding: 12px;
+            height: 300px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }}
+        .tbl-panel::before {{
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #137659 0%, #1db87b 50%, #137659 100%);
+            border-radius: 20px 20px 0 0;
+        }}
+        .tbl-sec-title {{
+            font-size: 10px;
+            font-weight: 800;
+            color: #137659;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            border-left: 3px solid #137659;
+            padding-left: 9px;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }}
+        .tbl-live-dot {{
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #1db87b;
+            display: inline-block;
+            animation: tblPulseDot5 2.2s ease-out infinite;
+        }}
+        @keyframes tblPulseDot5 {{
+            0%   {{ box-shadow: 0 0 0 0 rgba(19,118,89,0.45); }}
+            70%  {{ box-shadow: 0 0 0 6px rgba(19,118,89,0); }}
+            100% {{ box-shadow: 0 0 0 0 rgba(19,118,89,0); }}
+        }}
+        .chart-container {{
+            width: 100%;
+            flex: 1;
+        }}
+    </style>
+</head>
+<body>
+    <div class="tbl-panel">
+        <div class="tbl-sec-title">Tendencia de Producción &amp; Pozos ON <span class="tbl-live-dot"></span></div>
+        <div id="chart_production" class="chart-container"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script>
+        (function() {{
+            var chart = echarts.init(document.getElementById('chart_production'));
+            var option = {{
+                backgroundColor: "transparent",
+                animation: true,
+                animationDuration: 1000,
+                tooltip: {{
+                    trigger: "axis",
+                    backgroundColor: "rgba(255,255,255,0.97)",
+                    borderColor: "{_G}",
+                    borderWidth: 1,
+                    textStyle: {{ color: "{_T}", fontSize: 11, fontFamily: "Inter, sans-serif" }}
+                }},
+                legend: {{
+                    data: ["BOPD (Crudo)", "BWPD (Agua)", "BFPD (Fluido)", "Pozos ON"],
+                    textStyle: {{ color: "{_T2}", fontSize: 9, fontFamily: "Inter, sans-serif" }},
+                    bottom: 0,
+                    icon: "circle"
+                }},
+                grid: {{ top: "12%", left: "5%", right: "5%", bottom: "15%", containLabel: true }},
+                xAxis: {{
+                    type: "category",
+                    data: {json.dumps(prod_months)},
+                    axisLabel: {{ color: "{_T2}", fontSize: 8, fontFamily: "Inter, sans-serif" }},
+                    axisLine: {{ lineStyle: {{ color: "rgba(19,118,89,0.12)" }} }},
+                    axisTick: {{ show: false }}
+                }},
+                yAxis: [
+                    {{
+                        type: "value",
+                        name: "PRODUCCIÓN (BPD)",
+                        nameTextStyle: {{ color: "{_T2}", fontSize: 8 }},
+                        axisLabel: {{ color: "{_T2}", fontSize: 8 }},
+                        axisLine: {{ lineStyle: {{ color: "rgba(19,118,89,0.12)" }} }},
+                        splitLine: {{ lineStyle: {{ color: "rgba(19,118,89,0.06)", type: "dashed" }} }}
+                    }},
+                    {{
+                        type: "value",
+                        name: "Pozos ON",
+                        position: "right",
+                        nameTextStyle: {{ color: "{_Y}", fontSize: 8 }},
+                        axisLabel: {{ color: "{_Y}", fontSize: 8 }},
+                        axisLine: {{ lineStyle: {{ color: "rgba(19,118,89,0.12)" }} }},
+                        splitLine: {{ show: false }}
+                    }}
+                ],
+                series: [
+                    {{
+                        name: "BOPD (Crudo)",
+                        type: "line",
+                        smooth: true,
+                        data: {json.dumps(prod_oil)},
+                        lineStyle: {{ width: 2.5, color: "{_G}" }},
+                        itemStyle: {{ color: "{_G}" }},
+                        symbol: "circle",
+                        symbolSize: 5
+                    }},
+                    {{
+                        name: "BWPD (Agua)",
+                        type: "line",
+                        smooth: true,
+                        data: {json.dumps(prod_water)},
+                        lineStyle: {{ width: 2, color: "#0ea5e9" }},
+                        itemStyle: {{ color: "#0ea5e9" }},
+                        symbol: "circle",
+                        symbolSize: 5
+                    }},
+                    {{
+                        name: "BFPD (Fluido)",
+                        type: "line",
+                        smooth: true,
+                        data: {json.dumps(prod_fluid)},
+                        lineStyle: {{ width: 2, color: "#455a72" }},
+                        itemStyle: {{ color: "#455a72" }},
+                        symbol: "circle",
+                        symbolSize: 5
+                    }},
+                    {{
+                        name: "Pozos ON",
+                        type: "bar",
+                        yAxisIndex: 1,
+                        data: {json.dumps(prod_pozos)},
+                        barWidth: "40%",
+                        itemStyle: {{
+                            color: {{
+                                type: "linear",
+                                x: 0, y: 0, x2: 0, y2: 1,
+                                colorStops: [
+                                    {{ offset: 0, color: "#1db87b" }},
+                                    {{ offset: 1, color: "{_G}" }}
+                                ]
+                            }},
+                            borderRadius: [4, 4, 0, 0]
+                        }}
+                    }}
+                ]
+            }};
+            chart.setOption(option);
+            window.addEventListener('resize', function() {{ chart.resize(); }});
+        }})();
+    </script>
+</body>
+</html>
+"""
+        components.html(br_html, height=300, scrolling=False)
+
     # ── CÁLCULO DE MÉTRICAS DE PRODUCCIÓN PARA EL TICKER ─────────────────────────
     total_bopd = 0.0
     promedio_bopd = 0.0
@@ -1597,7 +2157,7 @@ def render_tab_tablero(
         ].copy()
         
         # BOPD (Crudo)
-        bopd_col = next((c for c in df_month_f9.columns if 'BOPD' in str(c).upper()), None)
+        bopd_col = next((c for c in df_month_f9.columns if 'BOPD' in str(c).upper() or 'PETROLEO DIA' in str(c).upper() or 'PETROLEO_DIA' in str(c).upper()), None)
         if bopd_col:
             df_month_f9[bopd_col] = pd.to_numeric(df_month_f9[bopd_col], errors='coerce').fillna(0)
             df_on_f9 = df_month_f9[df_month_f9[bopd_col] > 0].copy()
@@ -1699,6 +2259,8 @@ def render_tab_tablero(
         width: 100%;
         position: relative;
         display: flex;
+        -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 3%, #000 97%, transparent 100%);
+        mask-image: linear-gradient(90deg, transparent 0%, #000 3%, #000 97%, transparent 100%);
     }}
     
     .ticker-marquee {{
@@ -1750,10 +2312,25 @@ def render_tab_tablero(
         0%   {{ transform: translate3d(0, 0, 0); }}
         100% {{ transform: translate3d(-25%, 0, 0); }}
     }}
+
+    @keyframes tblTickerPulse {{
+        0%   {{ box-shadow: 0 0 0 0 rgba(19,118,89,0.5); }}
+        70%  {{ box-shadow: 0 0 0 5px rgba(19,118,89,0); }}
+        100% {{ box-shadow: 0 0 0 0 rgba(19,118,89,0); }}
+    }}
+
+    .ticker-pulse {{
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: #1db87b;
+        display: inline-block;
+        animation: tblTickerPulse 2s ease-out infinite;
+    }}
     </style>
     
     <div class="ticker-wrapper">
-        <div class="ticker-title">📡 ESTADO ALS</div>
+        <div class="ticker-title"><span class="ticker-pulse"></span> ESTADO ALS</div>
         <div class="ticker-content-container">
             <div class="ticker-marquee">
                 <div class="ticker-track">{track_html}</div>
@@ -1764,4 +2341,4 @@ def render_tab_tablero(
         </div>
     </div>
     """
-    st.components.v1.html(ticker_html, height=45, scrolling=False)
+    components.html(ticker_html, height=45, scrolling=False)

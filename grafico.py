@@ -183,7 +183,17 @@ def generar_resumen_mensual(df_bd, df_forma9, fecha_evaluacion):
 
         # --- CÁLCULO DE TMEF (Coherente con INDICADORES.py) ---
         try:
-            tmef_calc, _ = calcular_mtbf(df_bd, mes_fin)
+            # Time travel: simular el estado de las fechas de falla/pull al cierre del mes
+            df_snapshot_mtbf = df_bd[df_bd['FECHA_RUN_DT'] <= mes_fin].copy()
+            df_snapshot_mtbf['FECHA_RUN'] = df_snapshot_mtbf['FECHA_RUN_DT']
+            df_snapshot_mtbf['FECHA_FALLA'] = df_snapshot_mtbf['FECHA_FALLA_DT']
+            df_snapshot_mtbf['FECHA_PULL'] = df_snapshot_mtbf['FECHA_PULL_DT']
+            
+            # Enmascarar eventos futuros respecto a mes_fin
+            df_snapshot_mtbf.loc[df_snapshot_mtbf['FECHA_FALLA'] > mes_fin, 'FECHA_FALLA'] = pd.NaT
+            df_snapshot_mtbf.loc[df_snapshot_mtbf['FECHA_PULL'] > mes_fin, 'FECHA_PULL'] = pd.NaT
+            
+            tmef_calc, _ = calcular_mtbf(df_snapshot_mtbf, mes_fin)
         except Exception:
             tmef_calc = 0.0
             
@@ -207,8 +217,11 @@ def generar_resumen_mensual(df_bd, df_forma9, fecha_evaluacion):
                 rl_efectivo_calc, df_rle_hist = calcular_run_life_efectivo(current_runs, df_f9, mes_fin)
                 
                 # 5. Filtrar solo extraídos/fallados para la métrica específica
-                mask_ended_rle = (df_rle_hist['FECHA_FALLA'].notna()) | (df_rle_hist['FECHA_PULL'].notna())
-                rl_efectivo_fallados = df_rle_hist[mask_ended_rle]['RUN_LIFE_EFECTIVO'].mean() if not df_rle_hist[mask_ended_rle].empty else 0.0
+                if df_rle_hist is not None:
+                    mask_ended_rle = (df_rle_hist['FECHA_FALLA'].notna()) | (df_rle_hist['FECHA_PULL'].notna())
+                    rl_efectivo_fallados = df_rle_hist[mask_ended_rle]['RUN_LIFE_EFECTIVO'].mean() if not df_rle_hist[mask_ended_rle].empty else 0.0
+                else:
+                    rl_efectivo_fallados = 0.0
             else:
                 rl_efectivo_calc = 0.0
         except Exception as e:
@@ -459,12 +472,17 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
         x_end = pd.to_datetime(fecha_evaluacion)
 
     from ui.theme import get_plotly_layout
-    layout = get_plotly_layout()
+    from typing import Any
+    layout: dict[str, Any] = get_plotly_layout()  # type: ignore
     if titulo:
-        layout['title'] = plotly_styled_title(titulo)
+        title_obj = layout.get('title')
+        if isinstance(title_obj, dict):
+            title_obj['text'] = plotly_styled_title(titulo)
     else:
-        layout['title'] = None
-    layout.update(dict(
+        title_obj = layout.get('title')
+        if isinstance(title_obj, dict):
+            title_obj['text'] = ""
+    layout.update(dict(  # type: ignore
         showlegend=True,
         barmode='stack',
         legend=dict(

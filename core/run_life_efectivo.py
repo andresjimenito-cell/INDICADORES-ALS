@@ -97,62 +97,60 @@ def calcular_run_life_efectivo(df_bd, df_forma9, fecha_evaluacion=None):
     mask_falla = df_runs['FECHA_FALLA'].notna()
     df_runs.loc[mask_falla, 'FECHA_FIN_CALC'] = df_runs.loc[mask_falla, 'FECHA_FALLA']
     
-    # --- Agregación - Método Vectorizado ---
-    df_f9_subset = df_f9[['POZO', 'FECHA_FORMA9', 'DIAS TRABAJADOS']].copy()
+    # --- Agregación - Método Vectorizado de Alto Rendimiento ---
+    # Para evitar bucles Python, realizamos un merge_asof para asociar cada registro diario
+    # de df_f9 a una corrida específica de df_runs (FECHA_RUN <= FECHA_FORMA9 <= FECHA_FIN_CALC).
+    # Usamos index_bd para identificar las corridas de forma única y evitar colisiones si
+    # hay corridas duplicadas o con la misma numeración para el mismo pozo.
+    df_runs['index_bd'] = df_runs.index
+    df_runs_sorted = df_runs[['index_bd', 'POZO', 'RUN', 'FECHA_RUN', 'FECHA_FIN_CALC']].sort_values('FECHA_RUN')
     
-    merged = pd.merge(
-        df_runs[['POZO', 'RUN', 'FECHA_RUN', 'FECHA_FIN_CALC']],
-        df_f9_subset,
-        on='POZO',
-        how='inner'
+    df_f9_subset = df_f9[['POZO', 'FECHA_FORMA9', 'DIAS TRABAJADOS']].copy()
+    df_f9_sorted = df_f9_subset.sort_values('FECHA_FORMA9')
+    
+    merged_rle = pd.merge_asof(
+        df_f9_sorted,
+        df_runs_sorted,
+        left_on='FECHA_FORMA9',
+        right_on='FECHA_RUN',
+        by='POZO',
+        direction='backward'
     )
     
-    print(f"[DEBUG RLE] Filas tras merge POZO: {len(merged)}")
+    # Comprobar que la fecha del registro diario está dentro del rango de vigencia de la corrida
+    is_rle_match = (
+        merged_rle['FECHA_RUN'].notna() &
+        (merged_rle['FECHA_FORMA9'] <= merged_rle['FECHA_FIN_CALC'])
+    )
     
-    # Filtramos las filas donde la fecha de forma 9 cae dentro del rango del run
-    mask_rango = (merged['FECHA_FORMA9'] >= merged['FECHA_RUN']) & (merged['FECHA_FORMA9'] <= merged['FECHA_FIN_CALC'])
-    valid_data = merged[mask_rango]
+    # Agrupar y sumar los días trabajados por index_bd
+    grouped_rle = merged_rle[is_rle_match].groupby('index_bd')['DIAS TRABAJADOS'].sum().reset_index()
     
-    print(f"[DEBUG RLE] Filas tras filtro fechas: {len(valid_data)}")
+    df_result = pd.merge(
+        df_runs,
+        grouped_rle,
+        on='index_bd',
+        how='left'
+    )
     
-    if len(valid_data) == 0 and len(merged) > 0:
-        print(f"[DEBUG RLE] Ejemplo rango run: {merged['FECHA_RUN'].iloc[0]} a {merged['FECHA_FIN_CALC'].iloc[0]}")
-        print(f"[DEBUG RLE] Ejemplo fecha Forma9: {merged['FECHA_FORMA9'].iloc[0]}")
+    df_result['RUN_LIFE_EFECTIVO'] = df_result['DIAS TRABAJADOS'].fillna(0.0)
+    df_result.drop(columns=['DIAS TRABAJADOS', 'index_bd', 'FECHA_FIN_CALC'], inplace=True, errors='ignore')
     
-    # Agrupamos por RUN (Identificado por POZO y RUN) y sumamos los días trabajados
-    agrupado = valid_data.groupby(['POZO', 'RUN'])['DIAS TRABAJADOS'].sum().reset_index()
-    agrupado.rename(columns={'DIAS TRABAJADOS': 'RUN_LIFE_EFECTIVO'}, inplace=True)
+    # Mantener el mismo index original que df_bd
+    df_result.index = df_runs.index
     
-    # --- Integrar resultados de vuelta a df_bd ---
-    df_result = pd.merge(df_runs, agrupado, on=['POZO', 'RUN'], how='left')
-    
-    # Llenamos NaN con 0 (runs sin registros en forma 9 en su rango)
-    df_result['RUN_LIFE_EFECTIVO'] = df_result['RUN_LIFE_EFECTIVO'].fillna(0)
-    
-    # --- Cálculo del Promedio Global ---
     promedio_global = df_result['RUN_LIFE_EFECTIVO'].mean()
     
+    # --- Diagnósticos de RLE ---
     print(f"\n=== RESULTADO RUN LIFE EFECTIVO ===")
     print(f"Pozos únicos en BD: {df_runs['POZO'].nunique()}")
     print(f"Pozos únicos en Forma9: {df_f9['POZO'].nunique()}")
     pozos_comun = set(df_runs['POZO'].unique()) & set(df_f9['POZO'].unique())
     print(f"Pozos en común: {len(pozos_comun)}")
-    if len(pozos_comun) > 0:
-        print(f"Ejemplos de pozos en común: {list(pozos_comun)[:5]}")
-    else:
-        print(f"⚠️ NO HAY POZOS EN COMÚN!")
-        print(f"Ejemplos pozos BD: {list(df_runs['POZO'].unique())[:3]}")  
-        print(f"Ejemplos pozos F9: {list(df_f9['POZO'].unique())[:3]}")
     print(f"Total días trabajados en Forma9: {df_f9['DIAS TRABAJADOS'].sum():.2f}")
     print(f"Runs totales: {len(df_result)}")
     print(f"Runs con RLE > 0: {(df_result['RUN_LIFE_EFECTIVO'] > 0).sum()}")
     print(f"RLE Promedio: {promedio_global:.2f} días")
-    if promedio_global == 0:
-        print(f"⚠️ PROMEDIO ES 0 - Revisar nombres de pozos o rangos de fechas")
     print(f"===================================\n")
     
-    # Limpieza de columnas temporales
-    if 'FECHA_FIN_CALC' in df_result.columns:
-        df_result.drop(columns=['FECHA_FIN_CALC'], inplace=True)
-        
     return promedio_global, df_result

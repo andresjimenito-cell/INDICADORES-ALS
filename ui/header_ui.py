@@ -1,12 +1,8 @@
 """
 header_ui.py
-============
+===========
 Header principal de la aplicación INDICADORES ALS.
-Diseño HUD futurista con uso óptimo del espacio horizontal:
-  - Logo + nombre de app + badge de fecha alineados en una sola barra compacta
-  - KPIs rápidos de sesión en la misma fila (pozos totales, activos, fallados)
-  - Barra de estado animada en CSS puro
-  - Zero vertical waste: ocupa ~72px totales
+Barra compacta: Logo + Título + Fecha de evaluación.
 """
 
 from datetime import datetime, timedelta
@@ -56,8 +52,8 @@ _HEADER_CSS = """
 .als-header-bar {
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding: 8px 18px;
+    gap: 12px;
+    padding: 8px 16px;
     background: linear-gradient(135deg, 
         rgba(255, 255, 255, 0.98) 0%, 
         rgba(252, 254, 253, 0.99) 100%
@@ -70,6 +66,8 @@ _HEADER_CSS = """
     overflow: hidden;
     box-shadow: 0 4px 18px rgba(19, 118, 89, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
     transition: box-shadow 0.3s ease, border-color 0.3s ease;
+    width: 100% !important;
+    box-sizing: border-box;
 }
 
 .als-header-bar:hover {
@@ -144,67 +142,6 @@ _HEADER_CSS = """
     display: inline-block;
 }
 
-/* ── KPI chips ── */
-.als-kpi-row {
-    display: flex; gap: 8px;
-    margin-left: auto;
-    flex-shrink: 0;
-    align-items: center;
-}
-.als-kpi-chip {
-    display: flex; flex-direction: column; align-items: center;
-    padding: 4px 10px;
-    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-    border: 1.5px solid rgba(19, 118, 89, 0.12);
-    border-radius: 8px;
-    min-width: 58px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-}
-.als-kpi-chip:hover {
-    transform: translateY(-1.5px);
-    border-color: rgba(19, 118, 89, 0.28);
-    box-shadow: 0 4px 10px rgba(19, 118, 89, 0.08);
-}
-.als-kpi-chip-label {
-    font-family: 'Inter', sans-serif !important;
-    font-size: 0.48rem; font-weight: 800;
-    letter-spacing: 1px; text-transform: uppercase;
-    color: #64748b; white-space: nowrap;
-}
-.als-kpi-chip-value {
-    font-family: 'Inter', sans-serif !important;
-    font-size: 0.85rem; font-weight: 900;
-    line-height: 1.1;
-    margin-top: 1px;
-}
-
-/* ── Dot pulsante de "live" ── */
-.als-live-badge {
-    display: flex; align-items: center; gap: 6px;
-    flex-shrink: 0;
-    background: rgba(19, 118, 89, 0.06);
-    padding: 4px 10px;
-    border-radius: 20px;
-    border: 1px solid rgba(19, 118, 89, 0.12);
-}
-.als-live-dot {
-    width: 6px; height: 6px; border-radius: 50%;
-    background: #137659;
-    box-shadow: 0 0 6px rgba(19, 118, 89, 0.6);
-    animation: pulse-dot 2s ease-in-out infinite;
-    display: inline-block;
-}
-@keyframes pulse-dot {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50%       { opacity: 0.4; transform: scale(0.75); }
-}
-.als-live-text {
-    font-family: 'Inter', sans-serif !important;
-    font-size: 0.55rem; font-weight: 800;
-    color: #137659; letter-spacing: 1.5px; text-transform: uppercase;
-}
-
 /* ── Quitar padding extra de Streamlit sobre el header ── */
 div[data-testid="stVerticalBlock"] > div:first-child {
     padding-top: 0.5rem !important;
@@ -214,58 +151,12 @@ div[data-testid="stVerticalBlock"] > div:first-child {
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# HELPER — leer KPIs rápidos desde session_state
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _quick_kpis(fecha_eval_dt, df_bd=None) -> tuple[int, int, int]:
-    """Devuelve (total_pozos, pozos_activos, pozos_fallados) desde el df completo en session_state."""
-    df = st.session_state.get("df_bd_calculated")
-    if df is None or df.empty:
-        return 0, 0, 0
-
-    df = df.copy()
-    
-    # Excluir 'ECUADOR' tal como se hace en el tablero
-    if 'ACTIVO' in df.columns:
-        df = df[df['ACTIVO'].astype(str).str.upper().str.strip() != 'ECUADOR']
-
-    # Asegurar tipo datetime y normalizar fechas
-    for col in ('FECHA_RUN', 'FECHA_FALLA', 'FECHA_PULL'):
-        if col in df.columns:
-            df[col] = pd.to_datetime(df[col], errors='coerce')
-
-    df['_RUN']  = df['FECHA_RUN'].dt.normalize()
-    df['_FALL'] = df['FECHA_FALLA'].dt.normalize() if 'FECHA_FALLA' in df.columns else pd.NaT
-    df['_PULL'] = df['FECHA_PULL'].dt.normalize()  if 'FECHA_PULL'  in df.columns else pd.NaT
-
-    fecha_eval_date = fecha_eval_dt.normalize()
-
-    # Total de pozos únicos (excluyendo Ecuador)
-    total = df["POZO"].nunique() if "POZO" in df.columns else 0
-
-    # Lógica idéntica al Tablero para activos (operativos) y fallados:
-    mask_fondo = (df['_RUN'] <= fecha_eval_date) & (df['_PULL'].isna() | (df['_PULL'] > fecha_eval_date))
-    df_fondo = df[mask_fondo]
-    
-    if not df_fondo.empty:
-        activos = df_fondo[df_fondo['_FALL'].isna() | (df_fondo['_FALL'] > fecha_eval_date)]['POZO'].nunique() if 'POZO' in df_fondo.columns else 0
-        fallados = df_fondo[df_fondo['_FALL'].notna() & (df_fondo['_FALL'] <= fecha_eval_date)]['POZO'].nunique() if 'POZO' in df_fondo.columns else 0
-    else:
-        activos, fallados = 0, 0
-
-    return total, activos, fallados
-
-
-# ─────────────────────────────────────────────────────────────────────────────
 # RENDER PRINCIPAL
 # ─────────────────────────────────────────────────────────────────────────────
 
 def render_header(titulo_pagina: str = "INDICADORES ALS", fecha_eval=None, df_bd_filtered=None):
     """
-    Header compacto de alta densidad.
-
-    Layout (todo en una sola barra horizontal):
-      [Logo] [Título + subtítulo] [│] [Fecha eval] [│] [KPI×3] [●LIVE]
+    Header compacto: Logo + Título + Fecha de evaluación.
     """
     _init_session_state()
 
@@ -287,39 +178,13 @@ def render_header(titulo_pagina: str = "INDICADORES ALS", fecha_eval=None, df_bd
 
     f_display = f"{f_ini_display} - {f_eval_display}"
 
-    # ── KPIs rápidos ───────────────────────────────────────────────────────
-    total, activos, fallados = _quick_kpis(fecha_eval_dt, df_bd_filtered)
-
-    hay_datos = st.session_state.get("reporte_runes") is not None
-
-    # KPI chips HTML
-    def chip(label: str, value: str, color: str) -> str:
-        return (
-            f'<div class="als-kpi-chip">'
-            f'  <span class="als-kpi-chip-label">{label}</span>'
-            f'  <span class="als-kpi-chip-value" style="color:{color};">{value}</span>'
-            f'</div>'
-        )
-
-    chips_html = ""
-    if hay_datos:
-        chips_html = (
-            f'<div class="als-kpi-row">'
-            f'  <div class="als-vdivider"></div>'
-            + chip("TOTAL",    str(total),    "#455a72")
-            + chip("ON",       str(activos),  "#137659")
-            + chip("FALLAS",   str(fallados), "#c62828")
-            + f'</div>'
-        )
-
     # Logo
     if os.path.exists("logo.png"):
-        # Si existe el logo PNG, lo insertamos con st.image en columna aparte
         logo_inner = '<img src="logo.png" style="width:24px;height:24px;object-fit:contain;">'
     else:
         logo_inner = "🛡️"
 
-    # HTML + CSS completo del header en una sola llamada para evitar que st.empty sobreescriba los estilos
+    # HTML + CSS completo del header
     st.markdown(_HEADER_CSS + f"""
 <div class="als-header-bar">
 
@@ -331,6 +196,9 @@ def render_header(titulo_pagina: str = "INDICADORES ALS", fecha_eval=None, df_bd
     <p class="als-title">{titulo_pagina}</p>
     <p class="als-subtitle">ALS · Artificial Lift Systems · Parex Resources (Frontera)</p>
   </div>
+
+  <!-- Separador -->
+  <div class="als-vdivider"></div>
 
   <!-- Fecha evaluación -->
   <div class="als-date-badge">

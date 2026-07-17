@@ -7,6 +7,7 @@ Tema Claro, Fondos Limpios, Verdes y Dorados.
 
 import html as html_module
 import streamlit as st
+import streamlit.components.v1 as components
 import json
 import tema
 from config import (
@@ -371,45 +372,63 @@ def _apply_styles_internal():
             color: #1f221e !important;
         }
 
-        /* 3. Popovers (Filtros KPIs y Configuración en Header) */
+        /* 3. Popovers — compact toolbar style (overrides above) */
         div[data-testid="stPopover"] button,
         button[data-testid="stPopoverButton"],
         div.stPopover button {
-            background: linear-gradient(135deg, 
-                rgba(255, 255, 255, 0.98) 0%, 
-                rgba(252, 254, 253, 0.99) 100%
-            ) !important;
-            border: 1px solid rgba(19, 118, 89, 0.16) !important;
-            border-top: 3px solid #137659 !important;
+            background: rgba(255,255,255,0.95) !important;
+            border: 1.5px solid rgba(19, 118, 89, 0.25) !important;
+            border-top: none !important;
             color: #137659 !important;
-            border-radius: 12px !important;
-            width: 100% !important;
-            height: 52px !important;
-            min-height: 52px !important;
-            padding: 0 !important;
-            display: flex !important;
+            border-radius: 8px !important;
+            width: auto !important;
+            height: auto !important;
+            min-height: unset !important;
+            padding: 5px 14px !important;
+            display: inline-flex !important;
             align-items: center !important;
             justify-content: center !important;
-            font-size: 1.25rem !important;
-            transition: all 0.3s ease !important;
+            font-size: 0.72rem !important;
+            font-family: 'Inter', sans-serif !important;
+            font-weight: 600 !important;
+            transition: all 0.2s ease !important;
             margin: 0 !important;
-            box-shadow: 0 4px 18px rgba(19, 118, 89, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02) !important;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04) !important;
         }
         div[data-testid="stPopover"] button:hover,
         button[data-testid="stPopoverButton"]:hover,
         div.stPopover button:hover {
-            border-color: rgba(19, 118, 89, 0.25) !important;
-            box-shadow: 0 6px 24px rgba(19, 118, 89, 0.07), 0 2px 4px rgba(0, 0, 0, 0.02) !important;
-            transform: translateY(-1.5px) !important;
+            border-color: rgba(19, 118, 89, 0.45) !important;
+            box-shadow: 0 2px 8px rgba(19, 118, 89, 0.1) !important;
+            background: rgba(19, 118, 89, 0.04) !important;
+            transform: none !important;
         }
-        div[data-testid="stPopoverBody"] {
+        /* Asegurar tema claro en popovers de Streamlit (tanto stPopoverBody como contenedores flotantes genéricos) */
+        div[data-testid="stPopoverBody"],
+        div[data-testid="stPopoverContent"],
+        div[class*="stPopoverBody"],
+        div[class*="stPopoverContent"],
+        div[role="dialog"],
+        [data-baseweb="popover"] {
             background-color: #ffffff !important;
-            border: 1px solid rgba(19, 118, 89, 0.2) !important;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.08) !important;
+            background: #ffffff !important;
+            border: 1px solid rgba(19, 118, 89, 0.22) !important;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08) !important;
             color: #1f221e !important;
         }
-        div[data-testid="stPopoverBody"] * {
+        
+        div[data-testid="stPopoverBody"] *,
+        div[data-testid="stPopoverContent"] *,
+        div[class*="stPopover"] *,
+        [data-baseweb="popover"] * {
             color: #1f221e !important;
+        }
+        
+        /* Forzar visibilidad del color de etiquetas de parámetros e inputs dentro de popover */
+        div[class*="stPopover"] label,
+        div[data-testid="stPopoverBody"] label {
+            color: #137659 !important;
+            font-weight: 800 !important;
         }
         
         /* 5. Carga de Archivos (File Uploader) */
@@ -427,18 +446,43 @@ def _apply_styles_internal():
             background-color: #ffffff !important;
         }
 
-        /* 4. Inputs globales */
-        .stTextInput input, .stDateInput input {
+        /* 4. Inputs globales y MultiSelects */
+        .stTextInput input, .stDateInput input, div[data-testid="stMultiSelect"] {
             background-color: #ffffff !important;
-            border: 1px solid rgba(19, 118, 89, 0.25) !important;
             color: #1f221e !important;
-            font-size: 0.8rem !important;
         }
-        .stSelectbox label, .stTextInput label, .stDateInput label {
+        
+        /* Contenedores del multiselect y selectbox */
+        div[data-baseweb="select"] {
+            background-color: #ffffff !important;
+            color: #1f221e !important;
+        }
+        div[data-baseweb="select"] * {
+            background-color: #ffffff !important;
+            color: #1f221e !important;
+        }
+        
+        /* Píldoras o chips seleccionados en el multiselect (chips claros Parex) */
+        div[data-testid="stMultiSelect"] span[role="button"] {
+            background-color: rgba(19, 118, 89, 0.12) !important;
+            color: #137659 !important;
+            border: 1px solid rgba(19, 118, 89, 0.28) !important;
+            border-radius: 6px !important;
+        }
+        div[data-testid="stMultiSelect"] span[role="button"] svg {
+            fill: #137659 !important;
+            color: #137659 !important;
+        }
+        
+        /* Etiquetas del multiselect y otros inputs */
+        .stSelectbox label, .stTextInput label, .stDateInput label, div[data-testid="stMultiSelect"] label {
             color: #137659 !important;
             font-size: 0.65rem !important;
             font-weight: 800 !important;
             text-transform: uppercase !important;
+            letter-spacing: 1px !important;
+            font-family: 'Montserrat', sans-serif !important;
+        }
             letter-spacing: 1px !important;
             font-family: 'Montserrat', sans-serif !important;
         }
@@ -491,7 +535,7 @@ def _apply_styles_internal():
             color: #137659 !important;
         }
 
-        /* ── FLOATING NAVIGATION (TABLIST) ── */
+        /* ── FLOATING NAVIGATION (TABLIST) — overridden by INDICADORES.py ── */
         div[data-testid="stTabs"] {
             display: flex !important;
             flex-direction: column !important;
@@ -499,22 +543,22 @@ def _apply_styles_internal():
 
         div[data-testid="stTabs"] [role="tablist"] {
             position: fixed !important;
-            bottom: 30px !important;
+            bottom: 16px !important;
             left: 50% !important;
             transform: translateX(-50%) !important;
             z-index: 999999 !important;
-            background: rgba(255, 255, 255, 0.95) !important;
-            backdrop-filter: blur(15px) !important;
-            padding: 5px 25px !important;
+            background: rgba(255, 255, 255, 0.96) !important;
+            backdrop-filter: blur(20px) saturate(180%) !important;
+            padding: 5px 16px !important;
             border-radius: 50px !important;
-            border: 1px solid rgba(19, 118, 89, 0.3) !important;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08), 0 0 15px rgba(19, 118, 89, 0.1) !important;
+            border: 1.5px solid rgba(19, 118, 89, 0.2) !important;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(19,118,89,0.08) !important;
             width: auto !important;
-            min-width: 500px !important;
+            min-width: 480px !important;
             display: flex !important;
             justify-content: center !important;
-            gap: 15px !important;
-            order: 2 !important; 
+            gap: 2px !important;
+            order: 2 !important;
         }
 
         /* Asegurar que el contenido de los tabs NO se mueva con la barra y esté arriba */
@@ -535,33 +579,59 @@ def _apply_styles_internal():
         div[data-testid="stTabs"] button[data-baseweb="tab"] {
             background: transparent !important;
             border: none !important;
-            padding: 8px 18px !important;
+            padding: 6px 14px !important;
             color: #5b5c55 !important;
-            font-family: 'Montserrat', sans-serif !important;
-            font-size: 0.7rem !important;
-            letter-spacing: 1.5px !important;
+            font-family: 'Inter', sans-serif !important;
+            font-size: 0.66rem !important;
+            font-weight: 700 !important;
+            letter-spacing: 1.0px !important;
             text-transform: uppercase !important;
-            transition: all 0.3s !important;
-            border-radius: 20px !important;
+            transition: all 0.25s ease !important;
+            border-radius: 30px !important;
             height: auto !important;
+            white-space: nowrap !important;
         }
         
         div[data-testid="stTabs"] button[data-baseweb="tab"]:hover {
             color: #137659 !important;
-            background: rgba(19, 118, 89, 0.05) !important;
+            background: rgba(19, 118, 89, 0.07) !important;
         }
         
         /* Tab seleccionado (Estado Activo) */
         div[data-testid="stTabs"] button[aria-selected="true"] {
-            color: #137659 !important;
-            background: rgba(19, 118, 89, 0.12) !important;
-            border: 1px solid rgba(19, 118, 89, 0.25) !important;
-            box-shadow: 0 0 10px rgba(19, 118, 89, 0.1) !important;
+            color: #ffffff !important;
+            background: linear-gradient(135deg, #137659 0%, #0a4d34 100%) !important;
+            box-shadow: 0 4px 12px rgba(19, 118, 89, 0.35) !important;
+            border: none !important;
         }
 
         /* Esconder la barra debajo del tab seleccionado */
-        div[data-testid="stTabs"] [data-baseweb="tab-highlight"] {
+        div[data-testid="stTabs"] [data-baseweb="tab-highlight"],
+        div[data-baseweb="tab-border"],
+        [data-testid="stTabHighlight"] {
             display: none !important;
+        }
+
+        /* Popover buttons — compact toolbar style */
+        div[data-testid="stPopover"] > button {
+            background: rgba(255,255,255,0.95) !important;
+            border: 1.5px solid rgba(19, 118, 89, 0.25) !important;
+            border-radius: 8px !important;
+            padding: 5px 14px !important;
+            font-size: 0.72rem !important;
+            font-family: 'Inter', sans-serif !important;
+            font-weight: 600 !important;
+            color: #137659 !important;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04) !important;
+            transition: all 0.2s ease !important;
+            width: auto !important;
+            height: auto !important;
+            min-height: unset !important;
+        }
+        div[data-testid="stPopover"] > button:hover {
+            border-color: rgba(19, 118, 89, 0.45) !important;
+            box-shadow: 0 2px 8px rgba(19, 118, 89, 0.1) !important;
+            background: rgba(19, 118, 89, 0.04) !important;
         }
 
         /* ── ILUMINACIÓN VERDE Y EFECTOS GLOW COMPACTO ── */
@@ -575,6 +645,35 @@ def _apply_styles_internal():
             border-color: #137659 !important;
         }
         
+        /* --- FORCE LIGHT THEME FOR STREAMLIT SPINNERS, WARNINGS AND INFO BOXES --- */
+        div[data-testid="stSpinner"], 
+        div[data-testid="stSpinner"] > div, 
+        .stSpinner,
+        div.stSpinner > div {
+            background-color: #ffffff !important;
+            background: #ffffff !important;
+            color: #137659 !important;
+            border-radius: 8px !important;
+            padding: 8px 16px !important;
+            box-shadow: 0 4px 12px rgba(19, 118, 89, 0.1) !important;
+            border: 1px solid rgba(19, 118, 89, 0.2) !important;
+        }
+
+        /* Asegurar que el texto del spinner sea legible (oscuro) y no herede gris oscuro sobre negro */
+        div[data-testid="stSpinner"] p,
+        div[data-testid="stSpinner"] span,
+        div[data-testid="stSpinner"] div {
+            color: #1f221e !important;
+            font-family: 'Inter', sans-serif !important;
+            font-weight: 500 !important;
+        }
+
+        /* Modificar el círculo del cargador (spinner animado) para que use el verde de Parex */
+        div[data-testid="stSpinner"] svg {
+            stroke: #137659 !important;
+            fill: #137659 !important;
+        }
+
         /* Reducir espacios libres para máxima compactación de panel */
         [data-testid="stMainBlockContainer"] {
             padding: 0.2rem 0.6rem !important;
@@ -599,7 +698,7 @@ def render_hud_table(df, table_id="hud_table"):
     # Convertir a HTML
     html_table = df.to_html(index=False, table_id=table_id, classes='display nowrap hud-table')
     
-    st.components.v1.html(f"""
+    components.html(f"""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap');
         @import url('https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css');
@@ -665,7 +764,7 @@ def apply_all_styles():
     _apply_styles_internal()
 
 def show_success_box(msg: str):
-    safe_msg = html_module.escape(str(msg))
+    safe_msg = html_module.escape(msg)
     st.markdown(f"""
         <div style="background:rgba(21,128,61,0.08); border-left:5px solid #15803d; padding:15px; border-radius:8px; margin:10px 0;">
             <div style="color:#15803d; font-family:'Montserrat'; font-size:0.7rem; font-weight:700; letter-spacing:2px;">SISTEMA ONLINE</div>
