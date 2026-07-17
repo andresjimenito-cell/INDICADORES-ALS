@@ -278,6 +278,7 @@ def authenticate(username, password):
         "pt": "2",
         "jaime": "1",
         "ajm": "1",
+        "nelson": "1",
     }
     return users.get(username) == password
 
