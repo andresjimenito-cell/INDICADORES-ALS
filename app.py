@@ -248,20 +248,23 @@ def _apply_streamlit_ui_visibility():
 _apply_streamlit_ui_visibility()
 
 # === LÓGICA DE EJECUCIÓN DEL MÓDULO ===
-if st.session_state.get('authenticated') and 'launch_module_path' in st.session_state and st.session_state.get('launch_module_path'):
-    launch_path = st.session_state.get('launch_module_path')
+launch_path = st.session_state.get('launch_module_path')
+if st.session_state.get('authenticated') and launch_path and isinstance(launch_path, str):
     launch_name = st.session_state.get('launch_module_name', os.path.splitext(os.path.basename(launch_path))[0])
 
     try:
         spec = importlib.util.spec_from_file_location("launched_module", launch_path)
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        
-        # Si el módulo tiene una función main o show_resumen, la llamamos
-        if hasattr(mod, 'show_resumen'):
-            mod.show_resumen()
-        elif hasattr(mod, 'main'):
-            mod.main()
+        if spec is not None and spec.loader is not None:
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            
+            # Si el módulo tiene una función main o show_resumen, la llamamos
+            if hasattr(mod, 'show_resumen'):
+                mod.show_resumen()
+            elif hasattr(mod, 'main'):
+                mod.main()
+        else:
+            st.error(f"❌ No se pudo crear el spec para el módulo: {launch_path}")
             
     except Exception as e:
         st.error(f"❌ Error al cargar el módulo {launch_path}: {e}")
@@ -351,7 +354,7 @@ def show_login():
                     st.session_state.authenticated = True
                     st.session_state.username = username
                     try:
-                        st.session_state['hide_main_menu_only'] = True if str(username).strip().lower() == 'invitado' else False
+                        st.session_state['hide_main_menu_only'] = True if username.strip().lower() == 'invitado' else False
                     except Exception:
                         st.session_state['hide_main_menu_only'] = False
                     st.success(f"✅ ¡Bienvenido, {username.upper()}!")

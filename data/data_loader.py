@@ -38,35 +38,53 @@ def cached_onedrive_download(url: str, dest_filename: str):
     os.makedirs(upload_dir, exist_ok=True)
     dest_path = os.path.join(upload_dir, dest_filename)
 
-    try:
-        r = requests.get(url, timeout=30, allow_redirects=True)
-        r.raise_for_status()
-        content_type = r.headers.get('content-type', '')
-        content = r.content
-        is_html = 'text/html' in content_type or (
-            isinstance(content, (bytes, bytearray)) and b'<html' in content[:400].lower()
-        )
+    def _is_valid_file(content: bytes) -> bool:
+        """Verifica que el contenido no sea una página HTML."""
+        return not (b'<html' in content[:400].lower() or b'<!doctype' in content[:400].lower())
 
-        if is_html:
-            txt = content.decode('utf-8', errors='ignore')
-            m = (
-                re.search(r'FileGetUrl"\s*:\s*"([^"]+)"', txt)
-                or re.search(r'FileUrlNoAuth"\s*:\s*"([^"]+)"', txt)
-            )
-            if m:
-                download_url = m.group(1)
-                download_url = download_url.replace('\\u0026', '&').replace('\\/', '/')
-                download_url = html_module.unescape(download_url)
-                r2 = requests.get(download_url, timeout=30, allow_redirects=True)
-                r2.raise_for_status()
+    def _make_direct_url(raw_url: str) -> str:
+        """Convierte un link de OneDrive a URL de descarga directa."""
+        if 'download=1' not in raw_url:
+            sep = '&' if '?' in raw_url else '?'
+            return raw_url + sep + 'download=1'
+        return raw_url
+
+    try:
+        # ── Estrategia 1: forzar descarga directa con download=1 ──
+        direct_url = _make_direct_url(url)
+        r = requests.get(direct_url, timeout=45, allow_redirects=True)
+        r.raise_for_status()
+        if _is_valid_file(r.content):
+            with open(dest_path, 'wb') as fh:
+                fh.write(r.content)
+            return dest_path
+
+        # ── Estrategia 2: URL original + extraer link real del HTML ──
+        r = requests.get(url, timeout=45, allow_redirects=True)
+        r.raise_for_status()
+        content = r.content
+
+        if _is_valid_file(content):
+            with open(dest_path, 'wb') as fh:
+                fh.write(content)
+            return dest_path
+
+        # Es HTML — intentar extraer URL de descarga embebida
+        txt = content.decode('utf-8', errors='ignore')
+        m = (
+            re.search(r'FileGetUrl"\s*:\s*"([^"]+)"', txt)
+            or re.search(r'FileUrlNoAuth"\s*:\s*"([^"]+)"', txt)
+        )
+        if m:
+            download_url = m.group(1)
+            download_url = download_url.replace('\\u0026', '&').replace('\\/', '/')
+            download_url = html_module.unescape(download_url)
+            r2 = requests.get(download_url, timeout=45, allow_redirects=True)
+            r2.raise_for_status()
+            if _is_valid_file(r2.content):
                 with open(dest_path, 'wb') as fh:
                     fh.write(r2.content)
                 return dest_path
-            else:
-                with open(dest_path, 'wb') as fh:
-                    fh.write(content)
-                return dest_path
-        else:
             with open(dest_path, 'wb') as fh:
                 fh.write(content)
             return dest_path
