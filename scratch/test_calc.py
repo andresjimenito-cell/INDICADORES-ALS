@@ -4,7 +4,7 @@ sys.path.append(os.getcwd())
 
 import pickle
 import pandas as pd
-from indice_falla import calcular_indice_falla_anual
+from core.indice_falla import calcular_indice_falla_anual
 
 try:
     with open('cache_data/last_run_data.pkl', 'rb') as f:

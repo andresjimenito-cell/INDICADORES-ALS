@@ -539,19 +539,22 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
             st.markdown("<br>", unsafe_allow_html=True)
             st.markdown("<div style='color:#137659; font-family:Arial, sans-serif !important; margin-bottom:10px;'>DETALLE MENSUAL</div>", unsafe_allow_html=True)
             
-            # Construir la tabla con las columnas y orden exactos solicitados
+            # Construir la tabla con las columnas solicitadas
             df_detalle = pd.DataFrame()
             df_detalle['Mes'] = df_mensual_hist['Mes']
-            df_detalle['IF Total'] = df_mensual_hist['Indice_Falla_Rolling_ON'].apply(lambda x: f"{x:.2%}" if pd.notna(x) else "0.00%")
-            df_detalle['IF ALS'] = df_mensual_hist['Indice_Falla_Rolling_ALS_ON'].apply(lambda x: f"{x:.2%}" if pd.notna(x) else "0.00%")
+            df_detalle['Pozos Operativos'] = df_mensual_hist['Pozos Operativos'].fillna(0).astype(int)
+            df_detalle['IF Total Op'] = df_mensual_hist['Indice_Falla_Rolling_Total'].apply(lambda x: f"{x:.2%}" if pd.notna(x) else "0.00%")
+            df_detalle['IF ALS Op'] = df_mensual_hist['Indice_Falla_Rolling_ALS_Total'].apply(lambda x: f"{x:.2%}" if pd.notna(x) else "0.00%")
+            df_detalle['Pozos On'] = df_mensual_hist['Pozos ON'].fillna(0).astype(int)
+            df_detalle['IF ON'] = df_mensual_hist['Indice_Falla_Rolling_ON'].apply(lambda x: f"{x:.2%}" if pd.notna(x) else "0.00%")
+            df_detalle['IF ALS ON'] = df_mensual_hist['Indice_Falla_Rolling_ALS_ON'].apply(lambda x: f"{x:.2%}" if pd.notna(x) else "0.00%")
             df_detalle['IF < 1500'] = df_mensual_hist.get('Indice_Falla_Rolling_ON_1500', pd.Series([0]*len(df_mensual_hist))).apply(lambda x: f"{x:.2%}" if pd.notna(x) else "0.00%")
             df_detalle['IF ALS < 1500'] = df_mensual_hist.get('Indice_Falla_Rolling_ALS_ON_1500', pd.Series([0]*len(df_mensual_hist))).apply(lambda x: f"{x:.2%}" if pd.notna(x) else "0.00%")
-            df_detalle['Pozos On'] = df_mensual_hist['Pozos ON'].fillna(0).astype(int)
+            df_detalle['Pozos Off'] = (df_mensual_hist['Pozos Operativos'] - df_mensual_hist['Pozos ON']).clip(lower=0).fillna(0).astype(int)
             df_detalle['Pozos Fallados'] = df_mensual_hist['Fallas Totales'].fillna(0).astype(int)
+            df_detalle['Fallas ALS'] = df_mensual_hist['Fallas ALS'].fillna(0).astype(int)
             df_detalle['Fallas < 1500'] = df_mensual_hist.get('Fallas_1500', pd.Series([0]*len(df_mensual_hist))).fillna(0).astype(int)
             df_detalle['Fallas ALS < 1500'] = df_mensual_hist.get('Fallas_ALS_1500', pd.Series([0]*len(df_mensual_hist))).fillna(0).astype(int)
-            df_detalle['Fallas ALS'] = df_mensual_hist['Fallas ALS'].fillna(0).astype(int)
-            df_detalle['Pozos Off'] = (df_mensual_hist['Pozos Operativos'] - df_mensual_hist['Pozos ON']).clip(lower=0).fillna(0).astype(int)
             
             # Ordenar por Mes descendente para ver lo más reciente al inicio
             df_detalle = df_detalle.sort_values(by='Mes', ascending=False).reset_index(drop=True)

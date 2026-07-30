@@ -170,11 +170,11 @@ def calcular_indice_falla_anual(df_bd, df_forma9, fecha_evaluacion, fecha_inicio
     ).replace([np.inf, -np.inf], np.nan).fillna(0)
 
     df_mensual['Indice_Falla_Rolling_ON_1500'] = (
-        df_mensual['Fallas_1500_Rolling'] / df_mensual['Pozos_ON_1500_Rolling_Avg']
+        df_mensual['Fallas_1500_Rolling'] / df_mensual['Pozos_ON_Rolling_Avg']
     ).replace([np.inf, -np.inf], np.nan).fillna(0)
     
     df_mensual['Indice_Falla_Rolling_ALS_ON_1500'] = (
-        df_mensual['Fallas_ALS_1500_Rolling'] / df_mensual['Pozos_ON_1500_Rolling_Avg']
+        df_mensual['Fallas_ALS_1500_Rolling'] / df_mensual['Pozos_ON_Rolling_Avg']
     ).replace([np.inf, -np.inf], np.nan).fillna(0)
     
     # Filter the final monthly dataframe to only contain the requested date range for the chart/output
@@ -197,8 +197,8 @@ def calcular_indice_falla_anual(df_bd, df_forma9, fecha_evaluacion, fecha_inicio
     indice_falla_on = (total_fallas / promedio_on) if promedio_on > 0 else 0
     indice_falla_als_on = (total_fallas_als / promedio_on) if promedio_on > 0 else 0
     
-    indice_falla_on_1500 = (total_fallas_1500 / promedio_on_1500) if promedio_on_1500 > 0 else 0
-    indice_falla_als_on_1500 = (total_fallas_als_1500 / promedio_on_1500) if promedio_on_1500 > 0 else 0
+    indice_falla_on_1500 = (total_fallas_1500 / promedio_on) if promedio_on > 0 else 0
+    indice_falla_als_on_1500 = (total_fallas_als_1500 / promedio_on) if promedio_on > 0 else 0
     
     resumen_calculo = pd.DataFrame({
         'Indicador': [
@@ -222,8 +222,8 @@ def calcular_indice_falla_anual(df_bd, df_forma9, fecha_evaluacion, fecha_inicio
             int(promedio_operativos), 
             int(promedio_on), 
             int(promedio_on),
-            int(promedio_on_1500) if pd.notna(promedio_on_1500) else 0,
-            int(promedio_on_1500) if pd.notna(promedio_on_1500) else 0
+            int(promedio_on) if pd.notna(promedio_on) else 0,
+            int(promedio_on) if pd.notna(promedio_on) else 0
         ],
         'Fallas': [
             total_fallas, 
