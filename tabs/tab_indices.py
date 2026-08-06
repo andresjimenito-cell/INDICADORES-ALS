@@ -398,6 +398,7 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
             st.session_state.get('general_bloque_filter', 'TODOS') != 'TODOS' or
             st.session_state.get('general_campo_filter', 'TODOS') != 'TODOS'
         )
+        bloques_if = []
         if not _filtro_activo:
             col_b_head, col_b_sel = st.columns([1, 1])
             with col_b_head:
@@ -438,7 +439,6 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                 fecha_eval_norm_b = fecha_eval_dt_b.normalize()
                 first_month_b = (fecha_eval_norm_b.replace(day=1) - pd.DateOffset(months=11)).normalize()
 
-                bloques_if = []
                 for bloque, grp in df_bloque_raw.groupby('BLOQUE'):
                     if pd.isna(bloque) or str(bloque).strip() == '' or str(bloque).strip().upper() in ('TODOS', 'ECUADOR'):
                         continue
@@ -520,8 +520,8 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                     bloques_if.append({
                         'bloque': str(bloque).strip(),
                         'total': total_pozosBloque,
-                        'prom_on': int(round(promedio_on)),
-                        'prom_on_1500': int(round(promedio_on_1500)),
+                        'prom_on': round(promedio_on),
+                        'prom_on_1500': round(promedio_on_1500),
                         'fallas_tot': fallas_tot,
                         'fallas_als': fallas_als,
                         'fallas_1500': fallas_1500,
