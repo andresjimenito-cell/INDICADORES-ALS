@@ -399,12 +399,12 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
             st.session_state.get('general_campo_filter', 'TODOS') != 'TODOS'
         )
         if not _filtro_activo:
-            col_b_head, col_b_sel = st.columns([1, 1])
+            col_b_head, col_b_sel = st.columns([1, 2])
             with col_b_head:
-                st.markdown(f"<h6 style='color:#137659; font-family:Inter, sans-serif; font-weight:800; letter-spacing:1px; text-transform:uppercase; font-size:0.8rem; margin-top:6px; margin-bottom:10px;'>📊 Índice de Falla por Bloque (Rolling 12M a {pd.to_datetime(fecha_evaluacion).strftime('%Y-%m-%d')})</h6>", unsafe_allow_html=True)
+                st.markdown(f"<h6 style='color:#137659; font-family:Inter, sans-serif; font-weight:800; letter-spacing:1px; text-transform:uppercase; font-size:0.8rem; margin-top:8px; margin-bottom:4px;'>📊 Índice de Falla por Bloque (Rolling 12M)</h6>", unsafe_allow_html=True)
             with col_b_sel:
                 opcion_if_bloque = st.radio(
-                    "Métrica de I.F. por Bloque:",
+                    "Métrica de I.F.:",
                     options=["I.F. Total", "I.F. ALS", "I.F. Total <1500d", "I.F. ALS <1500d"],
                     index=0,
                     horizontal=True,
@@ -426,13 +426,6 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
 
                 if 'INDICADOR_MTBF' not in df_bloque_raw.columns:
                     df_bloque_raw['INDICADOR_MTBF'] = 0
-
-                if df_forma9_untr is not None and not df_forma9_untr.empty:
-                    df_f9_b = df_forma9_untr.copy()
-                    df_f9_b['FECHA_FORMA9'] = pd.to_datetime(df_f9_b['FECHA_FORMA9'], errors='coerce')
-                    df_f9_b['FECHA_FORMA9_NORM'] = df_f9_b['FECHA_FORMA9'].dt.normalize()
-                else:
-                    df_f9_b = None
 
                 fecha_eval_dt_b = pd.to_datetime(fecha_evaluacion)
                 fecha_eval_norm_b = fecha_eval_dt_b.normalize()
@@ -460,44 +453,19 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                     )
 
                     if "ALS" in opcion_if_bloque:
-                        fallas_cond = fallas_cond & (grp_runs_eval['INDICADOR_MTBF'] == 1)
+                        is_mtbf = grp_runs_eval['INDICADOR_MTBF'].astype(str).str.strip().isin(['1', '1.0', 'True', 'true'])
+                        fallas_cond = fallas_cond & is_mtbf
 
                     fallas_12m = grp_runs_eval[fallas_cond].shape[0]
 
                     pozos_on_meses = []
-                    pozos_bloque_set = set(grp_runs['POZO'].unique()) if 'POZO' in grp_runs.columns else set()
-
                     for i in range(12):
                         mes_start = fecha_12m_back_b + pd.DateOffset(months=i)
                         mes_end = (mes_start + pd.offsets.MonthEnd(0)).normalize()
-                        mes_ts = mes_start.normalize()
-
-                        if df_f9_b is not None and not df_f9_b.empty and 'FECHA_FORMA9_NORM' in df_f9_b.columns:
-                            f9_mes = df_f9_b[
-                                (df_f9_b['FECHA_FORMA9_NORM'] >= mes_ts) &
-                                (df_f9_b['FECHA_FORMA9_NORM'] <= mes_end) &
-                                (df_f9_b['DIAS TRABAJADOS'] > 0)
-                            ]
-                            pozos_f9_set = set(f9_mes['POZO'].unique()) if 'POZO' in f9_mes.columns else set()
-                            activos_set = pozos_bloque_set & pozos_f9_set
-
-                            if "1500d" in opcion_if_bloque:
-                                grp_mes_1500 = grp_runs[
-                                    (grp_runs['_RUN'] <= mes_end) &
-                                    (grp_runs['_FALL'].isna() | (grp_runs['_FALL'] >= mes_ts)) &
-                                    (grp_runs['_PULL'].isna() | (grp_runs['_PULL'] >= mes_ts)) &
-                                    (grp_runs['RUN_LIFE_EFECTIVO'] < 1500)
-                                ]
-                                pozos_1500_set = set(grp_mes_1500['POZO'].unique()) if 'POZO' in grp_mes_1500.columns else set()
-                                activos_set = activos_set & pozos_1500_set
-
-                            activos_mes = len(activos_set)
-                        else:
-                            grp_mes = grp_runs_eval[grp_runs_eval['_RUN'] <= mes_end]
-                            activos_mes = grp_mes[
-                                (grp_mes['_FALL'].isna()) | (grp_mes['_FALL'] > mes_end)
-                            ]['POZO'].nunique() if 'POZO' in grp_mes.columns else 0
-
+                        grp_mes = grp_runs_eval[grp_runs_eval['_RUN'] <= mes_end]
+                        activos_mes = grp_mes[
+                            (grp_mes['_FALL'].isna()) | (grp_mes['_FALL'] > mes_end)
+                        ]['POZO'].nunique() if 'POZO' in grp_mes.columns else 0
                         pozos_on_meses.append(activos_mes)
 
                     promedio_on = np.mean(pozos_on_meses) if pozos_on_meses else 0
@@ -535,7 +503,7 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                             f"Métrica: <b>{opcion_if_bloque}</b><br>"
                             f"IF Rolling 12M: <b>{val_str}</b><br>"
                             f"Fallas (12M): <b>{d['fallas']}</b><br>"
-                            f"Pozos ON (prom): <b>{d['prom_on']}</b><br>"
+                            f"Pozos Activos (prom): <b>{d['prom_on']}</b><br>"
                             f"Pozos Totales: <b>{d['total']}</b>"
                         )
 
