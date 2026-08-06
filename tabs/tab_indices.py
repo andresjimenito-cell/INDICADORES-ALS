@@ -439,6 +439,11 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                 fecha_eval_norm_b = fecha_eval_dt_b.normalize()
                 first_month_b = (fecha_eval_norm_b.replace(day=1) - pd.DateOffset(months=11)).normalize()
 
+                anio_eval = fecha_eval_dt_b.year
+                anio_prev = anio_eval - 1
+                prev_year_start = pd.to_datetime(f"{anio_prev}-01-01").normalize()
+                prev_year_end = pd.to_datetime(f"{anio_prev}-12-31").normalize()
+
                 for bloque, grp in df_bloque_raw.groupby('BLOQUE'):
                     if pd.isna(bloque) or str(bloque).strip() == '' or str(bloque).strip().upper() in ('TODOS', 'ECUADOR'):
                         continue
@@ -466,9 +471,31 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                     fallas_1500 = fallas_12m_1500.shape[0]
                     fallas_als_1500 = fallas_12m_1500[fallas_12m_1500['INDICADOR_MTBF'] == 1].shape[0]
 
-                    # 2. Promedio de pozos activos ON por mes
+                    # 2. Fallas en el Año Anterior (Año Prev) para cálculo de Meta dinámica
+                    grp_runs_prev = grp[grp['_RUN'] <= prev_year_end]
+                    fallas_prev_tot_df = grp_runs_prev[
+                        (grp_runs_prev['_FALL'].notna()) &
+                        (grp_runs_prev['_FALL'] >= prev_year_start) &
+                        (grp_runs_prev['_FALL'] <= prev_year_end)
+                    ]
+                    fallas_prev_tot = fallas_prev_tot_df.shape[0]
+                    fallas_prev_als = fallas_prev_tot_df[fallas_prev_tot_df['INDICADOR_MTBF'] == 1].shape[0]
+
+                    grp_prev_1500 = grp_runs_prev[grp_runs_prev['RUN_LIFE_EFECTIVO'] < 1500]
+                    fallas_prev_1500_df = grp_prev_1500[
+                        (grp_prev_1500['_FALL'].notna()) &
+                        (grp_prev_1500['_FALL'] >= prev_year_start) &
+                        (grp_prev_1500['_FALL'] <= prev_year_end)
+                    ]
+                    fallas_prev_1500 = fallas_prev_1500_df.shape[0]
+                    fallas_prev_als_1500 = fallas_prev_1500_df[fallas_prev_1500_df['INDICADOR_MTBF'] == 1].shape[0]
+
+                    # 3. Promedio de pozos activos ON por mes (12M y Año Anterior)
                     pozos_on_meses = []
                     pozos_on_1500_meses = []
+                    pozos_on_prev_meses = []
+                    pozos_on_prev_1500_meses = []
+
                     pozos_bloque_set = set(grp_runs['POZO'].unique()) if 'POZO' in grp_runs.columns else set()
 
                     for i in range(12):
@@ -509,13 +536,62 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                         pozos_on_meses.append(activos_mes)
                         pozos_on_1500_meses.append(activos_1500_mes)
 
+                    # Pozos ON para los 12 meses del Año Anterior
+                    for m in range(1, 13):
+                        p_start = pd.to_datetime(f"{anio_prev}-{m:02d}-01").normalize()
+                        p_end = (p_start + pd.offsets.MonthEnd(0)).normalize()
+                        if df_f9_b is not None and not df_f9_b.empty and 'FECHA_FORMA9_NORM' in df_f9_b.columns:
+                            f9_m_prev = df_f9_b[
+                                (df_f9_b['FECHA_FORMA9_NORM'] >= p_start) &
+                                (df_f9_b['FECHA_FORMA9_NORM'] <= p_end) &
+                                (df_f9_b['DIAS TRABAJADOS'] > 0)
+                            ]
+                            p_f9_set = set(f9_m_prev['POZO'].unique()) if 'POZO' in f9_m_prev.columns else set()
+                            p_activos_set = pozos_bloque_set & p_f9_set
+                            grp_prev_m_1500 = grp_runs_prev[
+                                (grp_runs_prev['_RUN'] <= p_end) &
+                                (grp_runs_prev['_FALL'].isna() | (grp_runs_prev['_FALL'] >= p_start)) &
+                                (grp_runs_prev['_PULL'].isna() | (grp_runs_prev['_PULL'] >= p_start)) &
+                                (grp_runs_prev['RUN_LIFE_EFECTIVO'] < 1500)
+                            ]
+                            p_1500_set = set(grp_prev_m_1500['POZO'].unique()) if 'POZO' in grp_prev_m_1500.columns else set()
+                            p_activos_1500_set = p_activos_set & p_1500_set
+                            pozos_on_prev_meses.append(len(p_activos_set))
+                            pozos_on_prev_1500_meses.append(len(p_activos_1500_set))
+                        else:
+                            grp_prev_m = grp_runs_prev[grp_runs_prev['_RUN'] <= p_end]
+                            act_p = grp_prev_m[
+                                (grp_prev_m['_FALL'].isna()) | (grp_prev_m['_FALL'] > p_end)
+                            ]['POZO'].nunique() if 'POZO' in grp_prev_m.columns else 0
+
+                            grp_prev_m_1500 = grp_prev_1500[grp_prev_1500['_RUN'] <= p_end]
+                            act_p_1500 = grp_prev_m_1500[
+                                (grp_prev_m_1500['_FALL'].isna()) | (grp_prev_m_1500['_FALL'] > p_end)
+                            ]['POZO'].nunique() if 'POZO' in grp_prev_m_1500.columns else 0
+
+                            pozos_on_prev_meses.append(act_p)
+                            pozos_on_prev_1500_meses.append(act_p_1500)
+
                     promedio_on = np.mean(pozos_on_meses) if pozos_on_meses else 0
                     promedio_on_1500 = np.mean(pozos_on_1500_meses) if pozos_on_1500_meses else 0
+                    prom_on_prev = np.mean(pozos_on_prev_meses) if pozos_on_prev_meses else 0
+                    prom_on_prev_1500 = np.mean(pozos_on_prev_1500_meses) if pozos_on_prev_1500_meses else 0
 
                     if_tot_val = (fallas_tot / promedio_on * 100) if promedio_on > 0 else 0.0
                     if_als_val = (fallas_als / promedio_on * 100) if promedio_on > 0 else 0.0
                     if_1500_val = (fallas_1500 / promedio_on_1500 * 100) if promedio_on_1500 > 0 else 0.0
                     if_als_1500_val = (fallas_als_1500 / promedio_on_1500 * 100) if promedio_on_1500 > 0 else 0.0
+
+                    # Metas dinámicas por tipo de I.F. basadas en el año anterior
+                    if_prev_tot_val = (fallas_prev_tot / prom_on_prev * 100) if prom_on_prev > 0 else 0.0
+                    if_prev_als_val = (fallas_prev_als / prom_on_prev * 100) if prom_on_prev > 0 else 0.0
+                    if_prev_1500_val = (fallas_prev_1500 / prom_on_prev_1500 * 100) if prom_on_prev_1500 > 0 else 0.0
+                    if_prev_als_1500_val = (fallas_prev_als_1500 / prom_on_prev_1500 * 100) if prom_on_prev_1500 > 0 else 0.0
+
+                    meta_tot = round(if_prev_tot_val, 2) if if_prev_tot_val > 0 else 7.5
+                    meta_als = round(if_prev_als_val, 2) if if_prev_als_val > 0 else 7.5
+                    meta_1500 = round(if_prev_1500_val, 2) if if_prev_1500_val > 0 else 7.5
+                    meta_als_1500 = round(if_prev_als_1500_val, 2) if if_prev_als_1500_val > 0 else 7.5
 
                     bloques_if.append({
                         'bloque': str(bloque).strip(),
@@ -529,7 +605,11 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                         'if_total': round(if_tot_val, 2),
                         'if_als': round(if_als_val, 2),
                         'if_1500': round(if_1500_val, 2),
-                        'if_als_1500': round(if_als_1500_val, 2)
+                        'if_als_1500': round(if_als_1500_val, 2),
+                        'meta_tot': meta_tot,
+                        'meta_als': meta_als,
+                        'meta_1500': meta_1500,
+                        'meta_als_1500': meta_als_1500
                     })
 
                 # Mapear métrica seleccionada para el gráfico
@@ -538,18 +618,22 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                         d['active_if'] = d['if_als']
                         d['active_fallas'] = d['fallas_als']
                         d['active_prom'] = d['prom_on']
+                        d['active_meta'] = d['meta_als']
                     elif opcion_if_bloque == "I.F. Total <1500d":
                         d['active_if'] = d['if_1500']
                         d['active_fallas'] = d['fallas_1500']
                         d['active_prom'] = d['prom_on_1500']
+                        d['active_meta'] = d['meta_1500']
                     elif opcion_if_bloque == "I.F. ALS <1500d":
                         d['active_if'] = d['if_als_1500']
                         d['active_fallas'] = d['fallas_als_1500']
                         d['active_prom'] = d['prom_on_1500']
+                        d['active_meta'] = d['meta_als_1500']
                     else:
                         d['active_if'] = d['if_total']
                         d['active_fallas'] = d['fallas_tot']
                         d['active_prom'] = d['prom_on']
+                        d['active_meta'] = d['meta_tot']
                     d['active_if_cap'] = min(d['active_if'], 100.0)
 
                 bloques_if.sort(key=lambda x: x['active_if'], reverse=True)
@@ -558,6 +642,7 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                     blk_names = [d['bloque'] for d in bloques_if]
                     blk_if_vals = [d['active_if_cap'] for d in bloques_if]
                     blk_if_real = [d['active_if'] for d in bloques_if]
+                    meta_prom_global = round(float(np.mean([d['active_meta'] for d in bloques_if])), 2)
 
                     import plotly.graph_objects as go_fig
 
@@ -571,16 +656,19 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                             f"<hr style='margin:3px 0;border-color:rgba(19,118,89,0.15)'>"
                             f"Métrica: <b>{opcion_if_bloque}</b><br>"
                             f"IF Rolling 12M: <b>{val_str}</b><br>"
+                            f"Meta (Año {anio_prev}): <b>{d['active_meta']:.2f}%</b><br>"
                             f"Fallas (12M): <b>{d['active_fallas']}</b><br>"
                             f"Pozos ON (prom): <b>{d['active_prom']}</b><br>"
                             f"Pozos Totales: <b>{d['total']}</b>"
                         )
 
                     bar_colors_px = []
-                    for v in blk_if_vals:
-                        if v <= 7.5:
+                    for d in bloques_if:
+                        v = d['active_if_cap']
+                        m = d['active_meta']
+                        if v <= m:
                             bar_colors_px.append("#137659")
-                        elif v <= 10.0:
+                        elif v <= m * 1.33:
                             bar_colors_px.append("#c09c2e")
                         else:
                             bar_colors_px.append("#c62828")
@@ -602,8 +690,8 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                         width=0.5
                     ))
 
-                    fig_bloque.add_hline(y=7.5, line_dash="dash", line_color="#c62828", line_width=1.5,
-                                         annotation_text="Meta 7.5%", annotation_position="top right",
+                    fig_bloque.add_hline(y=meta_prom_global, line_dash="dash", line_color="#c62828", line_width=1.5,
+                                         annotation_text=f"Meta Prom. {meta_prom_global:.2f}% ({anio_prev})", annotation_position="top right",
                                          annotation_font=dict(size=9, color="#c62828", family="Inter, sans-serif"))
 
                     fig_bloque.update_layout(
@@ -614,7 +702,7 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                         xaxis=dict(title="", showgrid=False, showline=True, linecolor="rgba(19,118,89,0.15)",
                                    tickfont=dict(size=9, color="#1f221e", family="Inter, sans-serif"),
                                    tickangle=0),
-                        yaxis=dict(title="IF (%)", range=[0, max(blk_if_vals) * 1.3] if blk_if_vals else [0, 15],
+                        yaxis=dict(title="IF (%)", range=[0, max(max(blk_if_vals), meta_prom_global) * 1.3] if blk_if_vals else [0, 15],
                                    showgrid=True, gridcolor="rgba(19,118,89,0.08)", gridwidth=1,
                                    showline=False,
                                    tickfont=dict(size=8, color="#5b5c55", family="Inter, sans-serif"),
@@ -647,7 +735,8 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                         'IF Total': f"{b['if_total']:.2f}%",
                         'IF ALS': f"{b['if_als']:.2f}%",
                         'IF < 1500d': f"{b['if_1500']:.2f}%",
-                        'IF ALS < 1500d': f"{b['if_als_1500']:.2f}%"
+                        'IF ALS < 1500d': f"{b['if_als_1500']:.2f}%",
+                        f"Meta ({anio_prev})": f"{b['active_meta']:.2f}%"
                     } for b in bloques_if
                 ])
                 render_hud_table(df_bloque_tab, table_id="resumen_bloques")
