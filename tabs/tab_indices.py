@@ -436,7 +436,7 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
 
                 fecha_eval_dt_b = pd.to_datetime(fecha_evaluacion)
                 fecha_eval_norm_b = fecha_eval_dt_b.normalize()
-                fecha_12m_back_b = fecha_eval_norm_b - pd.DateOffset(months=12)
+                first_month_b = (fecha_eval_norm_b.replace(day=1) - pd.DateOffset(months=11)).normalize()
 
                 bloques_if = []
                 for bloque, grp in df_bloque_raw.groupby('BLOQUE'):
@@ -448,94 +448,131 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                     if total_pozosBloque == 0:
                         continue
 
-                    if "1500d" in opcion_if_bloque:
-                        grp_runs_eval = grp_runs[grp_runs['RUN_LIFE_EFECTIVO'] < 1500]
-                    else:
-                        grp_runs_eval = grp_runs
+                    # 1. Fallas en la ventana de 12 meses
+                    fallas_12m_tot = grp_runs[
+                        (grp_runs['_FALL'].notna()) &
+                        (grp_runs['_FALL'] >= first_month_b) &
+                        (grp_runs['_FALL'] <= fecha_eval_norm_b)
+                    ]
+                    fallas_tot = fallas_12m_tot.shape[0]
+                    fallas_als = fallas_12m_tot[fallas_12m_tot['INDICADOR_MTBF'] == 1].shape[0]
 
-                    fallas_cond = (
-                        (grp_runs_eval['_FALL'].notna()) &
-                        (grp_runs_eval['_FALL'] >= fecha_12m_back_b) &
-                        (grp_runs_eval['_FALL'] <= fecha_eval_norm_b)
-                    )
+                    grp_1500 = grp_runs[grp_runs['RUN_LIFE_EFECTIVO'] < 1500]
+                    fallas_12m_1500 = grp_1500[
+                        (grp_1500['_FALL'].notna()) &
+                        (grp_1500['_FALL'] >= first_month_b) &
+                        (grp_1500['_FALL'] <= fecha_eval_norm_b)
+                    ]
+                    fallas_1500 = fallas_12m_1500.shape[0]
+                    fallas_als_1500 = fallas_12m_1500[fallas_12m_1500['INDICADOR_MTBF'] == 1].shape[0]
 
-                    if "ALS" in opcion_if_bloque:
-                        fallas_cond = fallas_cond & (grp_runs_eval['INDICADOR_MTBF'] == 1)
-
-                    fallas_12m = grp_runs_eval[fallas_cond].shape[0]
-
+                    # 2. Promedio de pozos activos ON por mes
                     pozos_on_meses = []
+                    pozos_on_1500_meses = []
                     pozos_bloque_set = set(grp_runs['POZO'].unique()) if 'POZO' in grp_runs.columns else set()
 
                     for i in range(12):
-                        mes_start = fecha_12m_back_b + pd.DateOffset(months=i)
+                        mes_start = (first_month_b + pd.DateOffset(months=i)).replace(day=1).normalize()
                         mes_end = (mes_start + pd.offsets.MonthEnd(0)).normalize()
-                        mes_ts = mes_start.normalize()
 
                         if df_f9_b is not None and not df_f9_b.empty and 'FECHA_FORMA9_NORM' in df_f9_b.columns:
                             f9_mes = df_f9_b[
-                                (df_f9_b['FECHA_FORMA9_NORM'] >= mes_ts) &
+                                (df_f9_b['FECHA_FORMA9_NORM'] >= mes_start) &
                                 (df_f9_b['FECHA_FORMA9_NORM'] <= mes_end) &
                                 (df_f9_b['DIAS TRABAJADOS'] > 0)
                             ]
                             pozos_f9_set = set(f9_mes['POZO'].unique()) if 'POZO' in f9_mes.columns else set()
                             activos_set = pozos_bloque_set & pozos_f9_set
 
-                            if "1500d" in opcion_if_bloque:
-                                grp_mes_1500 = grp_runs[
-                                    (grp_runs['_RUN'] <= mes_end) &
-                                    (grp_runs['_FALL'].isna() | (grp_runs['_FALL'] >= mes_ts)) &
-                                    (grp_runs['_PULL'].isna() | (grp_runs['_PULL'] >= mes_ts)) &
-                                    (grp_runs['RUN_LIFE_EFECTIVO'] < 1500)
-                                ]
-                                pozos_1500_set = set(grp_mes_1500['POZO'].unique()) if 'POZO' in grp_mes_1500.columns else set()
-                                activos_set = activos_set & pozos_1500_set
+                            grp_mes_1500 = grp_runs[
+                                (grp_runs['_RUN'] <= mes_end) &
+                                (grp_runs['_FALL'].isna() | (grp_runs['_FALL'] >= mes_start)) &
+                                (grp_runs['_PULL'].isna() | (grp_runs['_PULL'] >= mes_start)) &
+                                (grp_runs['RUN_LIFE_EFECTIVO'] < 1500)
+                            ]
+                            pozos_1500_set = set(grp_mes_1500['POZO'].unique()) if 'POZO' in grp_mes_1500.columns else set()
+                            activos_1500_set = activos_set & pozos_1500_set
 
                             activos_mes = len(activos_set)
+                            activos_1500_mes = len(activos_1500_set)
                         else:
-                            grp_mes = grp_runs_eval[grp_runs_eval['_RUN'] <= mes_end]
+                            grp_mes = grp_runs[grp_runs['_RUN'] <= mes_end]
                             activos_mes = grp_mes[
                                 (grp_mes['_FALL'].isna()) | (grp_mes['_FALL'] > mes_end)
                             ]['POZO'].nunique() if 'POZO' in grp_mes.columns else 0
 
+                            grp_mes_1500 = grp_1500[grp_1500['_RUN'] <= mes_end]
+                            activos_1500_mes = grp_mes_1500[
+                                (grp_mes_1500['_FALL'].isna()) | (grp_mes_1500['_FALL'] > mes_end)
+                            ]['POZO'].nunique() if 'POZO' in grp_mes_1500.columns else 0
+
                         pozos_on_meses.append(activos_mes)
+                        pozos_on_1500_meses.append(activos_1500_mes)
 
                     promedio_on = np.mean(pozos_on_meses) if pozos_on_meses else 0
-                    if_val = (fallas_12m / promedio_on * 100) if promedio_on > 0 else 0
+                    promedio_on_1500 = np.mean(pozos_on_1500_meses) if pozos_on_1500_meses else 0
+
+                    if_tot_val = (fallas_tot / promedio_on * 100) if promedio_on > 0 else 0.0
+                    if_als_val = (fallas_als / promedio_on * 100) if promedio_on > 0 else 0.0
+                    if_1500_val = (fallas_1500 / promedio_on_1500 * 100) if promedio_on_1500 > 0 else 0.0
+                    if_als_1500_val = (fallas_als_1500 / promedio_on_1500 * 100) if promedio_on_1500 > 0 else 0.0
 
                     bloques_if.append({
                         'bloque': str(bloque).strip(),
-                        'if_pct': round(if_val, 2),
-                        'if_pct_cap': min(round(if_val, 2), 100.0),
-                        'fallas': fallas_12m,
+                        'total': total_pozosBloque,
                         'prom_on': int(round(promedio_on)),
-                        'total': total_pozosBloque
+                        'prom_on_1500': int(round(promedio_on_1500)),
+                        'fallas_tot': fallas_tot,
+                        'fallas_als': fallas_als,
+                        'fallas_1500': fallas_1500,
+                        'fallas_als_1500': fallas_als_1500,
+                        'if_total': round(if_tot_val, 2),
+                        'if_als': round(if_als_val, 2),
+                        'if_1500': round(if_1500_val, 2),
+                        'if_als_1500': round(if_als_1500_val, 2)
                     })
 
-                bloques_if.sort(key=lambda x: x['if_pct'], reverse=True)
+                # Mapear métrica seleccionada para el gráfico
+                for d in bloques_if:
+                    if opcion_if_bloque == "I.F. ALS":
+                        d['active_if'] = d['if_als']
+                        d['active_fallas'] = d['fallas_als']
+                        d['active_prom'] = d['prom_on']
+                    elif opcion_if_bloque == "I.F. Total <1500d":
+                        d['active_if'] = d['if_1500']
+                        d['active_fallas'] = d['fallas_1500']
+                        d['active_prom'] = d['prom_on_1500']
+                    elif opcion_if_bloque == "I.F. ALS <1500d":
+                        d['active_if'] = d['if_als_1500']
+                        d['active_fallas'] = d['fallas_als_1500']
+                        d['active_prom'] = d['prom_on_1500']
+                    else:
+                        d['active_if'] = d['if_total']
+                        d['active_fallas'] = d['fallas_tot']
+                        d['active_prom'] = d['prom_on']
+                    d['active_if_cap'] = min(d['active_if'], 100.0)
+
+                bloques_if.sort(key=lambda x: x['active_if'], reverse=True)
 
                 if bloques_if:
                     blk_names = [d['bloque'] for d in bloques_if]
-                    blk_if_vals = [d['if_pct_cap'] for d in bloques_if]
-                    blk_if_real = [d['if_pct'] for d in bloques_if]
-                    blk_fallas = [d['fallas'] for d in bloques_if]
-                    blk_on = [d['prom_on'] for d in bloques_if]
-                    blk_total = [d['total'] for d in bloques_if]
+                    blk_if_vals = [d['active_if_cap'] for d in bloques_if]
+                    blk_if_real = [d['active_if'] for d in bloques_if]
 
                     import plotly.graph_objects as go_fig
 
                     hover_texts = []
                     for i, d in enumerate(bloques_if):
-                        real = d['if_pct']
-                        cap = d['if_pct_cap']
+                        real = d['active_if']
+                        cap = d['active_if_cap']
                         val_str = f"{real:.2f}% (>100%)" if real > 100 else f"{cap:.2f}%"
                         hover_texts.append(
                             f"<b style='color:#137659;font-size:13px'>{d['bloque']}</b><br>"
                             f"<hr style='margin:3px 0;border-color:rgba(19,118,89,0.15)'>"
                             f"Métrica: <b>{opcion_if_bloque}</b><br>"
                             f"IF Rolling 12M: <b>{val_str}</b><br>"
-                            f"Fallas (12M): <b>{d['fallas']}</b><br>"
-                            f"Pozos ON (prom): <b>{d['prom_on']}</b><br>"
+                            f"Fallas (12M): <b>{d['active_fallas']}</b><br>"
+                            f"Pozos ON (prom): <b>{d['active_prom']}</b><br>"
                             f"Pozos Totales: <b>{d['total']}</b>"
                         )
 
@@ -593,9 +630,28 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
 
         # --- 4. DETALLE DE DATA (Expander con HUD Table Interactivas) ---
         with st.expander("📄 VER TABLA DE DATOS HISTÓRICOS Y RESUMEN", expanded=False):
-            st.markdown("<div style='color:#137659; font-family:Arial, sans-serif !important; margin-bottom:10px;'>RESUMEN DE ÍNDICES</div>", unsafe_allow_html=True)
+            st.markdown("<div style='color:#137659; font-family:Arial, sans-serif !important; margin-bottom:10px;'>RESUMEN DE ÍNDICES GENERALES</div>", unsafe_allow_html=True)
             render_hud_table(indice_resumen_df, table_id="resumen_indices")
             
+            # Tabla de Resumen por Bloque
+            if 'bloques_if' in locals() and bloques_if:
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.markdown("<div style='color:#137659; font-family:Arial, sans-serif !important; margin-bottom:10px;'>RESUMEN DE ÍNDICES DE FALLA POR BLOQUE (ROLLING 12M)</div>", unsafe_allow_html=True)
+                df_bloque_tab = pd.DataFrame([
+                    {
+                        'Bloque': b['bloque'],
+                        'Pozos Totales': b['total'],
+                        'Pozos ON (Prom)': b['prom_on'],
+                        'Fallas (12M)': b['fallas_tot'],
+                        'Fallas ALS (12M)': b['fallas_als'],
+                        'IF Total': f"{b['if_total']:.2f}%",
+                        'IF ALS': f"{b['if_als']:.2f}%",
+                        'IF < 1500d': f"{b['if_1500']:.2f}%",
+                        'IF ALS < 1500d': f"{b['if_als_1500']:.2f}%"
+                    } for b in bloques_if
+                ])
+                render_hud_table(df_bloque_tab, table_id="resumen_bloques")
+
             st.markdown("<br>", unsafe_allow_html=True)
             st.markdown("<div style='color:#137659; font-family:Arial, sans-serif !important; margin-bottom:10px;'>DETALLE MENSUAL</div>", unsafe_allow_html=True)
             
