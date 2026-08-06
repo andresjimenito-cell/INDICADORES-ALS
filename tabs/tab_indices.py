@@ -549,43 +549,32 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                     meta_1500 = round(if_prev_1500_val, 2) if if_prev_1500_val > 0 else 7.5
                     meta_als_1500 = round(if_prev_als_1500_val, 2) if if_prev_als_1500_val > 0 else 7.5
 
-                    # 4. Run Life por Bloque (Pozos ON y Fallados, 12M y Año Anterior)
+                    # 4. Run Life por Bloque (Run Life Calendario vs Run Life Efectivo)
                     grp_activos_now = grp_runs[
                         (grp_runs['_RUN'] <= fecha_eval_norm_b) &
                         (grp_runs['_FALL'].isna() | (grp_runs['_FALL'] > fecha_eval_norm_b)) &
                         (grp_runs['_PULL'].isna() | (grp_runs['_PULL'] > fecha_eval_norm_b))
                     ]
-                    rl_on_s = (fecha_eval_norm_b - grp_activos_now['_RUN']).dt.days
-                    rl_on_val = float(rl_on_s.mean()) if len(rl_on_s) > 0 else 0.0
+                    rl_s = (fecha_eval_norm_b - grp_activos_now['_RUN']).dt.days
+                    rl_val = float(rl_s.mean()) if len(rl_s) > 0 else 0.0
 
-                    grp_activos_als_now = grp_activos_now[grp_activos_now['INDICADOR_MTBF'] == 1]
-                    rl_on_als_s = (fecha_eval_norm_b - grp_activos_als_now['_RUN']).dt.days
-                    rl_on_als_val = float(rl_on_als_s.mean()) if len(rl_on_als_s) > 0 else 0.0
+                    rle_s = grp_activos_now['_RLE']
+                    rle_val = float(rle_s.mean()) if len(rle_s) > 0 and (rle_s > 0).any() else rl_val
 
-                    rl_fall_val = float(fallas_12m_tot['_RLE'].mean()) if fallas_tot > 0 else 0.0
-                    fallas_als_df = fallas_12m_tot[fallas_12m_tot['INDICADOR_MTBF'] == 1]
-                    rl_fall_als_val = float(fallas_als_df['_RLE'].mean()) if fallas_als > 0 else 0.0
-
-                    # Run Life metas en el Año Anterior
+                    # Metas de Run Life del Año Anterior
                     grp_activos_prev = grp_runs_prev[
                         (grp_runs_prev['_RUN'] <= prev_year_end) &
                         (grp_runs_prev['_FALL'].isna() | (grp_runs_prev['_FALL'] > prev_year_end)) &
                         (grp_runs_prev['_PULL'].isna() | (grp_runs_prev['_PULL'] > prev_year_end))
                     ]
-                    rl_prev_on_s = (prev_year_end - grp_activos_prev['_RUN']).dt.days
-                    rl_prev_on_val = float(rl_prev_on_s.mean()) if len(rl_prev_on_s) > 0 else 0.0
+                    rl_prev_s = (prev_year_end - grp_activos_prev['_RUN']).dt.days
+                    rl_prev_val = float(rl_prev_s.mean()) if len(rl_prev_s) > 0 else 0.0
 
-                    grp_activos_prev_als = grp_activos_prev[grp_activos_prev['INDICADOR_MTBF'] == 1]
-                    rl_prev_on_als_s = (prev_year_end - grp_activos_prev_als['_RUN']).dt.days
-                    rl_prev_on_als_val = float(rl_prev_on_als_s.mean()) if len(rl_prev_on_als_s) > 0 else 0.0
+                    rle_prev_s = grp_activos_prev['_RLE']
+                    rle_prev_val = float(rle_prev_s.mean()) if len(rle_prev_s) > 0 and (rle_prev_s > 0).any() else rl_prev_val
 
-                    rl_prev_fall_val = float(fallas_prev_tot_df['_RLE'].mean()) if fallas_prev_tot > 0 else 0.0
-                    rl_prev_fall_als_val = float(fallas_prev_tot_df[fallas_prev_tot_df['INDICADOR_MTBF'] == 1]['_RLE'].mean()) if fallas_prev_als > 0 else 0.0
-
-                    meta_rl_on = round(rl_prev_on_val, 1) if rl_prev_on_val > 0 else 1500.0
-                    meta_rl_fall = round(rl_prev_fall_val, 1) if rl_prev_fall_val > 0 else 1500.0
-                    meta_rl_on_als = round(rl_prev_on_als_val, 1) if rl_prev_on_als_val > 0 else 1500.0
-                    meta_rl_fall_als = round(rl_prev_fall_als_val, 1) if rl_prev_fall_als_val > 0 else 1500.0
+                    meta_rl = round(rl_prev_val, 1) if rl_prev_val > 0 else 1500.0
+                    meta_rle = round(rle_prev_val, 1) if rle_prev_val > 0 else 1500.0
 
                     bloques_if.append({
                         'bloque': str(bloque).strip(),
@@ -603,14 +592,10 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                         'meta_als': meta_als,
                         'meta_1500': meta_1500,
                         'meta_als_1500': meta_als_1500,
-                        'rl_on': round(rl_on_val, 1),
-                        'rl_fall': round(rl_fall_val, 1),
-                        'rl_on_als': round(rl_on_als_val, 1),
-                        'rl_fall_als': round(rl_fall_als_val, 1),
-                        'meta_rl_on': meta_rl_on,
-                        'meta_rl_fall': meta_rl_fall,
-                        'meta_rl_on_als': meta_rl_on_als,
-                        'meta_rl_fall_als': meta_rl_fall_als
+                        'rl': round(rl_val, 1),
+                        'rl_efectivo': round(rle_val, 1),
+                        'meta_rl': meta_rl,
+                        'meta_rle': meta_rle
                     })
 
                 # Mapear métrica seleccionada para el gráfico de I.F.
@@ -726,7 +711,7 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
             with col_rl_sel:
                 opcion_rl_bloque = st.radio(
                     "Métrica de R.L. por Bloque:",
-                    options=["R.L. Pozos ON", "R.L. Pozos Fallados", "R.L. ALS (Pozos ON)", "R.L. ALS Fallados"],
+                    options=["Run Life", "Run Life Efectivo"],
                     index=0,
                     horizontal=True,
                     key="rl_bloque_metric_selector"
@@ -735,18 +720,12 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
             try:
                 bloques_rl = [dict(b) for b in bloques_if]
                 for d in bloques_rl:
-                    if opcion_rl_bloque == "R.L. Pozos Fallados":
-                        d['active_rl'] = d['rl_fall']
-                        d['active_rl_meta'] = d['meta_rl_fall']
-                    elif opcion_rl_bloque == "R.L. ALS (Pozos ON)":
-                        d['active_rl'] = d['rl_on_als']
-                        d['active_rl_meta'] = d['meta_rl_on_als']
-                    elif opcion_rl_bloque == "R.L. ALS Fallados":
-                        d['active_rl'] = d['rl_fall_als']
-                        d['active_rl_meta'] = d['meta_rl_fall_als']
+                    if opcion_rl_bloque == "Run Life Efectivo":
+                        d['active_rl'] = d['rl_efectivo']
+                        d['active_rl_meta'] = d['meta_rle']
                     else:
-                        d['active_rl'] = d['rl_on']
-                        d['active_rl_meta'] = d['meta_rl_on']
+                        d['active_rl'] = d['rl']
+                        d['active_rl_meta'] = d['meta_rl']
 
                 bloques_rl.sort(key=lambda x: x['active_rl'], reverse=True)
 
@@ -843,9 +822,9 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                         'IF < 1500d': f"{b['if_1500']:.2f}%",
                         'IF ALS < 1500d': f"{b['if_als_1500']:.2f}%",
                         f"Meta IF ({anio_prev})": f"{b['active_meta']:.2f}%",
-                        'R.L. Pozos ON (días)': f"{b['rl_on']:.1f}d",
-                        'R.L. Fallados (días)': f"{b['rl_fall']:.1f}d",
-                        f"Meta RL ({anio_prev})": f"{b.get('meta_rl_on', 1500):.1f}d"
+                        'Run Life (días)': f"{b['rl']:.1f}d",
+                        'Run Life Efectivo (días)': f"{b['rl_efectivo']:.1f}d",
+                        f"Meta R.L. ({anio_prev})": f"{b['meta_rl']:.1f}d"
                     } for b in bloques_if
                 ])
                 render_hud_table(df_bloque_tab, table_id="resumen_bloques")
