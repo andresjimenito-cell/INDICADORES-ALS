@@ -549,6 +549,44 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                     meta_1500 = round(if_prev_1500_val, 2) if if_prev_1500_val > 0 else 7.5
                     meta_als_1500 = round(if_prev_als_1500_val, 2) if if_prev_als_1500_val > 0 else 7.5
 
+                    # 4. Run Life por Bloque (Pozos ON y Fallados, 12M y Año Anterior)
+                    grp_activos_now = grp_runs[
+                        (grp_runs['_RUN'] <= fecha_eval_norm_b) &
+                        (grp_runs['_FALL'].isna() | (grp_runs['_FALL'] > fecha_eval_norm_b)) &
+                        (grp_runs['_PULL'].isna() | (grp_runs['_PULL'] > fecha_eval_norm_b))
+                    ]
+                    rl_on_s = (fecha_eval_norm_b - grp_activos_now['_RUN']).dt.days
+                    rl_on_val = float(rl_on_s.mean()) if len(rl_on_s) > 0 else 0.0
+
+                    grp_activos_als_now = grp_activos_now[grp_activos_now['INDICADOR_MTBF'] == 1]
+                    rl_on_als_s = (fecha_eval_norm_b - grp_activos_als_now['_RUN']).dt.days
+                    rl_on_als_val = float(rl_on_als_s.mean()) if len(rl_on_als_s) > 0 else 0.0
+
+                    rl_fall_val = float(fallas_12m_tot['_RLE'].mean()) if fallas_tot > 0 else 0.0
+                    fallas_als_df = fallas_12m_tot[fallas_12m_tot['INDICADOR_MTBF'] == 1]
+                    rl_fall_als_val = float(fallas_als_df['_RLE'].mean()) if fallas_als > 0 else 0.0
+
+                    # Run Life metas en el Año Anterior
+                    grp_activos_prev = grp_runs_prev[
+                        (grp_runs_prev['_RUN'] <= prev_year_end) &
+                        (grp_runs_prev['_FALL'].isna() | (grp_runs_prev['_FALL'] > prev_year_end)) &
+                        (grp_runs_prev['_PULL'].isna() | (grp_runs_prev['_PULL'] > prev_year_end))
+                    ]
+                    rl_prev_on_s = (prev_year_end - grp_activos_prev['_RUN']).dt.days
+                    rl_prev_on_val = float(rl_prev_on_s.mean()) if len(rl_prev_on_s) > 0 else 0.0
+
+                    grp_activos_prev_als = grp_activos_prev[grp_activos_prev['INDICADOR_MTBF'] == 1]
+                    rl_prev_on_als_s = (prev_year_end - grp_activos_prev_als['_RUN']).dt.days
+                    rl_prev_on_als_val = float(rl_prev_on_als_s.mean()) if len(rl_prev_on_als_s) > 0 else 0.0
+
+                    rl_prev_fall_val = float(fallas_prev_tot_df['_RLE'].mean()) if fallas_prev_tot > 0 else 0.0
+                    rl_prev_fall_als_val = float(fallas_prev_tot_df[fallas_prev_tot_df['INDICADOR_MTBF'] == 1]['_RLE'].mean()) if fallas_prev_als > 0 else 0.0
+
+                    meta_rl_on = round(rl_prev_on_val, 1) if rl_prev_on_val > 0 else 1500.0
+                    meta_rl_fall = round(rl_prev_fall_val, 1) if rl_prev_fall_val > 0 else 1500.0
+                    meta_rl_on_als = round(rl_prev_on_als_val, 1) if rl_prev_on_als_val > 0 else 1500.0
+                    meta_rl_fall_als = round(rl_prev_fall_als_val, 1) if rl_prev_fall_als_val > 0 else 1500.0
+
                     bloques_if.append({
                         'bloque': str(bloque).strip(),
                         'total': total_pozosBloque,
@@ -564,10 +602,18 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                         'meta_tot': meta_tot,
                         'meta_als': meta_als,
                         'meta_1500': meta_1500,
-                        'meta_als_1500': meta_als_1500
+                        'meta_als_1500': meta_als_1500,
+                        'rl_on': round(rl_on_val, 1),
+                        'rl_fall': round(rl_fall_val, 1),
+                        'rl_on_als': round(rl_on_als_val, 1),
+                        'rl_fall_als': round(rl_fall_als_val, 1),
+                        'meta_rl_on': meta_rl_on,
+                        'meta_rl_fall': meta_rl_fall,
+                        'meta_rl_on_als': meta_rl_on_als,
+                        'meta_rl_fall_als': meta_rl_fall_als
                     })
 
-                # Mapear métrica seleccionada para el gráfico
+                # Mapear métrica seleccionada para el gráfico de I.F.
                 for d in bloques_if:
                     if opcion_if_bloque == "I.F. ALS":
                         d['active_if'] = d['if_als']
@@ -671,6 +717,109 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
             except Exception as e:
                 st.warning(f"No se pudo generar el gráfico de IF por Bloque: {e}")
 
+        # --- 3.1 RUN LIFE POR BLOQUE (ANCHO COMPLETO) ---
+        if not _filtro_activo:
+            st.markdown("<div style='height:14px;'></div>", unsafe_allow_html=True)
+            col_rl_head, col_rl_sel = st.columns([1, 1])
+            with col_rl_head:
+                st.markdown(f"<h6 style='color:#137659; font-family:Inter, sans-serif; font-weight:800; letter-spacing:1px; text-transform:uppercase; font-size:0.8rem; margin-top:6px; margin-bottom:10px;'>⏱️ Run Life por Bloque (a {pd.to_datetime(fecha_evaluacion).strftime('%Y-%m-%d')})</h6>", unsafe_allow_html=True)
+            with col_rl_sel:
+                opcion_rl_bloque = st.radio(
+                    "Métrica de R.L. por Bloque:",
+                    options=["R.L. Pozos ON", "R.L. Pozos Fallados", "R.L. ALS (Pozos ON)", "R.L. ALS Fallados"],
+                    index=0,
+                    horizontal=True,
+                    key="rl_bloque_metric_selector"
+                )
+
+            try:
+                bloques_rl = [dict(b) for b in bloques_if]
+                for d in bloques_rl:
+                    if opcion_rl_bloque == "R.L. Pozos Fallados":
+                        d['active_rl'] = d['rl_fall']
+                        d['active_rl_meta'] = d['meta_rl_fall']
+                    elif opcion_rl_bloque == "R.L. ALS (Pozos ON)":
+                        d['active_rl'] = d['rl_on_als']
+                        d['active_rl_meta'] = d['meta_rl_on_als']
+                    elif opcion_rl_bloque == "R.L. ALS Fallados":
+                        d['active_rl'] = d['rl_fall_als']
+                        d['active_rl_meta'] = d['meta_rl_fall_als']
+                    else:
+                        d['active_rl'] = d['rl_on']
+                        d['active_rl_meta'] = d['meta_rl_on']
+
+                bloques_rl.sort(key=lambda x: x['active_rl'], reverse=True)
+
+                if bloques_rl:
+                    rl_blk_names = [d['bloque'] for d in bloques_rl]
+                    rl_vals = [d['active_rl'] for d in bloques_rl]
+                    meta_prom_rl = round(float(np.mean([d['active_rl_meta'] for d in bloques_rl])), 1)
+
+                    hover_rl_texts = []
+                    for i, d in enumerate(bloques_rl):
+                        hover_rl_texts.append(
+                            f"<b style='color:#137659;font-size:13px'>{d['bloque']}</b><br>"
+                            f"<hr style='margin:3px 0;border-color:rgba(19,118,89,0.15)'>"
+                            f"Métrica: <b>{opcion_rl_bloque}</b><br>"
+                            f"Run Life Promedio: <b>{d['active_rl']:.1f} días</b><br>"
+                            f"Meta (Año {anio_prev}): <b>{d['active_rl_meta']:.1f} días</b><br>"
+                            f"Pozos Totales: <b>{d['total']}</b>"
+                        )
+
+                    bar_colors_rl = []
+                    for d in bloques_rl:
+                        v = d['active_rl']
+                        m = d['active_rl_meta']
+                        if v >= m:
+                            bar_colors_rl.append("#137659")
+                        elif v >= m * 0.75:
+                            bar_colors_rl.append("#c09c2e")
+                        else:
+                            bar_colors_rl.append("#c62828")
+
+                    chart_h_rl = max(200, min(280, len(rl_blk_names) * 38 + 80))
+
+                    fig_rl_bloque = go_fig.Figure()
+                    fig_rl_bloque.add_trace(go_fig.Bar(
+                        x=rl_blk_names,
+                        y=rl_vals,
+                        marker=dict(color=bar_colors_rl, line=dict(width=0)),
+                        text=[f"{v:.0f}d" for v in rl_vals],
+                        textposition="outside",
+                        textfont=dict(size=9, color="#1f221e", family="Inter, sans-serif"),
+                        hovertext=hover_rl_texts,
+                        hoverinfo="text",
+                        hoverlabel=dict(bgcolor="rgba(255,255,255,0.97)", bordercolor="#137659",
+                                        font=dict(size=10, family="Inter, sans-serif", color="#1f221e")),
+                        width=0.5
+                    ))
+
+                    fig_rl_bloque.add_hline(y=meta_prom_rl, line_dash="dash", line_color="#137659", line_width=1.5,
+                                            annotation_text=f"Meta Prom. {meta_prom_rl:.0f}d ({anio_prev})", annotation_position="top right",
+                                            annotation_font=dict(size=9, color="#137659", family="Inter, sans-serif"))
+
+                    fig_rl_bloque.update_layout(
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        font=dict(family="Inter, sans-serif"),
+                        margin=dict(l=35, r=15, t=8, b=45),
+                        xaxis=dict(title="", showgrid=False, showline=True, linecolor="rgba(19,118,89,0.15)",
+                                   tickfont=dict(size=9, color="#1f221e", family="Inter, sans-serif"),
+                                   tickangle=0),
+                        yaxis=dict(title="Run Life (días)", range=[0, max(max(rl_vals), meta_prom_rl) * 1.3] if rl_vals else [0, 1000],
+                                   showgrid=True, gridcolor="rgba(19,118,89,0.08)", gridwidth=1,
+                                   showline=False,
+                                   tickfont=dict(size=8, color="#5b5c55", family="Inter, sans-serif"),
+                                   ticksuffix="d"),
+                        bargap=0.4,
+                        showlegend=False,
+                        height=chart_h_rl
+                    )
+
+                    st.plotly_chart(fig_rl_bloque, use_container_width=True, config={"displayModeBar": False})
+            except Exception as e:
+                st.warning(f"No se pudo generar el gráfico de Run Life por Bloque: {e}")
+
         # --- 4. DETALLE DE DATA (Expander con HUD Table Interactivas) ---
         with st.expander("📄 VER TABLA DE DATOS HISTÓRICOS Y RESUMEN", expanded=False):
             st.markdown("<div style='color:#137659; font-family:Arial, sans-serif !important; margin-bottom:10px;'>RESUMEN DE ÍNDICES GENERALES</div>", unsafe_allow_html=True)
@@ -679,7 +828,7 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
             # Tabla de Resumen por Bloque
             if 'bloques_if' in locals() and bloques_if:
                 st.markdown("<br>", unsafe_allow_html=True)
-                st.markdown("<div style='color:#137659; font-family:Arial, sans-serif !important; margin-bottom:10px;'>RESUMEN DE ÍNDICES DE FALLA POR BLOQUE (ROLLING 12M)</div>", unsafe_allow_html=True)
+                st.markdown("<div style='color:#137659; font-family:Arial, sans-serif !important; margin-bottom:10px;'>RESUMEN DE ÍNDICES DE FALLA Y RUN LIFE POR BLOQUE</div>", unsafe_allow_html=True)
                 df_bloque_tab = pd.DataFrame([
                     {
                         'Bloque': b['bloque'],
@@ -693,7 +842,10 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                         'IF ALS': f"{b['if_als']:.2f}%",
                         'IF < 1500d': f"{b['if_1500']:.2f}%",
                         'IF ALS < 1500d': f"{b['if_als_1500']:.2f}%",
-                        f"Meta ({anio_prev})": f"{b['active_meta']:.2f}%"
+                        f"Meta IF ({anio_prev})": f"{b['active_meta']:.2f}%",
+                        'R.L. Pozos ON (días)': f"{b['rl_on']:.1f}d",
+                        'R.L. Fallados (días)': f"{b['rl_fall']:.1f}d",
+                        f"Meta RL ({anio_prev})": f"{b.get('meta_rl_on', 1500):.1f}d"
                     } for b in bloques_if
                 ])
                 render_hud_table(df_bloque_tab, table_id="resumen_bloques")
