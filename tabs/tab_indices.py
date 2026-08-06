@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
+import plotly.graph_objects as go_fig
 from config import COLOR_PRINCIPAL
 from indice_falla import calcular_indice_falla_anual
 from styles import render_hud_table
@@ -391,18 +392,20 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                             f'<script>(function(){{var c=echarts.init(document.getElementById("echarts-op-fallas"),null);c.setOption({_json.dumps(echarts_op)});window.addEventListener("resize",function(){{c.resize();}});}})();</script>',
                             height=380)
 
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        # --- 3. ÍNDICES DE FALLA POR BLOQUE (ANCHO COMPLETO) ---
+        # --- 3. ÍNDICES DE FALLA Y RUN LIFE POR BLOQUE ---
         _filtro_activo = (
             st.session_state.get('general_bloque_filter', 'TODOS') != 'TODOS' or
             st.session_state.get('general_campo_filter', 'TODOS') != 'TODOS'
         )
         bloques_if = []
+        fecha_eval_dt_b = pd.to_datetime(fecha_evaluacion)
+        anio_eval = fecha_eval_dt_b.year
+        anio_prev = anio_eval - 1
+
         if not _filtro_activo:
             col_b_head, col_b_sel = st.columns([1, 1])
             with col_b_head:
-                st.markdown(f"<h6 style='color:#137659; font-family:Inter, sans-serif; font-weight:800; letter-spacing:1px; text-transform:uppercase; font-size:0.8rem; margin-top:6px; margin-bottom:10px;'>📊 Índice de Falla por Bloque (Rolling 12M a {pd.to_datetime(fecha_evaluacion).strftime('%Y-%m-%d')})</h6>", unsafe_allow_html=True)
+                st.markdown(f"<h6 style='color:#137659; font-family:Inter, sans-serif; font-weight:800; letter-spacing:1px; text-transform:uppercase; font-size:0.8rem; margin-top:6px; margin-bottom:10px;'>📊 Índice de Falla por Bloque (Rolling 12M a {fecha_eval_dt_b.strftime('%Y-%m-%d')})</h6>", unsafe_allow_html=True)
             with col_b_sel:
                 opcion_if_bloque = st.radio(
                     "Métrica de I.F. por Bloque:",
@@ -438,12 +441,9 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                 else:
                     df_f9_b = None
 
-                fecha_eval_dt_b = pd.to_datetime(fecha_evaluacion)
                 fecha_eval_norm_b = fecha_eval_dt_b.normalize()
                 first_month_b = (fecha_eval_norm_b.replace(day=1) - pd.DateOffset(months=11)).normalize()
 
-                anio_eval = fecha_eval_dt_b.year
-                anio_prev = anio_eval - 1
                 prev_year_start = pd.to_datetime(f"{anio_prev}-01-01").normalize()
                 prev_year_end = pd.to_datetime(f"{anio_prev}-12-31").normalize()
 
@@ -707,7 +707,7 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
             st.markdown("<div style='height:14px;'></div>", unsafe_allow_html=True)
             col_rl_head, col_rl_sel = st.columns([1, 1])
             with col_rl_head:
-                st.markdown(f"<h6 style='color:#137659; font-family:Inter, sans-serif; font-weight:800; letter-spacing:1px; text-transform:uppercase; font-size:0.8rem; margin-top:6px; margin-bottom:10px;'>⏱️ Run Life por Bloque (a {pd.to_datetime(fecha_evaluacion).strftime('%Y-%m-%d')})</h6>", unsafe_allow_html=True)
+                st.markdown(f"<h6 style='color:#137659; font-family:Inter, sans-serif; font-weight:800; letter-spacing:1px; text-transform:uppercase; font-size:0.8rem; margin-top:6px; margin-bottom:10px;'>⏱️ Run Life por Bloque (a {fecha_eval_dt_b.strftime('%Y-%m-%d')})</h6>", unsafe_allow_html=True)
             with col_rl_sel:
                 opcion_rl_bloque = st.radio(
                     "Métrica de R.L. por Bloque:",
@@ -804,10 +804,10 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
             st.markdown("<div style='color:#137659; font-family:Arial, sans-serif !important; margin-bottom:10px;'>RESUMEN DE ÍNDICES GENERALES</div>", unsafe_allow_html=True)
             render_hud_table(indice_resumen_df, table_id="resumen_indices")
             
-            # Tabla de Resumen por Bloque
+            # Tabla 1: Resumen de Índices de Falla por Bloque
             if 'bloques_if' in locals() and bloques_if:
                 st.markdown("<br>", unsafe_allow_html=True)
-                st.markdown("<div style='color:#137659; font-family:Arial, sans-serif !important; margin-bottom:10px;'>RESUMEN DE ÍNDICES DE FALLA Y RUN LIFE POR BLOQUE</div>", unsafe_allow_html=True)
+                st.markdown("<div style='color:#137659; font-family:Arial, sans-serif !important; margin-bottom:10px;'>RESUMEN DE ÍNDICES DE FALLA POR BLOQUE (ROLLING 12M)</div>", unsafe_allow_html=True)
                 df_bloque_tab = pd.DataFrame([
                     {
                         'Bloque': b['bloque'],
@@ -821,13 +821,26 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                         'IF ALS': f"{b['if_als']:.2f}%",
                         'IF < 1500d': f"{b['if_1500']:.2f}%",
                         'IF ALS < 1500d': f"{b['if_als_1500']:.2f}%",
-                        f"Meta IF ({anio_prev})": f"{b['active_meta']:.2f}%",
-                        'Run Life (días)': f"{b['rl']:.1f}d",
-                        'Run Life Efectivo (días)': f"{b['rl_efectivo']:.1f}d",
-                        f"Meta R.L. ({anio_prev})": f"{b['meta_rl']:.1f}d"
+                        f"Meta IF ({anio_prev})": f"{b['active_meta']:.2f}%"
                     } for b in bloques_if
                 ])
-                render_hud_table(df_bloque_tab, table_id="resumen_bloques")
+                render_hud_table(df_bloque_tab, table_id="resumen_bloques_if")
+
+                # Tabla 2: Resumen de Run Life por Bloque
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.markdown("<div style='color:#137659; font-family:Arial, sans-serif !important; margin-bottom:10px;'>RESUMEN DE RUN LIFE POR BLOQUE</div>", unsafe_allow_html=True)
+                df_rl_tab = pd.DataFrame([
+                    {
+                        'Bloque': b['bloque'],
+                        'Pozos Totales': b['total'],
+                        'Pozos ON (Prom)': b['prom_on'],
+                        'Run Life (días)': f"{b['rl']:.1f}d",
+                        'Run Life Efectivo (días)': f"{b['rl_efectivo']:.1f}d",
+                        f"Meta R.L. ({anio_prev})": f"{b['meta_rl']:.1f}d",
+                        f"Meta R.L. Ef. ({anio_prev})": f"{b['meta_rle']:.1f}d"
+                    } for b in bloques_if
+                ])
+                render_hud_table(df_rl_tab, table_id="resumen_bloques_rl")
 
             st.markdown("<br>", unsafe_allow_html=True)
             st.markdown("<div style='color:#137659; font-family:Arial, sans-serif !important; margin-bottom:10px;'>DETALLE MENSUAL</div>", unsafe_allow_html=True)
