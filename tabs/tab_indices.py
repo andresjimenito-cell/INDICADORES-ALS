@@ -698,7 +698,18 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                         height=chart_h
                     )
 
-                    st.plotly_chart(fig_bloque, use_container_width=True, config={"displayModeBar": False})
+                    plotly_config_if = {
+                        "displayModeBar": True,
+                        "displaylogo": False,
+                        "toImageButtonOptions": {
+                            "format": "png",
+                            "filename": "indice_falla_por_bloque",
+                            "height": 500,
+                            "width": 1000,
+                            "scale": 3
+                        }
+                    }
+                    st.plotly_chart(fig_bloque, use_container_width=True, config=plotly_config_if)
             except Exception as e:
                 st.warning(f"No se pudo generar el gráfico de IF por Bloque: {e}")
 
@@ -795,7 +806,18 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                         height=chart_h_rl
                     )
 
-                    st.plotly_chart(fig_rl_bloque, use_container_width=True, config={"displayModeBar": False})
+                    plotly_config_rl = {
+                        "displayModeBar": True,
+                        "displaylogo": False,
+                        "toImageButtonOptions": {
+                            "format": "png",
+                            "filename": "run_life_por_bloque",
+                            "height": 500,
+                            "width": 1000,
+                            "scale": 3
+                        }
+                    }
+                    st.plotly_chart(fig_rl_bloque, use_container_width=True, config=plotly_config_rl)
             except Exception as e:
                 st.warning(f"No se pudo generar el gráfico de Run Life por Bloque: {e}")
 
