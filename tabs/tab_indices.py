@@ -425,6 +425,9 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                     df_bloque_raw['RUN_LIFE_EFECTIVO'] = df_bloque_raw['RUN LIFE'] if 'RUN LIFE' in df_bloque_raw.columns else 0
                 df_bloque_raw['RUN_LIFE_EFECTIVO'] = pd.to_numeric(df_bloque_raw['RUN_LIFE_EFECTIVO'], errors='coerce').fillna(0)
 
+                calc_rle = (df_bloque_raw['FECHA_FALLA'] - df_bloque_raw['FECHA_RUN']).dt.days
+                df_bloque_raw['_RLE'] = np.where(df_bloque_raw['RUN_LIFE_EFECTIVO'] > 0, df_bloque_raw['RUN_LIFE_EFECTIVO'], calc_rle.fillna(0))
+
                 if 'INDICADOR_MTBF' not in df_bloque_raw.columns:
                     df_bloque_raw['INDICADOR_MTBF'] = 0
 
@@ -462,12 +465,7 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                     fallas_tot = fallas_12m_tot.shape[0]
                     fallas_als = fallas_12m_tot[fallas_12m_tot['INDICADOR_MTBF'] == 1].shape[0]
 
-                    grp_1500 = grp_runs[grp_runs['RUN_LIFE_EFECTIVO'] < 1500]
-                    fallas_12m_1500 = grp_1500[
-                        (grp_1500['_FALL'].notna()) &
-                        (grp_1500['_FALL'] >= first_month_b) &
-                        (grp_1500['_FALL'] <= fecha_eval_norm_b)
-                    ]
+                    fallas_12m_1500 = fallas_12m_tot[fallas_12m_tot['_RLE'] < 1500]
                     fallas_1500 = fallas_12m_1500.shape[0]
                     fallas_als_1500 = fallas_12m_1500[fallas_12m_1500['INDICADOR_MTBF'] == 1].shape[0]
 
@@ -481,21 +479,13 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                     fallas_prev_tot = fallas_prev_tot_df.shape[0]
                     fallas_prev_als = fallas_prev_tot_df[fallas_prev_tot_df['INDICADOR_MTBF'] == 1].shape[0]
 
-                    grp_prev_1500 = grp_runs_prev[grp_runs_prev['RUN_LIFE_EFECTIVO'] < 1500]
-                    fallas_prev_1500_df = grp_prev_1500[
-                        (grp_prev_1500['_FALL'].notna()) &
-                        (grp_prev_1500['_FALL'] >= prev_year_start) &
-                        (grp_prev_1500['_FALL'] <= prev_year_end)
-                    ]
+                    fallas_prev_1500_df = fallas_prev_tot_df[fallas_prev_tot_df['_RLE'] < 1500]
                     fallas_prev_1500 = fallas_prev_1500_df.shape[0]
                     fallas_prev_als_1500 = fallas_prev_1500_df[fallas_prev_1500_df['INDICADOR_MTBF'] == 1].shape[0]
 
                     # 3. Promedio de pozos activos ON por mes (12M y Año Anterior)
                     pozos_on_meses = []
-                    pozos_on_1500_meses = []
                     pozos_on_prev_meses = []
-                    pozos_on_prev_1500_meses = []
-
                     pozos_bloque_set = set(grp_runs['POZO'].unique()) if 'POZO' in grp_runs.columns else set()
 
                     for i in range(12):
@@ -510,31 +500,14 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                             ]
                             pozos_f9_set = set(f9_mes['POZO'].unique()) if 'POZO' in f9_mes.columns else set()
                             activos_set = pozos_bloque_set & pozos_f9_set
-
-                            grp_mes_1500 = grp_runs[
-                                (grp_runs['_RUN'] <= mes_end) &
-                                (grp_runs['_FALL'].isna() | (grp_runs['_FALL'] >= mes_start)) &
-                                (grp_runs['_PULL'].isna() | (grp_runs['_PULL'] >= mes_start)) &
-                                (grp_runs['RUN_LIFE_EFECTIVO'] < 1500)
-                            ]
-                            pozos_1500_set = set(grp_mes_1500['POZO'].unique()) if 'POZO' in grp_mes_1500.columns else set()
-                            activos_1500_set = activos_set & pozos_1500_set
-
                             activos_mes = len(activos_set)
-                            activos_1500_mes = len(activos_1500_set)
                         else:
                             grp_mes = grp_runs[grp_runs['_RUN'] <= mes_end]
                             activos_mes = grp_mes[
                                 (grp_mes['_FALL'].isna()) | (grp_mes['_FALL'] > mes_end)
                             ]['POZO'].nunique() if 'POZO' in grp_mes.columns else 0
 
-                            grp_mes_1500 = grp_1500[grp_1500['_RUN'] <= mes_end]
-                            activos_1500_mes = grp_mes_1500[
-                                (grp_mes_1500['_FALL'].isna()) | (grp_mes_1500['_FALL'] > mes_end)
-                            ]['POZO'].nunique() if 'POZO' in grp_mes_1500.columns else 0
-
                         pozos_on_meses.append(activos_mes)
-                        pozos_on_1500_meses.append(activos_1500_mes)
 
                     # Pozos ON para los 12 meses del Año Anterior
                     for m in range(1, 13):
@@ -548,45 +521,28 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                             ]
                             p_f9_set = set(f9_m_prev['POZO'].unique()) if 'POZO' in f9_m_prev.columns else set()
                             p_activos_set = pozos_bloque_set & p_f9_set
-                            grp_prev_m_1500 = grp_runs_prev[
-                                (grp_runs_prev['_RUN'] <= p_end) &
-                                (grp_runs_prev['_FALL'].isna() | (grp_runs_prev['_FALL'] >= p_start)) &
-                                (grp_runs_prev['_PULL'].isna() | (grp_runs_prev['_PULL'] >= p_start)) &
-                                (grp_runs_prev['RUN_LIFE_EFECTIVO'] < 1500)
-                            ]
-                            p_1500_set = set(grp_prev_m_1500['POZO'].unique()) if 'POZO' in grp_prev_m_1500.columns else set()
-                            p_activos_1500_set = p_activos_set & p_1500_set
                             pozos_on_prev_meses.append(len(p_activos_set))
-                            pozos_on_prev_1500_meses.append(len(p_activos_1500_set))
                         else:
                             grp_prev_m = grp_runs_prev[grp_runs_prev['_RUN'] <= p_end]
                             act_p = grp_prev_m[
                                 (grp_prev_m['_FALL'].isna()) | (grp_prev_m['_FALL'] > p_end)
                             ]['POZO'].nunique() if 'POZO' in grp_prev_m.columns else 0
-
-                            grp_prev_m_1500 = grp_prev_1500[grp_prev_1500['_RUN'] <= p_end]
-                            act_p_1500 = grp_prev_m_1500[
-                                (grp_prev_m_1500['_FALL'].isna()) | (grp_prev_m_1500['_FALL'] > p_end)
-                            ]['POZO'].nunique() if 'POZO' in grp_prev_m_1500.columns else 0
-
                             pozos_on_prev_meses.append(act_p)
-                            pozos_on_prev_1500_meses.append(act_p_1500)
 
                     promedio_on = np.mean(pozos_on_meses) if pozos_on_meses else 0
-                    promedio_on_1500 = np.mean(pozos_on_1500_meses) if pozos_on_1500_meses else 0
                     prom_on_prev = np.mean(pozos_on_prev_meses) if pozos_on_prev_meses else 0
-                    prom_on_prev_1500 = np.mean(pozos_on_prev_1500_meses) if pozos_on_prev_1500_meses else 0
 
+                    # Denominador común Pozos ON para todos los IFs (idéntico a core/indice_falla.py)
                     if_tot_val = (fallas_tot / promedio_on * 100) if promedio_on > 0 else 0.0
                     if_als_val = (fallas_als / promedio_on * 100) if promedio_on > 0 else 0.0
-                    if_1500_val = (fallas_1500 / promedio_on_1500 * 100) if promedio_on_1500 > 0 else 0.0
-                    if_als_1500_val = (fallas_als_1500 / promedio_on_1500 * 100) if promedio_on_1500 > 0 else 0.0
+                    if_1500_val = (fallas_1500 / promedio_on * 100) if promedio_on > 0 else 0.0
+                    if_als_1500_val = (fallas_als_1500 / promedio_on * 100) if promedio_on > 0 else 0.0
 
                     # Metas dinámicas por tipo de I.F. basadas en el año anterior
                     if_prev_tot_val = (fallas_prev_tot / prom_on_prev * 100) if prom_on_prev > 0 else 0.0
                     if_prev_als_val = (fallas_prev_als / prom_on_prev * 100) if prom_on_prev > 0 else 0.0
-                    if_prev_1500_val = (fallas_prev_1500 / prom_on_prev_1500 * 100) if prom_on_prev_1500 > 0 else 0.0
-                    if_prev_als_1500_val = (fallas_prev_als_1500 / prom_on_prev_1500 * 100) if prom_on_prev_1500 > 0 else 0.0
+                    if_prev_1500_val = (fallas_prev_1500 / prom_on_prev * 100) if prom_on_prev > 0 else 0.0
+                    if_prev_als_1500_val = (fallas_prev_als_1500 / prom_on_prev * 100) if prom_on_prev > 0 else 0.0
 
                     meta_tot = round(if_prev_tot_val, 2) if if_prev_tot_val > 0 else 7.5
                     meta_als = round(if_prev_als_val, 2) if if_prev_als_val > 0 else 7.5
@@ -597,7 +553,6 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                         'bloque': str(bloque).strip(),
                         'total': total_pozosBloque,
                         'prom_on': round(promedio_on),
-                        'prom_on_1500': round(promedio_on_1500),
                         'fallas_tot': fallas_tot,
                         'fallas_als': fallas_als,
                         'fallas_1500': fallas_1500,
@@ -622,12 +577,12 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                     elif opcion_if_bloque == "I.F. Total <1500d":
                         d['active_if'] = d['if_1500']
                         d['active_fallas'] = d['fallas_1500']
-                        d['active_prom'] = d['prom_on_1500']
+                        d['active_prom'] = d['prom_on']
                         d['active_meta'] = d['meta_1500']
                     elif opcion_if_bloque == "I.F. ALS <1500d":
                         d['active_if'] = d['if_als_1500']
                         d['active_fallas'] = d['fallas_als_1500']
-                        d['active_prom'] = d['prom_on_1500']
+                        d['active_prom'] = d['prom_on']
                         d['active_meta'] = d['meta_als_1500']
                     else:
                         d['active_if'] = d['if_total']
@@ -732,6 +687,8 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                         'Pozos ON (Prom)': b['prom_on'],
                         'Fallas (12M)': b['fallas_tot'],
                         'Fallas ALS (12M)': b['fallas_als'],
+                        'Fallas < 1500d (12M)': b['fallas_1500'],
+                        'Fallas ALS < 1500d (12M)': b['fallas_als_1500'],
                         'IF Total': f"{b['if_total']:.2f}%",
                         'IF ALS': f"{b['if_als']:.2f}%",
                         'IF < 1500d': f"{b['if_1500']:.2f}%",
