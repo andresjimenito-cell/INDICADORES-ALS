@@ -393,54 +393,31 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # --- 3. ÍNDICES DE FALLA POR BLOQUE / CAMPO (ANCHO COMPLETO) ---
-        col_b_head, col_b_grp, col_b_sel = st.columns([1.1, 0.9, 2.0])
-        with col_b_grp:
-            agrupar_por = st.radio(
-                "Agrupar por:",
-                options=["Bloque", "Campo"],
-                index=0,
-                horizontal=True,
-                key="if_agrupar_por_selector"
-            )
-        with col_b_head:
-            st.markdown(f"<h6 style='color:#137659; font-family:Inter, sans-serif; font-weight:800; letter-spacing:1px; text-transform:uppercase; font-size:0.8rem; margin-top:8px; margin-bottom:4px;'>📊 Índice de Falla por {agrupar_por} (Rolling 12M)</h6>", unsafe_allow_html=True)
-        with col_b_sel:
-            opcion_if_bloque = st.radio(
-                "Métrica de I.F.:",
-                options=["I.F. Total", "I.F. ALS", "I.F. Total <1500d", "I.F. ALS <1500d"],
-                index=0,
-                horizontal=True,
-                key="if_bloque_metric_selector"
-            )
+        # --- 3. ÍNDICES DE FALLA POR BLOQUE (ANCHO COMPLETO) ---
+        _filtro_activo = (
+            st.session_state.get('general_bloque_filter', 'TODOS') != 'TODOS' or
+            st.session_state.get('general_campo_filter', 'TODOS') != 'TODOS'
+        )
+        if not _filtro_activo:
+            st.markdown(f"<h6 style='color:#137659; font-family:Inter, sans-serif; font-weight:800; letter-spacing:1px; text-transform:uppercase; font-size:0.8rem; margin-bottom:10px;'>📊 Índice de Falla por Bloque (Rolling 12M a {pd.to_datetime(fecha_evaluacion).strftime('%Y-%m-%d')})</h6>", unsafe_allow_html=True)
 
-        try:
-            df_bloque_raw = df_bd_untr.copy()
-            df_bloque_raw['FECHA_RUN'] = pd.to_datetime(df_bloque_raw['FECHA_RUN'], errors='coerce')
-            df_bloque_raw['FECHA_FALLA'] = pd.to_datetime(df_bloque_raw['FECHA_FALLA'], errors='coerce')
-            df_bloque_raw['FECHA_PULL'] = pd.to_datetime(df_bloque_raw['FECHA_PULL'], errors='coerce')
-            df_bloque_raw['_RUN'] = df_bloque_raw['FECHA_RUN'].dt.normalize()
-            df_bloque_raw['_FALL'] = df_bloque_raw['FECHA_FALLA'].dt.normalize()
-            df_bloque_raw['_PULL'] = df_bloque_raw['FECHA_PULL'].dt.normalize()
+        if not _filtro_activo:
+            try:
+                df_bloque_raw = df_bd_untr.copy()
+                df_bloque_raw['FECHA_RUN'] = pd.to_datetime(df_bloque_raw['FECHA_RUN'], errors='coerce')
+                df_bloque_raw['FECHA_FALLA'] = pd.to_datetime(df_bloque_raw['FECHA_FALLA'], errors='coerce')
+                df_bloque_raw['FECHA_PULL'] = pd.to_datetime(df_bloque_raw['FECHA_PULL'], errors='coerce')
+                df_bloque_raw['_RUN'] = df_bloque_raw['FECHA_RUN'].dt.normalize()
+                df_bloque_raw['_FALL'] = df_bloque_raw['FECHA_FALLA'].dt.normalize()
+                df_bloque_raw['_PULL'] = df_bloque_raw['FECHA_PULL'].dt.normalize()
 
-            if 'RUN_LIFE_EFECTIVO' not in df_bloque_raw.columns:
-                df_bloque_raw['RUN_LIFE_EFECTIVO'] = df_bloque_raw['RUN LIFE'] if 'RUN LIFE' in df_bloque_raw.columns else 0
-            df_bloque_raw['RUN_LIFE_EFECTIVO'] = pd.to_numeric(df_bloque_raw['RUN_LIFE_EFECTIVO'], errors='coerce').fillna(0)
+                fecha_eval_dt_b = pd.to_datetime(fecha_evaluacion)
+                fecha_eval_norm_b = fecha_eval_dt_b.normalize()
+                fecha_12m_back_b = fecha_eval_norm_b - pd.DateOffset(months=12)
 
-            if 'INDICADOR_MTBF' not in df_bloque_raw.columns:
-                df_bloque_raw['INDICADOR_MTBF'] = 0
-
-            fecha_eval_dt_b = pd.to_datetime(fecha_evaluacion)
-            fecha_eval_norm_b = fecha_eval_dt_b.normalize()
-            fecha_12m_back_b = fecha_eval_norm_b - pd.DateOffset(months=12)
-
-            col_group_name = 'BLOQUE' if agrupar_por == "Bloque" else 'CAMPO'
-
-            bloques_if = []
-            if col_group_name in df_bloque_raw.columns:
-                for entidad, grp in df_bloque_raw.groupby(col_group_name):
-                    entidad_str = str(entidad).strip()
-                    if pd.isna(entidad) or entidad_str == '' or entidad_str.upper() in ('TODOS', 'ECUADOR', 'NONE', 'NAN'):
+                bloques_if = []
+                for bloque, grp in df_bloque_raw.groupby('BLOQUE'):
+                    if pd.isna(bloque) or str(bloque).strip() == '' or str(bloque).strip().upper() in ('TODOS', 'ECUADOR'):
                         continue
 
                     grp_runs = grp[grp['_RUN'] <= fecha_eval_norm_b]
@@ -448,28 +425,17 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                     if total_pozosBloque == 0:
                         continue
 
-                    if "1500d" in opcion_if_bloque:
-                        grp_runs_eval = grp_runs[grp_runs['RUN_LIFE_EFECTIVO'] < 1500]
-                    else:
-                        grp_runs_eval = grp_runs
-
-                    fallas_cond = (
-                        (grp_runs_eval['_FALL'].notna()) &
-                        (grp_runs_eval['_FALL'] >= fecha_12m_back_b) &
-                        (grp_runs_eval['_FALL'] <= fecha_eval_norm_b)
-                    )
-
-                    if "ALS" in opcion_if_bloque:
-                        is_mtbf = grp_runs_eval['INDICADOR_MTBF'].astype(str).str.strip().isin(['1', '1.0', 'True', 'true'])
-                        fallas_cond = fallas_cond & is_mtbf
-
-                    fallas_12m = grp_runs_eval[fallas_cond].shape[0]
+                    fallas_12m = grp_runs[
+                        (grp_runs['_FALL'].notna()) &
+                        (grp_runs['_FALL'] >= fecha_12m_back_b) &
+                        (grp_runs['_FALL'] <= fecha_eval_norm_b)
+                    ].shape[0]
 
                     pozos_on_meses = []
                     for i in range(12):
                         mes_start = fecha_12m_back_b + pd.DateOffset(months=i)
                         mes_end = (mes_start + pd.offsets.MonthEnd(0)).normalize()
-                        grp_mes = grp_runs_eval[grp_runs_eval['_RUN'] <= mes_end]
+                        grp_mes = grp_runs[grp_runs['_RUN'] <= mes_end]
                         activos_mes = grp_mes[
                             (grp_mes['_FALL'].isna()) | (grp_mes['_FALL'] > mes_end)
                         ]['POZO'].nunique() if 'POZO' in grp_mes.columns else 0
@@ -479,7 +445,7 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                     if_val = (fallas_12m / promedio_on * 100) if promedio_on > 0 else 0
 
                     bloques_if.append({
-                        'entidad': entidad_str,
+                        'bloque': str(bloque).strip(),
                         'if_pct': round(if_val, 2),
                         'if_pct_cap': min(round(if_val, 2), 100.0),
                         'fallas': fallas_12m,
@@ -487,84 +453,83 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                         'total': total_pozosBloque
                     })
 
-            bloques_if.sort(key=lambda x: x['if_pct'], reverse=True)
+                bloques_if.sort(key=lambda x: x['if_pct'], reverse=True)
 
-            if bloques_if:
-                blk_names = [d['entidad'] for d in bloques_if]
-                blk_if_vals = [d['if_pct_cap'] for d in bloques_if]
-                blk_if_real = [d['if_pct'] for d in bloques_if]
-                blk_fallas = [d['fallas'] for d in bloques_if]
-                blk_on = [d['prom_on'] for d in bloques_if]
-                blk_total = [d['total'] for d in bloques_if]
+                if bloques_if:
+                    blk_names = [d['bloque'] for d in bloques_if]
+                    blk_if_vals = [d['if_pct_cap'] for d in bloques_if]
+                    blk_if_real = [d['if_pct'] for d in bloques_if]
+                    blk_fallas = [d['fallas'] for d in bloques_if]
+                    blk_on = [d['prom_on'] for d in bloques_if]
+                    blk_total = [d['total'] for d in bloques_if]
 
-                import plotly.graph_objects as go_fig
+                    import plotly.graph_objects as go_fig
 
-                hover_texts = []
-                for i, d in enumerate(bloques_if):
-                    real = d['if_pct']
-                    cap = d['if_pct_cap']
-                    val_str = f"{real:.2f}% (>100%)" if real > 100 else f"{cap:.2f}%"
-                    hover_texts.append(
-                        f"<b style='color:#137659;font-size:13px'>{d['entidad']}</b> ({agrupar_por})<br>"
-                        f"<hr style='margin:3px 0;border-color:rgba(19,118,89,0.15)'>"
-                        f"Métrica: <b>{opcion_if_bloque}</b><br>"
-                        f"IF Rolling 12M: <b>{val_str}</b><br>"
-                        f"Fallas (12M): <b>{d['fallas']}</b><br>"
-                        f"Pozos Activos (prom): <b>{d['prom_on']}</b><br>"
-                        f"Pozos Totales: <b>{d['total']}</b>"
+                    hover_texts = []
+                    for i, d in enumerate(bloques_if):
+                        real = d['if_pct']
+                        cap = d['if_pct_cap']
+                        val_str = f"{real:.2f}% (>100%)" if real > 100 else f"{cap:.2f}%"
+                        hover_texts.append(
+                            f"<b style='color:#137659;font-size:13px'>{d['bloque']}</b><br>"
+                            f"<hr style='margin:3px 0;border-color:rgba(19,118,89,0.15)'>"
+                            f"IF Rolling 12M: <b>{val_str}</b><br>"
+                            f"Fallas (12M): <b>{d['fallas']}</b><br>"
+                            f"Pozos ON (prom): <b>{d['prom_on']}</b><br>"
+                            f"Pozos Totales: <b>{d['total']}</b>"
+                        )
+
+                    bar_colors_px = []
+                    for v in blk_if_vals:
+                        if v <= 7.5:
+                            bar_colors_px.append("#137659")
+                        elif v <= 10.0:
+                            bar_colors_px.append("#c09c2e")
+                        else:
+                            bar_colors_px.append("#c62828")
+
+                    chart_h = max(200, min(280, len(blk_names) * 38 + 80))
+
+                    fig_bloque = go_fig.Figure()
+                    fig_bloque.add_trace(go_fig.Bar(
+                        x=blk_names,
+                        y=blk_if_vals,
+                        marker=dict(color=bar_colors_px, line=dict(width=0)),
+                        text=[f"{v:.2f}%" for v in blk_if_vals],
+                        textposition="outside",
+                        textfont=dict(size=9, color="#1f221e", family="Inter, sans-serif"),
+                        hovertext=hover_texts,
+                        hoverinfo="text",
+                        hoverlabel=dict(bgcolor="rgba(255,255,255,0.97)", bordercolor="#137659",
+                                        font=dict(size=10, family="Inter, sans-serif", color="#1f221e")),
+                        width=0.5
+                    ))
+
+                    fig_bloque.add_hline(y=7.5, line_dash="dash", line_color="#c62828", line_width=1.5,
+                                         annotation_text="Meta 7.5%", annotation_position="top right",
+                                         annotation_font=dict(size=9, color="#c62828", family="Inter, sans-serif"))
+
+                    fig_bloque.update_layout(
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        font=dict(family="Inter, sans-serif"),
+                        margin=dict(l=35, r=15, t=8, b=45),
+                        xaxis=dict(title="", showgrid=False, showline=True, linecolor="rgba(19,118,89,0.15)",
+                                   tickfont=dict(size=9, color="#1f221e", family="Inter, sans-serif"),
+                                   tickangle=0),
+                        yaxis=dict(title="IF (%)", range=[0, max(blk_if_vals) * 1.3] if blk_if_vals else [0, 15],
+                                   showgrid=True, gridcolor="rgba(19,118,89,0.08)", gridwidth=1,
+                                   showline=False,
+                                   tickfont=dict(size=8, color="#5b5c55", family="Inter, sans-serif"),
+                                   ticksuffix="%"),
+                        bargap=0.4,
+                        showlegend=False,
+                        height=chart_h
                     )
 
-                bar_colors_px = []
-                for v in blk_if_vals:
-                    if v <= 7.5:
-                        bar_colors_px.append("#137659")
-                    elif v <= 10.0:
-                        bar_colors_px.append("#c09c2e")
-                    else:
-                        bar_colors_px.append("#c62828")
-
-                chart_h = max(200, min(280, len(blk_names) * 38 + 80))
-
-                fig_bloque = go_fig.Figure()
-                fig_bloque.add_trace(go_fig.Bar(
-                    x=blk_names,
-                    y=blk_if_vals,
-                    marker=dict(color=bar_colors_px, line=dict(width=0)),
-                    text=[f"{v:.2f}%" for v in blk_if_vals],
-                    textposition="outside",
-                    textfont=dict(size=9, color="#1f221e", family="Inter, sans-serif"),
-                    hovertext=hover_texts,
-                    hoverinfo="text",
-                    hoverlabel=dict(bgcolor="rgba(255,255,255,0.97)", bordercolor="#137659",
-                                    font=dict(size=10, family="Inter, sans-serif", color="#1f221e")),
-                    width=0.5
-                ))
-
-                fig_bloque.add_hline(y=7.5, line_dash="dash", line_color="#c62828", line_width=1.5,
-                                     annotation_text="Meta 7.5%", annotation_position="top right",
-                                     annotation_font=dict(size=9, color="#c62828", family="Inter, sans-serif"))
-
-                fig_bloque.update_layout(
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    font=dict(family="Inter, sans-serif"),
-                    margin=dict(l=35, r=15, t=8, b=45),
-                    xaxis=dict(title="", showgrid=False, showline=True, linecolor="rgba(19,118,89,0.15)",
-                               tickfont=dict(size=9, color="#1f221e", family="Inter, sans-serif"),
-                               tickangle=0),
-                    yaxis=dict(title="IF (%)", range=[0, max(blk_if_vals) * 1.3] if blk_if_vals else [0, 15],
-                               showgrid=True, gridcolor="rgba(19,118,89,0.08)", gridwidth=1,
-                               showline=False,
-                               tickfont=dict(size=8, color="#5b5c55", family="Inter, sans-serif"),
-                               ticksuffix="%"),
-                    bargap=0.4,
-                    showlegend=False,
-                    height=chart_h
-                )
-
-                st.plotly_chart(fig_bloque, use_container_width=True, config={"displayModeBar": False})
-        except Exception as e:
-            st.warning(f"No se pudo generar el gráfico de IF por Bloque/Campo: {e}")
+                    st.plotly_chart(fig_bloque, use_container_width=True, config={"displayModeBar": False})
+            except Exception as e:
+                st.warning(f"No se pudo generar el gráfico de IF por Bloque: {e}")
 
         # --- 4. DETALLE DE DATA (Expander con HUD Table Interactivas) ---
         with st.expander("📄 VER TABLA DE DATOS HISTÓRICOS Y RESUMEN", expanded=False):
