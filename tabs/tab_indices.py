@@ -184,8 +184,10 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
     
     if df_raw is not None and df_f9_raw is not None:
         df_bd_untr = df_raw.copy()
-        if 'ACTIVO' in df_bd_untr.columns:
-            df_bd_untr = df_bd_untr[df_bd_untr['ACTIVO'].astype(str).str.upper().str.strip() != 'ECUADOR']
+        EXCLUIDOS = {'ECUADOR', 'CORCEL NE', 'CORCEL', 'ENTRERIOS', 'ENTRE RIOS', 'EL DIFICIL', 'EL DIFICIL NE', 'RIO META'}
+        for col_filter in ('ACTIVO', 'BLOQUE', 'CAMPO'):
+            if col_filter in df_bd_untr.columns:
+                df_bd_untr = df_bd_untr[~df_bd_untr[col_filter].astype(str).str.upper().str.strip().isin(EXCLUIDOS)]
         
         _filtros = {
             'ACTIVO':    st.session_state.get('general_activo_filter',    'TODOS'),
@@ -448,7 +450,8 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                 prev_year_end = pd.to_datetime(f"{anio_prev}-12-31").normalize()
 
                 for bloque, grp in df_bloque_raw.groupby('BLOQUE'):
-                    if pd.isna(bloque) or str(bloque).strip() == '' or str(bloque).strip().upper() in ('TODOS', 'ECUADOR'):
+                    EXCLUIDOS = {'TODOS', 'ECUADOR', 'CORCEL NE', 'CORCEL', 'ENTRERIOS', 'ENTRE RIOS', 'EL DIFICIL', 'EL DIFICIL NE', 'RIO META'}
+                    if pd.isna(bloque) or str(bloque).strip() == '' or str(bloque).strip().upper() in EXCLUIDOS:
                         continue
 
                     grp_runs = grp[grp['_RUN'] <= fecha_eval_norm_b]
@@ -629,8 +632,6 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                     blk_if_vals = [d['active_if_cap'] for d in bloques_if]
                     blk_if_real = [d['active_if'] for d in bloques_if]
                     meta_prom_global = round(float(np.mean([d['active_meta'] for d in bloques_if])), 2)
-
-                    import plotly.graph_objects as go_fig
 
                     hover_texts = []
                     for i, d in enumerate(bloques_if):

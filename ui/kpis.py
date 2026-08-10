@@ -52,8 +52,10 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
 
     if df_bd_raw is not None:
         df_bd = df_bd_raw.copy()
-        if 'ACTIVO' in df_bd.columns:
-            df_bd = df_bd[df_bd['ACTIVO'].astype(str).str.upper().str.strip() != 'ECUADOR']
+        EXCLUIDOS = {'ECUADOR', 'CORCEL NE', 'CORCEL', 'ENTRERIOS', 'ENTRE RIOS', 'EL DIFICIL', 'EL DIFICIL NE', 'RIO META'}
+        for col_filter in ('ACTIVO', 'BLOQUE', 'CAMPO'):
+            if col_filter in df_bd.columns:
+                df_bd = df_bd[~df_bd[col_filter].astype(str).str.upper().str.strip().isin(EXCLUIDOS)]
         # Aplicar filtros del sidebar
         _filtros = {
             'ACTIVO':    st.session_state.get('general_activo_filter',    'TODOS'),

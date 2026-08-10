@@ -157,8 +157,10 @@ def render_tab_campanas(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, se
     df_bd_raw = st.session_state.get('df_bd_calculated')
     
     df_bd_untr = df_bd_raw.copy() if df_bd_raw is not None else df_bd_filtered.copy()
-    if 'ACTIVO' in df_bd_untr.columns:
-        df_bd_untr = df_bd_untr[df_bd_untr['ACTIVO'].astype(str).str.upper().str.strip() != 'ECUADOR']
+    EXCLUIDOS = {'ECUADOR', 'CORCEL NE', 'CORCEL', 'ENTRERIOS', 'ENTRE RIOS', 'EL DIFICIL', 'EL DIFICIL NE', 'RIO META'}
+    for col_filter in ('ACTIVO', 'BLOQUE', 'CAMPO'):
+        if col_filter in df_bd_untr.columns:
+            df_bd_untr = df_bd_untr[~df_bd_untr[col_filter].astype(str).str.upper().str.strip().isin(EXCLUIDOS)]
         
     _filtros = {
         'ACTIVO':    st.session_state.get('general_activo_filter',    'TODOS'),

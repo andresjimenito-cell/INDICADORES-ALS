@@ -583,8 +583,10 @@ def render_tab_tablero(
     df_raw = st.session_state.get('df_bd_calculated')
     if df_raw is not None:
         df_resumen = df_raw.copy()
-        if 'ACTIVO' in df_resumen.columns:
-            df_resumen = df_resumen[df_resumen['ACTIVO'].astype(str).str.upper().str.strip() != 'ECUADOR']
+        EXCLUIDOS = {'ECUADOR', 'CORCEL NE', 'CORCEL', 'ENTRERIOS', 'ENTRE RIOS', 'EL DIFICIL', 'EL DIFICIL NE', 'RIO META'}
+        for col_filter in ('ACTIVO', 'BLOQUE', 'CAMPO'):
+            if col_filter in df_resumen.columns:
+                df_resumen = df_resumen[~df_resumen[col_filter].astype(str).str.upper().str.strip().isin(EXCLUIDOS)]
         for col in ('FECHA_RUN', 'FECHA_FALLA', 'FECHA_PULL'):
             if col in df_resumen.columns:
                 df_resumen[col] = pd.to_datetime(df_resumen[col], errors='coerce')
@@ -760,8 +762,10 @@ def render_tab_tablero(
     df_raw = st.session_state.get('df_bd_calculated')
     if df_raw is not None:
         df_prev = df_raw.copy()
-        if 'ACTIVO' in df_prev.columns:
-            df_prev = df_prev[df_prev['ACTIVO'].astype(str).str.upper().str.strip() != 'ECUADOR']
+        EXCLUIDOS = {'ECUADOR', 'CORCEL NE', 'CORCEL', 'ENTRERIOS', 'ENTRE RIOS', 'EL DIFICIL', 'EL DIFICIL NE', 'RIO META'}
+        for col_filter in ('ACTIVO', 'BLOQUE', 'CAMPO'):
+            if col_filter in df_prev.columns:
+                df_prev = df_prev[~df_prev[col_filter].astype(str).str.upper().str.strip().isin(EXCLUIDOS)]
         for col_dt in ('FECHA_RUN', 'FECHA_FALLA', 'FECHA_PULL'):
             if col_dt in df_prev.columns:
                 df_prev[col_dt] = pd.to_datetime(df_prev[col_dt], errors='coerce')
@@ -789,8 +793,8 @@ def render_tab_tablero(
             rl_prev_val = 0.0
 
     # Meta dinámica = valor de fin de año anterior * 1.1 (si es mayor a 0), de lo contrario meta general
-    meta_mtbf_calc = int(round(mtbf_prev_val * 1.1)) if mtbf_prev_val > 0 else META_MTBF
-    meta_rl_calc = int(round(rl_prev_val * 1.1)) if rl_prev_val > 0 else META_RL
+    meta_mtbf_calc = round(mtbf_prev_val * 1.1) if mtbf_prev_val > 0 else META_MTBF
+    meta_rl_calc = round(rl_prev_val * 1.1) if rl_prev_val > 0 else META_RL
 
     # ── Correlación de Producción vs Longevidad (para el gráfico de desempeño en Columna 3) ──
     rl_bins   = ['< 2 años', '2 – 4 años', '4 – 6 años', '> 6 años']

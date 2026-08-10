@@ -175,7 +175,7 @@ def find_header(file_obj, keywords, max_rows: int = 50) -> int | None:
         row_cols = [_norm(c) for c in row.tolist() if pd.notna(c)]
         if all(any(nk in col for col in row_cols) for nk in norm_keywords):
             file_obj.seek(0)
-            return int(i)
+            return int(str(i))
 
     file_obj.seek(0)
     return None
@@ -234,9 +234,6 @@ def cargar_y_limpiar_datos(forma9_file, bd_file):
         if bd_header_row is None:
             st.error("No se pudo encontrar el encabezado en BD. Revisa las columnas '# RUN', 'FECHA RUN' y 'POZO'.")
             return None, None
-
-        forma9_header_row = int(forma9_header_row)
-        bd_header_row = int(bd_header_row)
 
         if forma9_file.name.endswith('.csv'):
             df_forma9 = pd.read_csv(forma9_file, header=forma9_header_row, encoding='latin1', low_memory=False)
@@ -320,9 +317,11 @@ def cargar_y_limpiar_datos(forma9_file, bd_file):
 
     df_bd.dropna(subset=['FECHA_RUN', 'POZO'], inplace=True)
 
-    # Filtrar 'ECUADOR' ya que el usuario indica que ya no existe
-    if 'ACTIVO' in df_bd.columns:
-        df_bd = df_bd[df_bd['ACTIVO'].astype(str).str.upper().str.strip() != 'ECUADOR'].copy()
+    # Filtrar 'ECUADOR' y bloques/campos entregados (CORCEL NE, ENTRERIOS, EL DIFICIL, RIO META)
+    EXCLUIDOS = {'ECUADOR', 'CORCEL NE', 'CORCEL', 'ENTRERIOS', 'ENTRE RIOS', 'EL DIFICIL', 'EL DIFICIL NE', 'RIO META'}
+    for col_filter in ('ACTIVO', 'BLOQUE', 'CAMPO'):
+        if col_filter in df_bd.columns:
+            df_bd = df_bd[~df_bd[col_filter].astype(str).str.upper().str.strip().isin(EXCLUIDOS)].copy()
 
     # Save to JSON cache
     if cache_f9 and cache_bd:
