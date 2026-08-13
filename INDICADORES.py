@@ -240,9 +240,36 @@ if st.session_state.get('reporte_runes') is None:
         st.session_state['reporte_fallas']        = cached_data['reporte_fallas']
         st.toast("✅ Caché restaurado correctamente.", icon="✅")
 
-# ─────────────────────────────────────────────────────────────────────────────
-# SIDEBAR → FILTROS
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Purga estricta en session_state para eliminar pozos ENTREGADOS y FN (Flujo Natural) ──
+if st.session_state.get('df_bd_calculated') is not None:
+    df_temp_bd = st.session_state['df_bd_calculated'].copy()
+    mask_entregado_bd = pd.Series(False, index=df_temp_bd.index)
+    for col in df_temp_bd.columns:
+        mask_entregado_bd |= df_temp_bd[col].astype(str).str.upper().str.contains('ENTREGAD', na=False)
+    df_temp_bd = df_temp_bd[~mask_entregado_bd].copy()
+
+    for col_als in ('ALS', 'SISTEMA ALS', 'SISTEMA_ALS', 'METODO', 'METODO DE LEVANTAMIENTO'):
+        if col_als in df_temp_bd.columns:
+            es_fn_bd = df_temp_bd[col_als].astype(str).str.strip().str.upper().isin(
+                ['FN', 'FLUJO NATURAL', 'FLUJO_NATURAL', 'F.N.', 'FLUJO NAT']
+            )
+            df_temp_bd = df_temp_bd[~es_fn_bd].copy()
+    st.session_state['df_bd_calculated'] = df_temp_bd
+
+if st.session_state.get('df_forma9_calculated') is not None:
+    df_temp_f9 = st.session_state['df_forma9_calculated'].copy()
+    mask_entregado_f9 = pd.Series(False, index=df_temp_f9.index)
+    for col in df_temp_f9.columns:
+        mask_entregado_f9 |= df_temp_f9[col].astype(str).str.upper().str.contains('ENTREGAD', na=False)
+    df_temp_f9 = df_temp_f9[~mask_entregado_f9].copy()
+
+    for col_als in ('ALS', 'SISTEMA ALS', 'SISTEMA_ALS', 'METODO', 'METODO DE LEVANTAMIENTO'):
+        if col_als in df_temp_f9.columns:
+            es_fn_f9 = df_temp_f9[col_als].astype(str).str.strip().str.upper().isin(
+                ['FN', 'FLUJO NATURAL', 'FLUJO_NATURAL', 'F.N.', 'FLUJO NAT']
+            )
+            df_temp_f9 = df_temp_f9[~es_fn_f9].copy()
+    st.session_state['df_forma9_calculated'] = df_temp_f9
 
 filters = render_sidebar()
 
@@ -256,10 +283,10 @@ if st.session_state.get('reporte_runes') is not None:
     # ── Obtener datos calculados ───────────────────────────────────────────
     df_bd_calc    = st.session_state['df_bd_calculated'].copy()
     
-    # Filtrar 'ECUADOR' y bloques/campos entregados (CORCEL NE, ENTRERIOS, EL DIFICIL, RIO META)
-    EXCLUIDOS = {'ECUADOR', 'CORCEL NE', 'CORCEL', 'ENTRERIOS', 'ENTRE RIOS', 'EL DIFICIL', 'EL DIFICIL NE', 'RIO META'}
+    # No excluir ningún bloque ni campo
+    EXCLUIDOS = set()
     for col_filter in ('ACTIVO', 'BLOQUE', 'CAMPO'):
-        if col_filter in df_bd_calc.columns:
+        if col_filter in df_bd_calc.columns and EXCLUIDOS:
             df_bd_calc = df_bd_calc[~df_bd_calc[col_filter].astype(str).str.upper().str.strip().isin(EXCLUIDOS)]
 
     df_forma9_calc = st.session_state['df_forma9_calculated'].copy()
@@ -267,6 +294,25 @@ if st.session_state.get('reporte_runes') is not None:
     fecha_ini     = st.session_state.get('fecha_inicio_state')
     if fecha_ini is None:
         fecha_ini = pd.to_datetime(fecha_eval) - pd.DateOffset(years=1)
+
+    # ── Filtrar pozos/equipos entregados ('ENTREGAD' en cualquier columna) ───
+    mask_entregado = pd.Series(False, index=df_bd_calc.index)
+    for col in df_bd_calc.columns:
+        mask_entregado |= df_bd_calc[col].astype(str).str.upper().str.contains('ENTREGAD', na=False)
+    df_bd_calc = df_bd_calc[~mask_entregado].copy()
+
+    # ── Filtrar pozos de Flujo Natural ('FN', 'FLUJO NATURAL', etc.) ────────
+    for col_als in ('ALS', 'SISTEMA ALS', 'SISTEMA_ALS', 'METODO', 'METODO DE LEVANTAMIENTO'):
+        if col_als in df_bd_calc.columns:
+            es_fn_bd = df_bd_calc[col_als].astype(str).str.strip().str.upper().isin(
+                ['FN', 'FLUJO NATURAL', 'FLUJO_NATURAL', 'F.N.', 'FLUJO NAT']
+            )
+            df_bd_calc = df_bd_calc[~es_fn_bd].copy()
+        if col_als in df_forma9_calc.columns:
+            es_fn_f9 = df_forma9_calc[col_als].astype(str).str.strip().str.upper().isin(
+                ['FN', 'FLUJO NATURAL', 'FLUJO_NATURAL', 'F.N.', 'FLUJO NAT']
+            )
+            df_forma9_calc = df_forma9_calc[~es_fn_f9].copy()
 
     # ── Filtrar BD por rango de fechas ─────────────────────────────────────
     df_bd_calc['FECHA_RUN'] = pd.to_datetime(df_bd_calc['FECHA_RUN'])

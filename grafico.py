@@ -72,6 +72,31 @@ def generar_resumen_mensual(df_bd, df_forma9, fecha_evaluacion):
     # Preparación de datos y fechas
     df_bd = df_bd.copy()
     df_f9 = df_forma9.copy()
+
+    # Excluir pozos/equipos entregados ('ENTREGAD') y Flujo Natural ('FN') de las gráficas
+    mask_entregado_bd = pd.Series(False, index=df_bd.index)
+    for col in df_bd.columns:
+        mask_entregado_bd |= df_bd[col].astype(str).str.upper().str.contains('ENTREGAD', na=False)
+    df_bd = df_bd[~mask_entregado_bd].copy()
+
+    for col_als in ('ALS', 'SISTEMA ALS', 'SISTEMA_ALS', 'METODO', 'METODO DE LEVANTAMIENTO'):
+        if col_als in df_bd.columns:
+            es_fn_bd = df_bd[col_als].astype(str).str.strip().str.upper().isin(
+                ['FN', 'FLUJO NATURAL', 'FLUJO_NATURAL', 'F.N.', 'FLUJO NAT']
+            )
+            df_bd = df_bd[~es_fn_bd].copy()
+
+    mask_entregado_f9 = pd.Series(False, index=df_f9.index)
+    for col in df_f9.columns:
+        mask_entregado_f9 |= df_f9[col].astype(str).str.upper().str.contains('ENTREGAD', na=False)
+    df_f9 = df_f9[~mask_entregado_f9].copy()
+
+    for col_als in ('ALS', 'SISTEMA ALS', 'SISTEMA_ALS', 'METODO', 'METODO DE LEVANTAMIENTO'):
+        if col_als in df_f9.columns:
+            es_fn_f9 = df_f9[col_als].astype(str).str.strip().str.upper().isin(
+                ['FN', 'FLUJO NATURAL', 'FLUJO_NATURAL', 'F.N.', 'FLUJO NAT']
+            )
+            df_f9 = df_f9[~es_fn_f9].copy()
     
     # Normalización de fechas
     df_bd['FECHA_RUN'] = pd.to_datetime(df_bd.get('FECHA_RUN', pd.NaT), errors='coerce').dt.normalize()

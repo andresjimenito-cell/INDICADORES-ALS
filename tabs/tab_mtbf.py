@@ -256,7 +256,7 @@ def render_tab_mtbf(df_bd_filtered, df_forma9_filtered, fecha_evaluacion,
     with col_activo:
         if 'ACTIVO' in df_bd_filtered.columns and not df_bd_filtered.empty:
             try:
-                EXCLUIDOS = {'ECUADOR', 'CORCEL NE', 'CORCEL', 'ENTRERIOS', 'ENTRE RIOS', 'EL DIFICIL', 'EL DIFICIL NE', 'RIO META'}
+                EXCLUIDOS = set()
                 activos_list = [a for a in df_bd_filtered['ACTIVO'].dropna().unique()
                                 if str(a).upper().strip() not in EXCLUIDOS and str(a).strip() != '']
                 rows_act = []

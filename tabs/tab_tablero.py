@@ -583,9 +583,9 @@ def render_tab_tablero(
     df_raw = st.session_state.get('df_bd_calculated')
     if df_raw is not None:
         df_resumen = df_raw.copy()
-        EXCLUIDOS = {'ECUADOR', 'CORCEL NE', 'CORCEL', 'ENTRERIOS', 'ENTRE RIOS', 'EL DIFICIL', 'EL DIFICIL NE', 'RIO META'}
+        EXCLUIDOS = set()
         for col_filter in ('ACTIVO', 'BLOQUE', 'CAMPO'):
-            if col_filter in df_resumen.columns:
+            if col_filter in df_resumen.columns and EXCLUIDOS:
                 df_resumen = df_resumen[~df_resumen[col_filter].astype(str).str.upper().str.strip().isin(EXCLUIDOS)]
         for col in ('FECHA_RUN', 'FECHA_FALLA', 'FECHA_PULL'):
             if col in df_resumen.columns:
@@ -762,9 +762,9 @@ def render_tab_tablero(
     df_raw = st.session_state.get('df_bd_calculated')
     if df_raw is not None:
         df_prev = df_raw.copy()
-        EXCLUIDOS = {'ECUADOR', 'CORCEL NE', 'CORCEL', 'ENTRERIOS', 'ENTRE RIOS', 'EL DIFICIL', 'EL DIFICIL NE', 'RIO META'}
+        EXCLUIDOS = set()
         for col_filter in ('ACTIVO', 'BLOQUE', 'CAMPO'):
-            if col_filter in df_prev.columns:
+            if col_filter in df_prev.columns and EXCLUIDOS:
                 df_prev = df_prev[~df_prev[col_filter].astype(str).str.upper().str.strip().isin(EXCLUIDOS)]
         for col_dt in ('FECHA_RUN', 'FECHA_FALLA', 'FECHA_PULL'):
             if col_dt in df_prev.columns:

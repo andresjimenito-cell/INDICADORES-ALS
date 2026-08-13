@@ -30,7 +30,20 @@ def calcular_mtbf(df_bd, fecha_evaluacion, col_life='RUN LIFE @ FALLA', col_indi
     Permite especificar la columna de tiempo de vida (col_life) para soportar MTBF Efectivo.
     """
     df = df_bd.copy()
-    
+
+    # Excluir pozos/equipos entregados ('ENTREGAD') y Flujo Natural ('FN') de MTBF
+    mask_entregado = pd.Series(False, index=df.index)
+    for col in df.columns:
+        mask_entregado |= df[col].astype(str).str.upper().str.contains('ENTREGAD', na=False)
+    df = df[~mask_entregado].copy()
+
+    for col_als in ('ALS', 'SISTEMA ALS', 'SISTEMA_ALS', 'METODO', 'METODO DE LEVANTAMIENTO'):
+        if col_als in df.columns:
+            es_fn = df[col_als].astype(str).str.strip().str.upper().isin(
+                ['FN', 'FLUJO NATURAL', 'FLUJO_NATURAL', 'F.N.', 'FLUJO NAT']
+            )
+            df = df[~es_fn].copy()
+
     # Asegurar que las columnas existen
     if col_life not in df.columns:
         if col_life == 'RUN LIFE @ FALLA' and 'RUN LIFE FALLA' in df.columns:

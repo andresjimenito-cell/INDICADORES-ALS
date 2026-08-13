@@ -23,7 +23,7 @@ def _unique_options(df_calc: pd.DataFrame, col: str) -> list:
         return ['TODOS']
     try:
         opts = sorted(df_calc[col].dropna().astype(str).unique().tolist())
-        EXCLUIDOS = {'ECUADOR', 'CORCEL NE', 'CORCEL', 'ENTRERIOS', 'ENTRE RIOS', 'EL DIFICIL', 'EL DIFICIL NE', 'RIO META'}
+        EXCLUIDOS = set()
         opts = [o for o in opts if o.strip().upper() not in EXCLUIDOS]
         return ['TODOS'] + opts
     except Exception:

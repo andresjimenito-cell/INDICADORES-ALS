@@ -18,6 +18,31 @@ def calcular_run_life_efectivo(df_bd, df_forma9, fecha_evaluacion=None):
         df_runs.drop(columns=['RUN_LIFE_EFECTIVO'], inplace=True)
     df_f9 = df_forma9.copy()
 
+    # Excluir pozos/equipos entregados ('ENTREGAD') y Flujo Natural ('FN')
+    mask_entregado_bd = pd.Series(False, index=df_runs.index)
+    for col in df_runs.columns:
+        mask_entregado_bd |= df_runs[col].astype(str).str.upper().str.contains('ENTREGAD', na=False)
+    df_runs = df_runs[~mask_entregado_bd].copy()
+
+    for col_als in ('ALS', 'SISTEMA ALS', 'SISTEMA_ALS', 'METODO', 'METODO DE LEVANTAMIENTO'):
+        if col_als in df_runs.columns:
+            es_fn_bd = df_runs[col_als].astype(str).str.strip().str.upper().isin(
+                ['FN', 'FLUJO NATURAL', 'FLUJO_NATURAL', 'F.N.', 'FLUJO NAT']
+            )
+            df_runs = df_runs[~es_fn_bd].copy()
+
+    mask_entregado_f9 = pd.Series(False, index=df_f9.index)
+    for col in df_f9.columns:
+        mask_entregado_f9 |= df_f9[col].astype(str).str.upper().str.contains('ENTREGAD', na=False)
+    df_f9 = df_f9[~mask_entregado_f9].copy()
+
+    for col_als in ('ALS', 'SISTEMA ALS', 'SISTEMA_ALS', 'METODO', 'METODO DE LEVANTAMIENTO'):
+        if col_als in df_f9.columns:
+            es_fn_f9 = df_f9[col_als].astype(str).str.strip().str.upper().isin(
+                ['FN', 'FLUJO NATURAL', 'FLUJO_NATURAL', 'F.N.', 'FLUJO NAT']
+            )
+            df_f9 = df_f9[~es_fn_f9].copy()
+
     # Convertir fecha de evaluación si es necesario
     if fecha_evaluacion is None:
         fecha_evaluacion = pd.Timestamp.now()

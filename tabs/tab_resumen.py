@@ -242,9 +242,9 @@ def render_tab_resumen(df_bd_filtered, df_forma9_filtered, reporte_runes_filtere
     # ── 0. OBTENER BASES CRUDAS COMPLETAS PARA HISTÓRICO SIN FILTRO DE FECHAS DE PERIODO ──
     df_bd_raw = st.session_state.get('df_bd_calculated')
     df_bd_untr = df_bd_raw.copy() if df_bd_raw is not None else df_bd_filtered.copy()
-    EXCLUIDOS = {'ECUADOR', 'CORCEL NE', 'CORCEL', 'ENTRERIOS', 'ENTRE RIOS', 'EL DIFICIL', 'EL DIFICIL NE', 'RIO META'}
+    EXCLUIDOS = set()
     for col_filter in ('ACTIVO', 'BLOQUE', 'CAMPO'):
-        if col_filter in df_bd_untr.columns:
+        if col_filter in df_bd_untr.columns and EXCLUIDOS:
             df_bd_untr = df_bd_untr[~df_bd_untr[col_filter].astype(str).str.upper().str.strip().isin(EXCLUIDOS)]
         
     _filtros = {

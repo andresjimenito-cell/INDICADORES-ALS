@@ -184,9 +184,9 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
     
     if df_raw is not None and df_f9_raw is not None:
         df_bd_untr = df_raw.copy()
-        EXCLUIDOS = {'ECUADOR', 'CORCEL NE', 'CORCEL', 'ENTRERIOS', 'ENTRE RIOS', 'EL DIFICIL', 'EL DIFICIL NE', 'RIO META'}
+        EXCLUIDOS = set()
         for col_filter in ('ACTIVO', 'BLOQUE', 'CAMPO'):
-            if col_filter in df_bd_untr.columns:
+            if col_filter in df_bd_untr.columns and EXCLUIDOS:
                 df_bd_untr = df_bd_untr[~df_bd_untr[col_filter].astype(str).str.upper().str.strip().isin(EXCLUIDOS)]
         
         _filtros = {
@@ -419,6 +419,20 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
 
             try:
                 df_bloque_raw = df_bd_untr.copy()
+
+                # Excluir pozos/equipos entregados y Flujo Natural
+                mask_entregado_blk = pd.Series(False, index=df_bloque_raw.index)
+                for col in df_bloque_raw.columns:
+                    mask_entregado_blk |= df_bloque_raw[col].astype(str).str.upper().str.contains('ENTREGAD', na=False)
+                df_bloque_raw = df_bloque_raw[~mask_entregado_blk].copy()
+
+                for col_als in ('ALS', 'SISTEMA ALS', 'SISTEMA_ALS', 'METODO', 'METODO DE LEVANTAMIENTO'):
+                    if col_als in df_bloque_raw.columns:
+                        es_fn_blk = df_bloque_raw[col_als].astype(str).str.strip().str.upper().isin(
+                            ['FN', 'FLUJO NATURAL', 'FLUJO_NATURAL', 'F.N.', 'FLUJO NAT']
+                        )
+                        df_bloque_raw = df_bloque_raw[~es_fn_blk].copy()
+
                 df_bloque_raw['FECHA_RUN'] = pd.to_datetime(df_bloque_raw['FECHA_RUN'], errors='coerce')
                 df_bloque_raw['FECHA_FALLA'] = pd.to_datetime(df_bloque_raw['FECHA_FALLA'], errors='coerce')
                 df_bloque_raw['FECHA_PULL'] = pd.to_datetime(df_bloque_raw['FECHA_PULL'], errors='coerce')
@@ -450,7 +464,7 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                 prev_year_end = pd.to_datetime(f"{anio_prev}-12-31").normalize()
 
                 for bloque, grp in df_bloque_raw.groupby('BLOQUE'):
-                    EXCLUIDOS = {'TODOS', 'ECUADOR', 'CORCEL NE', 'CORCEL', 'ENTRERIOS', 'ENTRE RIOS', 'EL DIFICIL', 'EL DIFICIL NE', 'RIO META'}
+                    EXCLUIDOS = {'TODOS'}
                     if pd.isna(bloque) or str(bloque).strip() == '' or str(bloque).strip().upper() in EXCLUIDOS:
                         continue
 

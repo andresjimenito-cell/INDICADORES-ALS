@@ -265,7 +265,13 @@ def cargar_y_limpiar_datos(forma9_file, bd_file):
     }, inplace=True)
     df_forma9['FECHA_FORMA9']    = pd.to_datetime(df_forma9['FECHA_FORMA9'], errors='coerce')
     df_forma9['DIAS TRABAJADOS'] = pd.to_numeric(df_forma9['DIAS TRABAJADOS'], errors='coerce').fillna(0)
-    df_forma9.dropna(subset=['FECHA_FORMA9', 'POZO'], inplace=True)
+    # Filtrar pozos de Flujo Natural ('FN', 'FLUJO NATURAL', etc.) de FORMA 9 porque no hacen parte de ALS
+    for col_als in ('ALS', 'SISTEMA ALS', 'SISTEMA_ALS', 'METODO', 'METODO DE LEVANTAMIENTO'):
+        if col_als in df_forma9.columns:
+            es_fn_f9 = df_forma9[col_als].astype(str).str.strip().str.upper().isin(
+                ['FN', 'FLUJO NATURAL', 'FLUJO_NATURAL', 'F.N.', 'FLUJO NAT']
+            )
+            df_forma9 = df_forma9[~es_fn_f9].copy()
 
     # --- Limpieza BD ---
     df_bd.columns = [
@@ -298,6 +304,21 @@ def cargar_y_limpiar_datos(forma9_file, bd_file):
         severidad_col:   'SEVERIDAD',
     }, inplace=True)
 
+    # Filtrar pozos/equipos entregados ('ENTREGAD' en cualquier columna) para que no entren a ninguna métrica (ALS fondo, MTBF, etc.)
+    mask_entregado = pd.Series(False, index=df_bd.index)
+    for col in df_bd.columns:
+        mask_entregado |= df_bd[col].astype(str).str.upper().str.contains('ENTREGAD', na=False)
+
+    df_bd = df_bd[~mask_entregado].copy()
+
+    # Filtrar pozos de Flujo Natural ('FN', 'FLUJO NATURAL', etc.) de BD porque no hacen parte de ALS (operativos, encendidos, etc.)
+    for col_als in ('ALS', 'SISTEMA ALS', 'SISTEMA_ALS', 'METODO', 'METODO DE LEVANTAMIENTO'):
+        if col_als in df_bd.columns:
+            es_fn_bd = df_bd[col_als].astype(str).str.strip().str.upper().isin(
+                ['FN', 'FLUJO NATURAL', 'FLUJO_NATURAL', 'F.N.', 'FLUJO NAT']
+            )
+            df_bd = df_bd[~es_fn_bd].copy()
+
     df_bd['FECHA_RUN']       = pd.to_datetime(df_bd['FECHA_RUN'],   errors='coerce')
     df_bd['FECHA_FALLA']     = pd.to_datetime(df_bd['FECHA_FALLA'], errors='coerce')
     df_bd['FECHA_PULL']      = pd.to_datetime(df_bd['FECHA_PULL'],  errors='coerce')
@@ -317,10 +338,10 @@ def cargar_y_limpiar_datos(forma9_file, bd_file):
 
     df_bd.dropna(subset=['FECHA_RUN', 'POZO'], inplace=True)
 
-    # Filtrar 'ECUADOR' y bloques/campos entregados (CORCEL NE, ENTRERIOS, EL DIFICIL, RIO META)
-    EXCLUIDOS = {'ECUADOR', 'CORCEL NE', 'CORCEL', 'ENTRERIOS', 'ENTRE RIOS', 'EL DIFICIL', 'EL DIFICIL NE', 'RIO META'}
+    # No excluir ningún bloque ni campo
+    EXCLUIDOS = set()
     for col_filter in ('ACTIVO', 'BLOQUE', 'CAMPO'):
-        if col_filter in df_bd.columns:
+        if col_filter in df_bd.columns and EXCLUIDOS:
             df_bd = df_bd[~df_bd[col_filter].astype(str).str.upper().str.strip().isin(EXCLUIDOS)].copy()
 
     # Save to JSON cache
