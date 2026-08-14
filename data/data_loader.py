@@ -338,11 +338,13 @@ def cargar_y_limpiar_datos(forma9_file, bd_file):
 
     df_bd.dropna(subset=['FECHA_RUN', 'POZO'], inplace=True)
 
-    # No excluir ningún bloque ni campo
-    EXCLUIDOS = set()
+    # Excluir EL DIFICIL
+    EXCLUIDOS = {'EL DIFICIL', 'EL DIFICIL NE', 'DIFICIL'}
     for col_filter in ('ACTIVO', 'BLOQUE', 'CAMPO'):
         if col_filter in df_bd.columns and EXCLUIDOS:
             df_bd = df_bd[~df_bd[col_filter].astype(str).str.upper().str.strip().isin(EXCLUIDOS)].copy()
+        if col_filter in df_forma9.columns and EXCLUIDOS:
+            df_forma9 = df_forma9[~df_forma9[col_filter].astype(str).str.upper().str.strip().isin(EXCLUIDOS)].copy()
 
     # Save to JSON cache
     if cache_f9 and cache_bd:

@@ -59,11 +59,11 @@ def calcular_indice_falla_anual(df_bd, df_forma9, fecha_evaluacion, fecha_inicio
             )
             df_forma9 = df_forma9[~es_fn_f9].copy()
 
-    df_bd['FECHA_RUN'] = pd.to_datetime(df_bd['FECHA_RUN'])
-    df_bd['FECHA_FALLA'] = pd.to_datetime(df_bd['FECHA_FALLA'])
-    df_bd['FECHA_PULL'] = pd.to_datetime(df_bd['FECHA_PULL'])
+    df_bd['FECHA_RUN'] = pd.to_datetime(df_bd['FECHA_RUN'], errors='coerce')
+    df_bd['FECHA_FALLA'] = pd.to_datetime(df_bd['FECHA_FALLA'], errors='coerce')
+    df_bd['FECHA_PULL'] = pd.to_datetime(df_bd['FECHA_PULL'], errors='coerce')
     
-    df_forma9['FECHA_FORMA9'] = pd.to_datetime(df_forma9['FECHA_FORMA9'])
+    df_forma9['FECHA_FORMA9'] = pd.to_datetime(df_forma9['FECHA_FORMA9'], errors='coerce')
     
     # Pre-normalizar fechas fuera del bucle para evitar llamadas repetidas a .dt.normalize()
     df_bd['FECHA_RUN_NORM'] = df_bd['FECHA_RUN'].dt.normalize()

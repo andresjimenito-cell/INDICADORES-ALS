@@ -184,7 +184,7 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
     
     if df_raw is not None and df_f9_raw is not None:
         df_bd_untr = df_raw.copy()
-        EXCLUIDOS = set()
+        EXCLUIDOS = {'EL DIFICIL', 'EL DIFICIL NE', 'DIFICIL'}
         for col_filter in ('ACTIVO', 'BLOQUE', 'CAMPO'):
             if col_filter in df_bd_untr.columns and EXCLUIDOS:
                 df_bd_untr = df_bd_untr[~df_bd_untr[col_filter].astype(str).str.upper().str.strip().isin(EXCLUIDOS)]
@@ -410,8 +410,8 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                 st.markdown(f"<h6 style='color:#137659; font-family:Inter, sans-serif; font-weight:800; letter-spacing:1px; text-transform:uppercase; font-size:0.8rem; margin-top:6px; margin-bottom:10px;'>📊 Índice de Falla por Bloque (Rolling 12M a {fecha_eval_dt_b.strftime('%Y-%m-%d')})</h6>", unsafe_allow_html=True)
             with col_b_sel:
                 opcion_if_bloque = st.radio(
-                    "Métrica de I.F. por Bloque:",
-                    options=["I.F. Total", "I.F. ALS", "I.F. Total <1500d", "I.F. ALS <1500d"],
+                    "Tipo de Falla por Bloque:",
+                    options=["Fallas ALS", "Fallas Totales"],
                     index=0,
                     horizontal=True,
                     key="if_bloque_metric_selector"
@@ -464,7 +464,7 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                 prev_year_end = pd.to_datetime(f"{anio_prev}-12-31").normalize()
 
                 for bloque, grp in df_bloque_raw.groupby('BLOQUE'):
-                    EXCLUIDOS = {'TODOS'}
+                    EXCLUIDOS = {'TODOS', 'EL DIFICIL', 'EL DIFICIL NE', 'DIFICIL'}
                     if pd.isna(bloque) or str(bloque).strip() == '' or str(bloque).strip().upper() in EXCLUIDOS:
                         continue
 
@@ -486,6 +486,10 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                     fallas_1500 = fallas_12m_1500.shape[0]
                     fallas_als_1500 = fallas_12m_1500[fallas_12m_1500['INDICADOR_MTBF'] == 1].shape[0]
 
+                    fallas_12m_mas1500 = fallas_12m_tot[fallas_12m_tot['_RLE'] >= 1500]
+                    fallas_mas1500 = fallas_12m_mas1500.shape[0]
+                    fallas_als_mas1500 = fallas_12m_mas1500[fallas_12m_mas1500['INDICADOR_MTBF'] == 1].shape[0]
+
                     # 2. Fallas en el Año Anterior (Año Prev) para cálculo de Meta dinámica
                     grp_runs_prev = grp[grp['_RUN'] <= prev_year_end]
                     fallas_prev_tot_df = grp_runs_prev[
@@ -499,6 +503,10 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                     fallas_prev_1500_df = fallas_prev_tot_df[fallas_prev_tot_df['_RLE'] < 1500]
                     fallas_prev_1500 = fallas_prev_1500_df.shape[0]
                     fallas_prev_als_1500 = fallas_prev_1500_df[fallas_prev_1500_df['INDICADOR_MTBF'] == 1].shape[0]
+
+                    fallas_prev_mas1500_df = fallas_prev_tot_df[fallas_prev_tot_df['_RLE'] >= 1500]
+                    fallas_prev_mas1500 = fallas_prev_mas1500_df.shape[0]
+                    fallas_prev_als_mas1500 = fallas_prev_mas1500_df[fallas_prev_mas1500_df['INDICADOR_MTBF'] == 1].shape[0]
 
                     # 3. Promedio de pozos activos ON por mes (12M y Año Anterior)
                     pozos_on_meses = []
@@ -549,24 +557,32 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                     promedio_on = np.mean(pozos_on_meses) if pozos_on_meses else 0
                     prom_on_prev = np.mean(pozos_on_prev_meses) if pozos_on_prev_meses else 0
 
-                    # Denominador común Pozos ON para todos los IFs (idéntico a core/indice_falla.py)
+                    # Denominador común Pozos ON para todos los IFs
                     if_tot_val = (fallas_tot / promedio_on * 100) if promedio_on > 0 else 0.0
                     if_als_val = (fallas_als / promedio_on * 100) if promedio_on > 0 else 0.0
+                    
                     if_1500_val = (fallas_1500 / promedio_on * 100) if promedio_on > 0 else 0.0
                     if_als_1500_val = (fallas_als_1500 / promedio_on * 100) if promedio_on > 0 else 0.0
+
+                    if_mas1500_val = (fallas_mas1500 / promedio_on * 100) if promedio_on > 0 else 0.0
+                    if_als_mas1500_val = (fallas_als_mas1500 / promedio_on * 100) if promedio_on > 0 else 0.0
 
                     # Metas dinámicas por tipo de I.F. basadas en el año anterior
                     if_prev_tot_val = (fallas_prev_tot / prom_on_prev * 100) if prom_on_prev > 0 else 0.0
                     if_prev_als_val = (fallas_prev_als / prom_on_prev * 100) if prom_on_prev > 0 else 0.0
                     if_prev_1500_val = (fallas_prev_1500 / prom_on_prev * 100) if prom_on_prev > 0 else 0.0
                     if_prev_als_1500_val = (fallas_prev_als_1500 / prom_on_prev * 100) if prom_on_prev > 0 else 0.0
+                    if_prev_mas1500_val = (fallas_prev_mas1500 / prom_on_prev * 100) if prom_on_prev > 0 else 0.0
+                    if_prev_als_mas1500_val = (fallas_prev_als_mas1500 / prom_on_prev * 100) if prom_on_prev > 0 else 0.0
 
                     meta_tot = round(if_prev_tot_val, 2) if if_prev_tot_val > 0 else 7.5
                     meta_als = round(if_prev_als_val, 2) if if_prev_als_val > 0 else 7.5
                     meta_1500 = round(if_prev_1500_val, 2) if if_prev_1500_val > 0 else 7.5
                     meta_als_1500 = round(if_prev_als_1500_val, 2) if if_prev_als_1500_val > 0 else 7.5
+                    meta_mas1500 = round(if_prev_mas1500_val, 2) if if_prev_mas1500_val > 0 else 7.5
+                    meta_als_mas1500 = round(if_prev_als_mas1500_val, 2) if if_prev_als_mas1500_val > 0 else 7.5
 
-                    # 4. Run Life por Bloque (Run Life Calendario vs Run Life Efectivo)
+                    # 4. Run Life por Bloque
                     grp_activos_now = grp_runs[
                         (grp_runs['_RUN'] <= fecha_eval_norm_b) &
                         (grp_runs['_FALL'].isna() | (grp_runs['_FALL'] > fecha_eval_norm_b)) &
@@ -601,132 +617,131 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                         'fallas_als': fallas_als,
                         'fallas_1500': fallas_1500,
                         'fallas_als_1500': fallas_als_1500,
+                        'fallas_mas1500': fallas_mas1500,
+                        'fallas_als_mas1500': fallas_als_mas1500,
                         'if_total': round(if_tot_val, 2),
                         'if_als': round(if_als_val, 2),
                         'if_1500': round(if_1500_val, 2),
                         'if_als_1500': round(if_als_1500_val, 2),
+                        'if_mas1500': round(if_mas1500_val, 2),
+                        'if_als_mas1500': round(if_als_mas1500_val, 2),
                         'meta_tot': meta_tot,
                         'meta_als': meta_als,
                         'meta_1500': meta_1500,
                         'meta_als_1500': meta_als_1500,
+                        'meta_mas1500': meta_mas1500,
+                        'meta_als_mas1500': meta_als_mas1500,
                         'rl': round(rl_val, 1),
                         'rl_efectivo': round(rle_val, 1),
                         'meta_rl': meta_rl,
                         'meta_rle': meta_rle
                     })
 
-                # Mapear métrica seleccionada para el gráfico de I.F.
+                # Preparar datos para los dos gráficos (<1500d y >=1500d)
+                es_als = (opcion_if_bloque == "Fallas ALS")
+                
+                bloques_m1500 = []
+                bloques_p1500 = []
+
                 for d in bloques_if:
-                    if opcion_if_bloque == "I.F. ALS":
-                        d['active_if'] = d['if_als']
-                        d['active_fallas'] = d['fallas_als']
-                        d['active_prom'] = d['prom_on']
-                        d['active_meta'] = d['meta_als']
-                    elif opcion_if_bloque == "I.F. Total <1500d":
-                        d['active_if'] = d['if_1500']
-                        d['active_fallas'] = d['fallas_1500']
-                        d['active_prom'] = d['prom_on']
-                        d['active_meta'] = d['meta_1500']
-                    elif opcion_if_bloque == "I.F. ALS <1500d":
-                        d['active_if'] = d['if_als_1500']
-                        d['active_fallas'] = d['fallas_als_1500']
-                        d['active_prom'] = d['prom_on']
-                        d['active_meta'] = d['meta_als_1500']
-                    else:
-                        d['active_if'] = d['if_total']
-                        d['active_fallas'] = d['fallas_tot']
-                        d['active_prom'] = d['prom_on']
-                        d['active_meta'] = d['meta_tot']
-                    d['active_if_cap'] = min(d['active_if'], 100.0)
-
-                bloques_if.sort(key=lambda x: x['active_if'], reverse=True)
-
-                if bloques_if:
-                    blk_names = [d['bloque'] for d in bloques_if]
-                    blk_if_vals = [d['active_if_cap'] for d in bloques_if]
-                    blk_if_real = [d['active_if'] for d in bloques_if]
-                    meta_prom_global = round(float(np.mean([d['active_meta'] for d in bloques_if])), 2)
-
-                    hover_texts = []
-                    for i, d in enumerate(bloques_if):
-                        real = d['active_if']
-                        cap = d['active_if_cap']
-                        val_str = f"{real:.2f}% (>100%)" if real > 100 else f"{cap:.2f}%"
-                        hover_texts.append(
-                            f"<b style='color:#137659;font-size:13px'>{d['bloque']}</b><br>"
-                            f"<hr style='margin:3px 0;border-color:rgba(19,118,89,0.15)'>"
-                            f"Métrica: <b>{opcion_if_bloque}</b><br>"
-                            f"IF Rolling 12M: <b>{val_str}</b><br>"
-                            f"Meta (Año {anio_prev}): <b>{d['active_meta']:.2f}%</b><br>"
-                            f"Fallas (12M): <b>{d['active_fallas']}</b><br>"
-                            f"Pozos ON (prom): <b>{d['active_prom']}</b><br>"
-                            f"Pozos Totales: <b>{d['total']}</b>"
-                        )
-
-                    bar_colors_px = []
-                    for d in bloques_if:
-                        v = d['active_if_cap']
-                        m = d['active_meta']
-                        if v <= m:
-                            bar_colors_px.append("#137659")
-                        elif v <= m * 1.33:
-                            bar_colors_px.append("#c09c2e")
-                        else:
-                            bar_colors_px.append("#c62828")
-
-                    chart_h = max(200, min(280, len(blk_names) * 38 + 80))
-
-                    fig_bloque = go_fig.Figure()
-                    fig_bloque.add_trace(go_fig.Bar(
-                        x=blk_names,
-                        y=blk_if_vals,
-                        marker=dict(color=bar_colors_px, line=dict(width=0)),
-                        text=[f"{v:.2f}%" for v in blk_if_vals],
-                        textposition="outside",
-                        textfont=dict(size=9, color="#1f221e", family="Inter, sans-serif"),
-                        hovertext=hover_texts,
-                        hoverinfo="text",
-                        hoverlabel=dict(bgcolor="rgba(255,255,255,0.97)", bordercolor="#137659",
-                                        font=dict(size=10, family="Inter, sans-serif", color="#1f221e")),
-                        width=0.5
-                    ))
-
-                    fig_bloque.add_hline(y=meta_prom_global, line_dash="dash", line_color="#c62828", line_width=1.5,
-                                         annotation_text=f"Meta Prom. {meta_prom_global:.2f}% ({anio_prev})", annotation_position="top right",
-                                         annotation_font=dict(size=9, color="#c62828", family="Inter, sans-serif"))
-
-                    fig_bloque.update_layout(
-                        paper_bgcolor="rgba(0,0,0,0)",
-                        plot_bgcolor="rgba(0,0,0,0)",
-                        font=dict(family="Inter, sans-serif"),
-                        margin=dict(l=35, r=15, t=8, b=45),
-                        xaxis=dict(title="", showgrid=False, showline=True, linecolor="rgba(19,118,89,0.15)",
-                                   tickfont=dict(size=9, color="#1f221e", family="Inter, sans-serif"),
-                                   tickangle=0),
-                        yaxis=dict(title="IF (%)", range=[0, max(max(blk_if_vals), meta_prom_global) * 1.3] if blk_if_vals else [0, 15],
-                                   showgrid=True, gridcolor="rgba(19,118,89,0.08)", gridwidth=1,
-                                   showline=False,
-                                   tickfont=dict(size=8, color="#5b5c55", family="Inter, sans-serif"),
-                                   ticksuffix="%"),
-                        bargap=0.4,
-                        showlegend=False,
-                        height=chart_h
-                    )
-
-                    plotly_config_if = {
-                        "displayModeBar": True,
-                        "displaylogo": False,
-                        "toImageButtonOptions": {
-                            "format": "png",
-                            "filename": "indice_falla_por_bloque",
-                            "height": 500,
-                            "width": 1000,
-                            "scale": 3
-                        }
+                    m15 = {
+                        'bloque': d['bloque'],
+                        'total': d['total'],
+                        'prom_on': d['prom_on'],
+                        'fallas': d['fallas_als_1500'] if es_als else d['fallas_1500'],
+                        'if_val': d['if_als_1500'] if es_als else d['if_1500'],
+                        'meta': d['meta_als_1500'] if es_als else d['meta_1500']
                     }
-                    st.plotly_chart(fig_bloque, use_container_width=True, config=plotly_config_if)
+                    bloques_m1500.append(m15)
+
+                    p15 = {
+                        'bloque': d['bloque'],
+                        'total': d['total'],
+                        'prom_on': d['prom_on'],
+                        'fallas': d['fallas_als_mas1500'] if es_als else d['fallas_mas1500'],
+                        'if_val': d['if_als_mas1500'] if es_als else d['if_mas1500'],
+                        'meta': d['meta_als_mas1500'] if es_als else d['meta_mas1500']
+                    }
+                    bloques_p1500.append(p15)
+
+                def _render_bullet_card_html(items_list, titulo_card, ocultar_c=False, es_sin_garantia=False):
+                    items_filtered = [x for x in items_list if not (ocultar_c and x.get('if_val', 0) == 0)]
+                    items_sorted = sorted(items_filtered, key=lambda x: x['if_val'], reverse=True)
+                    if not items_sorted:
+                        return "<div style='padding:20px; text-align:center; color:#5b5c55; font-size:12px;'>No hay bloques con datos para mostrar en esta categoría.</div>"
+
+                    max_val = max([x['if_val'] for x in items_sorted] + [35.0])
+
+                    rows_html = []
+                    for idx, item in enumerate(items_sorted):
+                        blk = item['bloque']
+                        val = item['if_val']
+                        meta = item['meta']
+
+                        if val == 0:
+                            bar_color = "transparent"
+                            val_color = "#5b5c55"
+                        elif es_sin_garantia:
+                            # En pozos sin garantía (RL >= 1500d), haber alcanzado >= 1500d es un logro positivo (Verde)
+                            bar_color = "#1b7a4b"
+                            val_color = "#1f221e"
+                        else:
+                            # En pozos en garantía (RL < 1500d), fallar temprano (<1500d) es negativo (Rojo/Ámbar)
+                            if val >= 20.0 or val > meta * 1.5:
+                                bar_color = "#b73229"  # Rojo (Crítico: muchas fallas tempranas)
+                                val_color = "#1f221e"
+                            elif val >= 10.0 or val > meta:
+                                bar_color = "#c67d26"  # Ámbar / Ocre (Alerta)
+                                val_color = "#1f221e"
+                            else:
+                                bar_color = "#1b7a4b"  # Verde (Bajo índice de fallas tempranas)
+                                val_color = "#1f221e"
+
+                        bar_w = min(max((val / max_val) * 100, 0), 100) if val > 0 else 0
+                        val_str = f"{val:.2f}%".replace('.', ',')
+
+                        row_bg = "#f3f7f4" if (idx % 2 == 0) else "#ffffff"
+
+                        row_html = (
+                            f'<div style="display:flex; align-items:center; padding:7px 10px; background:{row_bg}; border-radius:4px; margin-bottom:3px; font-family:\'Inter\', sans-serif;">'
+                            f'<div style="width:105px; font-size:10.5px; font-weight:800; color:#1f221e; text-transform:uppercase; letter-spacing:0.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{blk}">{blk}</div>'
+                            f'<div style="flex:1; margin:0 12px; position:relative; height:15px; background:#ebebeb; border-radius:4px; display:flex; align-items:center;">'
+                            f'<div style="position:absolute; left:0; top:0; bottom:0; width:{bar_w:.1f}%; background:{bar_color}; border-radius:4px; transition:width 0.4s ease;"></div>'
+                            f'</div>'
+                            f'<div style="width:60px; text-align:right; font-size:11.5px; font-weight:800; color:{val_color}; font-family:\'Inter\', monospace;">{val_str}</div>'
+                            f'</div>'
+                        )
+                        rows_html.append(row_html)
+
+                    card_html = (
+                        f'<div style="background:#ffffff; border:1px solid rgba(19,118,89,0.18); border-radius:12px; padding:16px 14px; box-shadow:0 2px 10px rgba(0,0,0,0.03); margin-bottom:14px;">'
+                        f'<div style="color:#0f3e2e; font-family:\'Inter\', sans-serif; font-size:12.5px; font-weight:800; letter-spacing:0.4px; text-transform:uppercase; margin-bottom:12px; line-height:1.35; padding-bottom:8px; border-bottom:1px solid rgba(19,118,89,0.12);">'
+                        f'{titulo_card}'
+                        f'</div>'
+                        f'<div style="display:flex; flex-direction:column;">'
+                        f'{"".join(rows_html)}'
+                        f'</div>'
+                        f'</div>'
+                    )
+                    return card_html
+
+                col_top_sel1, col_top_sel2 = st.columns([2, 1])
+                with col_top_sel2:
+                    ocultar_0 = st.checkbox("Ocultar bloques en 0,00%", value=False, key="chk_ocultar_0_if")
+
+                col_g1, col_g2 = st.columns(2)
+                with col_g1:
+                    lbl_m15 = f"ÍNDICE DE FALLA (IF) POR BLOQUE — % POZOS EN GARANTÍA (RL &lt; 1500d)"
+                    html_m15 = _render_bullet_card_html(bloques_m1500, lbl_m15, ocultar_c=ocultar_0, es_sin_garantia=False)
+                    st.markdown(html_m15, unsafe_allow_html=True)
+
+                with col_g2:
+                    lbl_p15 = f"ÍNDICE DE FALLA (IF) POR BLOQUE — % POZOS SIN GARANTÍA (RL ≥ 1500d - VIDA CUMPLIDA)"
+                    html_p15 = _render_bullet_card_html(bloques_p1500, lbl_p15, ocultar_c=ocultar_0, es_sin_garantia=True)
+                    st.markdown(html_p15, unsafe_allow_html=True)
+
             except Exception as e:
-                st.warning(f"No se pudo generar el gráfico de IF por Bloque: {e}")
+                st.warning(f"No se pudo generar los gráficos de IF por Bloque: {e}")
 
         # --- 3.1 RUN LIFE POR BLOQUE (ANCHO COMPLETO) ---
         if not _filtro_activo:
@@ -753,12 +768,13 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                         d['active_rl'] = d['rl']
                         d['active_rl_meta'] = d['meta_rl']
 
+                # Ocultar bloques con 0 días
+                bloques_rl = [d for d in bloques_rl if d.get('active_rl', 0) > 0]
                 bloques_rl.sort(key=lambda x: x['active_rl'], reverse=True)
 
                 if bloques_rl:
                     rl_blk_names = [d['bloque'] for d in bloques_rl]
                     rl_vals = [d['active_rl'] for d in bloques_rl]
-                    meta_prom_rl = round(float(np.mean([d['active_rl_meta'] for d in bloques_rl])), 1)
 
                     hover_rl_texts = []
                     for i, d in enumerate(bloques_rl):
@@ -767,7 +783,6 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                             f"<hr style='margin:3px 0;border-color:rgba(19,118,89,0.15)'>"
                             f"Métrica: <b>{opcion_rl_bloque}</b><br>"
                             f"Run Life Promedio: <b>{d['active_rl']:.1f} días</b><br>"
-                            f"Meta (Año {anio_prev}): <b>{d['active_rl_meta']:.1f} días</b><br>"
                             f"Pozos Totales: <b>{d['total']}</b>"
                         )
 
@@ -799,10 +814,6 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                         width=0.5
                     ))
 
-                    fig_rl_bloque.add_hline(y=meta_prom_rl, line_dash="dash", line_color="#137659", line_width=1.5,
-                                            annotation_text=f"Meta Prom. {meta_prom_rl:.0f}d ({anio_prev})", annotation_position="top right",
-                                            annotation_font=dict(size=9, color="#137659", family="Inter, sans-serif"))
-
                     fig_rl_bloque.update_layout(
                         paper_bgcolor="rgba(0,0,0,0)",
                         plot_bgcolor="rgba(0,0,0,0)",
@@ -811,7 +822,7 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                         xaxis=dict(title="", showgrid=False, showline=True, linecolor="rgba(19,118,89,0.15)",
                                    tickfont=dict(size=9, color="#1f221e", family="Inter, sans-serif"),
                                    tickangle=0),
-                        yaxis=dict(title="Run Life (días)", range=[0, max(max(rl_vals), meta_prom_rl) * 1.3] if rl_vals else [0, 1000],
+                        yaxis=dict(title="Run Life (días)", range=[0, max(rl_vals) * 1.25] if rl_vals else [0, 1000],
                                    showgrid=True, gridcolor="rgba(19,118,89,0.08)", gridwidth=1,
                                    showline=False,
                                    tickfont=dict(size=8, color="#5b5c55", family="Inter, sans-serif"),
@@ -852,13 +863,16 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                         'Pozos ON (Prom)': b['prom_on'],
                         'Fallas (12M)': b['fallas_tot'],
                         'Fallas ALS (12M)': b['fallas_als'],
-                        'Fallas < 1500d (12M)': b['fallas_1500'],
-                        'Fallas ALS < 1500d (12M)': b['fallas_als_1500'],
+                        'Fallas < 1500d': b['fallas_1500'],
+                        'Fallas ALS < 1500d': b['fallas_als_1500'],
+                        'Fallas ≥ 1500d': b['fallas_mas1500'],
+                        'Fallas ALS ≥ 1500d': b['fallas_als_mas1500'],
                         'IF Total': f"{b['if_total']:.2f}%",
                         'IF ALS': f"{b['if_als']:.2f}%",
                         'IF < 1500d': f"{b['if_1500']:.2f}%",
                         'IF ALS < 1500d': f"{b['if_als_1500']:.2f}%",
-                        f"Meta IF ({anio_prev})": f"{b['active_meta']:.2f}%"
+                        'IF ≥ 1500d': f"{b['if_mas1500']:.2f}%",
+                        'IF ALS ≥ 1500d': f"{b['if_als_mas1500']:.2f}%"
                     } for b in bloques_if
                 ])
                 render_hud_table(df_bloque_tab, table_id="resumen_bloques_if")

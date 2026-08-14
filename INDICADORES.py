@@ -240,7 +240,8 @@ if st.session_state.get('reporte_runes') is None:
         st.session_state['reporte_fallas']        = cached_data['reporte_fallas']
         st.toast("✅ Caché restaurado correctamente.", icon="✅")
 
-# ── Purga estricta en session_state para eliminar pozos ENTREGADOS y FN (Flujo Natural) ──
+# ── Purga estricta en session_state para eliminar pozos ENTREGADOS, FN (Flujo Natural) y EL DIFICIL ──
+EXCL_GLOBAL = {'EL DIFICIL', 'EL DIFICIL NE', 'DIFICIL'}
 if st.session_state.get('df_bd_calculated') is not None:
     df_temp_bd = st.session_state['df_bd_calculated'].copy()
     mask_entregado_bd = pd.Series(False, index=df_temp_bd.index)
@@ -254,6 +255,10 @@ if st.session_state.get('df_bd_calculated') is not None:
                 ['FN', 'FLUJO NATURAL', 'FLUJO_NATURAL', 'F.N.', 'FLUJO NAT']
             )
             df_temp_bd = df_temp_bd[~es_fn_bd].copy()
+
+    for col_filter in ('ACTIVO', 'BLOQUE', 'CAMPO'):
+        if col_filter in df_temp_bd.columns:
+            df_temp_bd = df_temp_bd[~df_temp_bd[col_filter].astype(str).str.upper().str.strip().isin(EXCL_GLOBAL)].copy()
     st.session_state['df_bd_calculated'] = df_temp_bd
 
 if st.session_state.get('df_forma9_calculated') is not None:
@@ -269,6 +274,10 @@ if st.session_state.get('df_forma9_calculated') is not None:
                 ['FN', 'FLUJO NATURAL', 'FLUJO_NATURAL', 'F.N.', 'FLUJO NAT']
             )
             df_temp_f9 = df_temp_f9[~es_fn_f9].copy()
+
+    for col_filter in ('ACTIVO', 'BLOQUE', 'CAMPO'):
+        if col_filter in df_temp_f9.columns:
+            df_temp_f9 = df_temp_f9[~df_temp_f9[col_filter].astype(str).str.upper().str.strip().isin(EXCL_GLOBAL)].copy()
     st.session_state['df_forma9_calculated'] = df_temp_f9
 
 filters = render_sidebar()
