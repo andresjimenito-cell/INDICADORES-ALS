@@ -126,7 +126,7 @@ def render_tab_performance(df_bd_filtered, df_forma9_filtered, fecha_evaluacion)
         df_perf = pd.DataFrame()
 
     if df_perf.empty:
-        st.warning("⚠️ No hay pozos ON detectados para el mes de evaluación seleccionado.")
+        st.warning("No hay pozos ON detectados para el mes de evaluacion seleccionado.")
         return
 
     # ── ENCABEZADO EJECUTIVO (ESTILO TABLERO) ──────────────────────────────────
@@ -313,7 +313,7 @@ def render_tab_performance(df_bd_filtered, df_forma9_filtered, fecha_evaluacion)
         for als_name, grp in df_perf.groupby('ALS'):
             scatter_data = []
             for _, r in grp.iterrows():
-                estado_s = "⚠️ FALLA" if r['FALLA'] else "✓ ON"
+                estado_s = "FALLA" if r['FALLA'] else "ON"
                 scatter_data.append({
                     "value": [float(r['RLE']), float(r['BOPD'])],
                     "name": r['POZO'],
@@ -413,7 +413,7 @@ def render_tab_performance(df_bd_filtered, df_forma9_filtered, fecha_evaluacion)
     st.markdown(
         f"<h6 style='color:{_G2}; font-family:{_FS}; font-weight:800;"
         "letter-spacing:0.8px; text-transform:uppercase; font-size:0.75rem; margin-bottom:8px;'>"
-        "📈 Tendencia de Producción Mensual (Pozos ON)</h6>",
+        "Tendencia de Produccion Mensual (Pozos ON)</h6>",
         unsafe_allow_html=True
     )
     try:

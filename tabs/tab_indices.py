@@ -86,13 +86,13 @@ def render_general_table(df_bd, table_id="general_table"):
             
         is_falla = 1 if pd.notna(ff) else 0
         if is_falla == 1:
-            estado_badge = '<span class="badge-custom badge-fallado">⚠️ FALLADO</span>'
+            estado_badge = '<span class="badge-custom badge-fallado">FALLADO</span>'
             run_life = (ff - fr).days if pd.notna(ff) and pd.notna(fr) else '-'
             causa = clasificar_razon_ia(razon) if razon.strip() != '' else 'Desconocida'
             if pd.isna(fp):
                 causa = f"Posible {causa}"
         else:
-            estado_badge = '<span class="badge-custom badge-operativo">✅ OPERATIVO</span>'
+            estado_badge = '<span class="badge-custom badge-operativo">OPERATIVO</span>'
             run_life = '<span style="color:#94a3b8;">-</span>'
             causa = '<span style="color:#94a3b8;">-</span>'
             
@@ -374,9 +374,24 @@ def _calcular_rl_agrupado_cached(df_raw, grupo_col, fecha_eval_norm, anio_prev_v
 @_fragment
 def _render_seccion_run_life_bloque(df_bloque_raw, fecha_eval_norm_b, anio_prev, fecha_eval_dt_b, EXCL_BLOQUES):
     st.markdown("<div style='height:14px;'></div>", unsafe_allow_html=True)
-    col_rl_head, col_rl_grp, col_rl_prov, col_rl_sel = st.columns([1.1, 0.9, 0.9, 0.9])
-    with col_rl_head:
-        st.markdown(f"<h6 style='color:#137659; font-family:Inter, sans-serif; font-weight:800; letter-spacing:1px; text-transform:uppercase; font-size:0.8rem; margin-top:6px; margin-bottom:10px;'>⏱️ Run Life: Pozos Operativos vs Fallados ALS (a {fecha_eval_dt_b.strftime('%Y-%m-%d')})</h6>", unsafe_allow_html=True)
+    st.markdown(
+        f"""
+        <div style="{_CARD} padding:14px 18px; margin-bottom:12px; border-left:4px solid {_G}; box-sizing:border-box;">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+                <div>
+                    <h6 style="color:{_G2}; font-family:{_FS}; font-weight:800; letter-spacing:0.8px; text-transform:uppercase; font-size:0.85rem; margin:0;">
+                        ⏱️ RUN LIFE Y MTBF: POZOS OPERATIVOS VS FALLADOS ALS
+                    </h6>
+                    <span style="font-size:0.75rem; color:{_T2}; font-family:{_FS};">
+                        Comparativa de vida útil en servicio y tiempo medio entre fallas a fecha de corte {fecha_eval_dt_b.strftime('%d/%m/%Y')}
+                    </span>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    col_rl_grp, col_rl_prov, col_rl_sel = st.columns([1.2, 1.2, 1.2])
     with col_rl_grp:
         has_modelo_rl = any(any(k in str(c).upper() for k in ['MODELO DE BOMBA', 'MODELO DE BOMABA', 'MODELO BOMBA', 'MODELO']) for c in df_bloque_raw.columns)
         rl_options = ["Bloque", "Campo", "Proveedor", "Modelo de Bomba"] if has_modelo_rl else ["Bloque", "Campo", "Proveedor"]
@@ -673,18 +688,18 @@ def _render_seccion_campana_gauss(df_fallas_als_all, df_bloque_raw, fecha_eval_n
     st.markdown("<div style='height:18px;'></div>", unsafe_allow_html=True)
     st.markdown(
         f"""
-        <div style='background:linear-gradient(90deg, rgba(19,118,89,0.08) 0%, rgba(192,156,46,0.06) 100%); padding:12px 16px; border-radius:12px; border-left:4px solid #137659; margin-bottom:12px;'>
-            <div style='display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;'>
+        <div style="{_CARD} padding:14px 18px; margin-bottom:12px; border-left:4px solid {_G}; box-sizing:border-box;">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
                 <div>
-                    <h6 style='color:#137659; font-family:Inter, sans-serif; font-weight:800; letter-spacing:0.8px; text-transform:uppercase; font-size:0.88rem; margin:0;'>
-                        🔔 CAMPANA DE GAUSS / DISTRIBUCIÓN DE FALLAS ALS
+                    <h6 style="color:{_G2}; font-family:{_FS}; font-weight:800; letter-spacing:0.8px; text-transform:uppercase; font-size:0.85rem; margin:0;">
+                        🔔 CAMPANA DE GAUSS Y DISTRIBUCIÓN DE FALLAS ALS
                     </h6>
-                    <span style='font-size:0.75rem; color:#5b5c55; font-family:Inter, sans-serif;'>
-                        Distribución de frecuencia y ajuste estadístico normal (Campana de Gauss) de los pozos fallados ALS a {fecha_eval_dt_b.strftime('%Y-%m-%d')}
+                    <span style="font-size:0.75rem; color:{_T2}; font-family:{_FS};">
+                        Distribución de frecuencia y ajuste estadístico normal (Gauss) de pozos fallados ALS a fecha {fecha_eval_dt_b.strftime('%d/%m/%Y')}
                     </span>
                 </div>
-                <div style='background:#ffffff; padding:4px 12px; border-radius:20px; border:1px solid rgba(19,118,89,0.25); font-family:Inter, sans-serif; font-size:0.75rem; font-weight:700; color:#137659;'>
-                    Total Global Fallas ALS: <b>{len(df_fallas_als_all)} eventos</b>
+                <div style="background:{_G3}; padding:4px 14px; border-radius:20px; border:1px solid rgba(46,125,70,0.25); font-family:{_FS}; font-size:0.75rem; font-weight:700; color:{_G2};">
+                    Total Fallas ALS: <b>{len(df_fallas_als_all)} eventos</b>
                 </div>
             </div>
         </div>
@@ -1580,8 +1595,8 @@ def _render_seccion_dispersion_modelo_bomba(df_bloque_raw, fecha_eval_norm_b, fe
         scatter_x.append(final_x)
         scatter_y.append(val_y)
         scatter_hover.append(
-            f"<b style='color:#c62828; font-size:13px'>{pozo_str}</b> ({mod})<br>"
-            f"<hr style='margin:3px 0; border-color:rgba(198,40,40,0.15)'>"
+            f"<b style='color:{_R}; font-size:13px'>{pozo_str}</b> ({mod})<br>"
+            f"<hr style='margin:3px 0; border-color:rgba(192,57,43,0.15)'>"
             f"• <b>Run Life a la Falla:</b> {val_y:.0f} días<br>"
             f"• <b>Sistema ALS:</b> {als_str} | <b>Proveedor:</b> {prov_str}<br>"
             f"• <b>Campo:</b> {campo_str} | <b>Bloque:</b> {bloque_str}<br>"
@@ -1596,22 +1611,22 @@ def _render_seccion_dispersion_modelo_bomba(df_bloque_raw, fecha_eval_norm_b, fe
         mode='markers',
         name='🔴 Eventos de Falla ALS (Dispersión)',
         marker=dict(
-            size=8,
-            color='rgba(198, 40, 40, 0.65)',
-            line=dict(color='#c62828', width=1)
+            size=8.5,
+            color='rgba(192, 57, 43, 0.65)',
+            line=dict(color=_R, width=1)
         ),
         hovertext=scatter_hover,
         hoverinfo='text',
-        hoverlabel=dict(bgcolor="rgba(255,255,255,0.97)", bordercolor="#c62828",
-                        font=dict(size=10, family="Inter, sans-serif", color="#1f221e")),
+        hoverlabel=dict(bgcolor="rgba(255,255,255,0.97)", bordercolor=_R,
+                        font=dict(size=10, family="Inter, sans-serif", color=_T)),
     ))
 
     # 2. Línea y Diamantes de MTBF Solo Fallas
     mtbf_xs = [model_idx_map[m['modelo']] for m in model_stats]
     mtbf_ys = [m['mtbf'] for m in model_stats]
     mtbf_hover = [
-        f"<b style='color:#c09c2e; font-size:13px'>{m['modelo']}</b><br>"
-        f"<hr style='margin:3px 0; border-color:rgba(192,156,46,0.15)'>"
+        f"<b style='color:{_Y}; font-size:13px'>{m['modelo']}</b><br>"
+        f"<hr style='margin:3px 0; border-color:rgba(201,138,44,0.15)'>"
         f"• <b>MTBF Solo Fallas:</b> {m['mtbf']:.1f} días<br>"
         f"• <b>Total Fallas Registradas:</b> {m['fallas']} pozos<br>"
         f"• <b>Run Life Promedio:</b> {m['prom_rl']:.1f} días<br>"
@@ -1626,20 +1641,20 @@ def _render_seccion_dispersion_modelo_bomba(df_bloque_raw, fecha_eval_norm_b, fe
         y=mtbf_ys,
         mode='lines+markers+text',
         name=f'🟡 Línea MTBF Solo Fallas ({als_sel})',
-        line=dict(color='#c09c2e', width=3.5),
+        line=dict(color=_Y, width=3.5),
         marker=dict(
             symbol='diamond',
             size=11,
-            color='#c09c2e',
-            line=dict(color='#8c6e18', width=1.5)
+            color=_Y,
+            line=dict(color="#A06E22", width=1.5)
         ),
         text=mtbf_labels,
         textposition='top center',
-        textfont=dict(size=10, color='#1f221e', family='Inter, sans-serif'),
+        textfont=dict(size=9.5, color=_T, family='Inter, sans-serif', weight='bold'),
         hovertext=mtbf_hover,
         hoverinfo='text',
-        hoverlabel=dict(bgcolor="rgba(255,255,255,0.97)", bordercolor="#c09c2e",
-                        font=dict(size=11, family="Inter, sans-serif", color="#1f221e")),
+        hoverlabel=dict(bgcolor="rgba(255,255,255,0.97)", bordercolor=_Y,
+                        font=dict(size=10.5, family="Inter, sans-serif", color=_T)),
     ))
 
     # 3. Línea de MTBF Global a Falla (en vez de meta 1500d)
@@ -1647,11 +1662,11 @@ def _render_seccion_dispersion_modelo_bomba(df_bloque_raw, fecha_eval_norm_b, fe
         fig_mb.add_hline(
             y=mtbf_global_sf,
             line_dash="dash",
-            line_color="#137659",
-            line_width=2.5,
+            line_color=_G,
+            line_width=2.2,
             annotation_text=f"MTBF Global a Falla ({als_sel}): {mtbf_global_sf:.0f}d",
             annotation_position="top left",
-            annotation_font=dict(size=10, color="#137659", family="Inter, sans-serif")
+            annotation_font=dict(size=10, color=_G, family="Inter, sans-serif", weight="bold")
         )
 
     max_y_val = max(max(scatter_y) if scatter_y else 0, max(mtbf_ys) if mtbf_ys else 0, mtbf_global_sf if mtbf_global_sf else 500)
@@ -1659,7 +1674,7 @@ def _render_seccion_dispersion_modelo_bomba(df_bloque_raw, fecha_eval_norm_b, fe
     fig_mb.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="Inter, sans-serif", color="#1f221e", size=10),
+        font=dict(family="Inter, sans-serif", color=_T, size=10),
         margin=dict(l=35, r=15, t=50, b=70),
         xaxis=dict(
             tickmode='array',
@@ -1667,19 +1682,19 @@ def _render_seccion_dispersion_modelo_bomba(df_bloque_raw, fecha_eval_norm_b, fe
             ticktext=ordered_model_names,
             tickangle=-35 if len(ordered_model_names) > 6 else 0,
             showgrid=True,
-            gridcolor="rgba(19,118,89,0.06)",
+            gridcolor="rgba(46,125,70,0.06)",
             showline=True,
-            linecolor="rgba(19,118,89,0.2)",
-            tickfont=dict(size=9, color="#1f221e", family="Inter, sans-serif"),
+            linecolor=_BR,
+            tickfont=dict(size=9, color=_T, family="Inter, sans-serif"),
         ),
         yaxis=dict(
             title="Run Life a la Falla / MTBF (días)",
             range=[0, max_y_val * 1.25 if max_y_val > 0 else 1000],
             showgrid=True,
-            gridcolor="rgba(19,118,89,0.08)",
+            gridcolor="rgba(46,125,70,0.07)",
             gridwidth=1,
             showline=False,
-            tickfont=dict(size=8, color="#5b5c55", family="Inter, sans-serif"),
+            tickfont=dict(size=8.5, color=_T2, family="Inter, sans-serif"),
             ticksuffix="d"
         ),
         legend=dict(
@@ -1688,9 +1703,9 @@ def _render_seccion_dispersion_modelo_bomba(df_bloque_raw, fecha_eval_norm_b, fe
             y=1.02,
             xanchor="center",
             x=0.5,
-            font=dict(size=10, family="Inter, sans-serif", color="#1f221e"),
+            font=dict(size=9.5, family="Inter, sans-serif", color=_T),
             bgcolor="rgba(255,255,255,0.95)",
-            bordercolor="rgba(19,118,89,0.2)",
+            bordercolor=_BR,
             borderwidth=1
         ),
         height=470
@@ -1961,6 +1976,24 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
         val_if_als = [round(float(x)*100, 2) for x in df_mensual_grafico['Indice_Falla_Rolling_ALS_ON'].tolist()]
         val_if_on_1500  = [round(float(x)*100, 2) for x in df_mensual_grafico.get('Indice_Falla_Rolling_ON_1500',  pd.Series([0]*len(df_mensual_grafico))).tolist()]
         val_if_als_1500 = [round(float(x)*100, 2) for x in df_mensual_grafico.get('Indice_Falla_Rolling_ALS_ON_1500', pd.Series([0]*len(df_mensual_grafico))).tolist()]
+
+        st.markdown(
+            f"""
+            <div style="{_CARD} padding:14px 18px; margin-bottom:12px; border-left:4px solid {_G}; box-sizing:border-box;">
+                <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+                    <div>
+                        <h6 style="color:{_G2}; font-family:{_FS}; font-weight:800; letter-spacing:0.8px; text-transform:uppercase; font-size:0.85rem; margin:0;">
+                            📈 TENDENCIA MENSUAL DE ÍNDICES DE FALLA Y OPERATIVIDAD (ROLLING 12M)
+                        </h6>
+                        <span style="font-size:0.75rem; color:{_T2}; font-family:{_FS};">
+                            Evolución histórica de confiabilidad y relación pozos activos vs eventos de falla
+                        </span>
+                    </div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
         g_left, g_right = st.columns(2)
 
@@ -2390,22 +2423,22 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
 
                         if val == 0:
                             bar_color = "transparent"
-                            val_color = "#5b5c55"
+                            val_color = _T2
                         elif es_sin_garantia:
                             # En pozos sin garantía (RL >= 1500d), haber alcanzado >= 1500d es un logro positivo (Verde)
-                            bar_color = "#1b7a4b"
-                            val_color = "#1f221e"
+                            bar_color = _G
+                            val_color = _T
                         else:
                             # En pozos en garantía (RL < 1500d) o Total: fallar temprano/alto es negativo (Rojo/Ámbar)
                             if val >= 20.0 or (meta > 0 and val > meta * 1.5):
-                                bar_color = "#b73229"  # Rojo (Crítico)
-                                val_color = "#1f221e"
+                                bar_color = _R  # Rojo (Crítico)
+                                val_color = _T
                             elif val >= 10.0 or (meta > 0 and val > meta):
-                                bar_color = "#c67d26"  # Ámbar / Ocre (Alerta)
-                                val_color = "#1f221e"
+                                bar_color = _Y  # Ámbar / Ocre (Alerta)
+                                val_color = _T
                             else:
-                                bar_color = "#1b7a4b"  # Verde (Bajo índice de fallas)
-                                val_color = "#1f221e"
+                                bar_color = _G  # Verde (Bajo índice de fallas)
+                                val_color = _T
 
                         bar_w = min(max((val / max_val) * 100, 0), 100) if val > 0 else 0
                         val_str = f"{val:.2f}%".replace('.', ',')
@@ -2413,25 +2446,25 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                         n_prom_on = item.get('prom_on', 0)
                         ratio_str = f"{n_fallas}/{n_prom_on}"
 
-                        row_bg = "#f3f7f4" if (idx % 2 == 0) else "#ffffff"
+                        row_bg = _G3 if (idx % 2 == 0) else "#ffffff"
 
                         row_html = (
-                            f'<div style="display:flex; align-items:center; padding:6px 8px; background:{row_bg}; border-radius:4px; margin-bottom:3px; font-family:\'Inter\', sans-serif;">'
-                            f'<div style="width:85px; font-size:10px; font-weight:800; color:#1f221e; text-transform:uppercase; letter-spacing:0.4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{blk} — Fallas: {n_fallas} | Pozos ON Promedio: {n_prom_on}">{blk}</div>'
-                            f'<div style="flex:1; margin:0 6px; position:relative; height:14px; background:#ebebeb; border-radius:4px; display:flex; align-items:center;">'
+                            f'<div style="display:flex; align-items:center; padding:6px 8px; background:{row_bg}; border-radius:6px; margin-bottom:3px; font-family:\'Inter\', sans-serif;">'
+                            f'<div style="width:85px; font-size:10px; font-weight:800; color:{_T}; text-transform:uppercase; letter-spacing:0.4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{blk} — Fallas: {n_fallas} | Pozos ON Promedio: {n_prom_on}">{blk}</div>'
+                            f'<div style="flex:1; margin:0 6px; position:relative; height:14px; background:#EAEFE7; border-radius:4px; display:flex; align-items:center;">'
                             f'<div style="position:absolute; left:0; top:0; bottom:0; width:{bar_w:.1f}%; background:{bar_color}; border-radius:4px; transition:width 0.4s ease;"></div>'
                             f'</div>'
                             f'<div style="min-width:85px; text-align:right; white-space:nowrap;">'
                             f'<span style="font-size:11px; font-weight:800; color:{val_color}; font-family:\'Inter\', monospace;">{val_str}</span>'
-                            f'<span style="font-size:9px; font-weight:600; color:#5b5c55; font-family:\'Inter\', monospace; margin-left:3px;">({ratio_str})</span>'
+                            f'<span style="font-size:9px; font-weight:600; color:{_T2}; font-family:\'Inter\', monospace; margin-left:3px;">({ratio_str})</span>'
                             f'</div>'
                             f'</div>'
                         )
                         rows_html.append(row_html)
 
                     card_html = (
-                        f'<div style="background:#ffffff; border:1px solid rgba(19,118,89,0.18); border-radius:12px; padding:14px 12px; box-shadow:0 2px 10px rgba(0,0,0,0.03); margin-bottom:14px;">'
-                        f'<div style="color:#0f3e2e; font-family:\'Inter\', sans-serif; font-size:11.5px; font-weight:800; letter-spacing:0.4px; text-transform:uppercase; margin-bottom:10px; line-height:1.35; padding-bottom:8px; border-bottom:1px solid rgba(19,118,89,0.12);">'
+                        f'<div style="{_CARD} padding:14px 14px; margin-bottom:14px;">'
+                        f'<div style="color:{_G2}; font-family:\'Inter\', sans-serif; font-size:11px; font-weight:800; letter-spacing:0.4px; text-transform:uppercase; margin-bottom:10px; line-height:1.35; padding-bottom:8px; border-bottom:1px solid {_BR};">'
                         f'{titulo_card}'
                         f'</div>'
                         f'<div style="display:flex; flex-direction:column;">'
@@ -2524,7 +2557,7 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
         # Tabla 2: Resumen de Run Life por Campo / Bloque / Proveedor
         st.markdown("<br>", unsafe_allow_html=True)
         lbl_tabla_rl = f"RESUMEN DE RUN LIFE Y MTBF (OPERATIVOS VS FALLADOS ALS) POR {agrupacion_rl.upper()}" if 'agrupacion_rl' in locals() else "RESUMEN DE RUN LIFE Y MTBF"
-        st.markdown(f"<div style='color:#137659; font-family:Arial, sans-serif !important; margin-bottom:10px;'>{lbl_tabla_rl}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='color:{_G2}; font-family:{_FS}; font-size:0.85rem; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px; border-left:3px solid {_G}; padding-left:8px;'>{lbl_tabla_rl}</div>", unsafe_allow_html=True)
         
         tabla_rl_data = items_rl if ('items_rl' in locals() and items_rl) else (bloques_if if 'bloques_if' in locals() else [])
         if tabla_rl_data:

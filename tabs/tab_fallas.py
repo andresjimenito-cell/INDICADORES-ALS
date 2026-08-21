@@ -451,9 +451,9 @@ def render_tab_fallas(df_bd_filtered, fecha_evaluacion):
                     "pageLength": 50, "paging": false, "order": [],
                     "language": {{ "url": "https://cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json" }},
                     "dom": 'Bft',
-                    "buttons": [{{ extend: 'copy', text: '📋 Copiar Tabla', className: 'hud-copy-btn' }}],
+                    "buttons": [{{ extend: 'copy', text: 'Copiar Tabla', className: 'hud-copy-btn' }}],
                     "createdRow": function(row, data, dataIndex) {{
-                        if (data[7] && data[7].indexOf("⚠️") !== -1) {{
+                        if (data[7] && data[7].indexOf("FALLA") !== -1) {{
                             $(row).css("background-color", "rgba(192,57,43,0.04)");
                         }}
                     }}

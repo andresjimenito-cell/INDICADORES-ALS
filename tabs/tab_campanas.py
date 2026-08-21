@@ -437,7 +437,7 @@ def render_tab_campanas(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, se
     col_chart, col_table = st.columns([1, 1], gap="medium")
     
     with col_chart:
-        st.markdown(f"<h6 style='color:{_G2}; font-family:{_FS}; font-weight:800; letter-spacing:0.8px; text-transform:uppercase; font-size:0.75rem; margin-bottom:8px;'>📈 Correlación Corridas vs Fallas (Mensual)</h6>", unsafe_allow_html=True)
+        st.markdown(f"<h6 style='color:{_G2}; font-family:{_FS}; font-weight:800; letter-spacing:0.8px; text-transform:uppercase; font-size:0.75rem; margin-bottom:8px;'>Correlacion Corridas vs Fallas (Mensual)</h6>", unsafe_allow_html=True)
         
         unique_months = []
         for y in sorted(selected_years):
@@ -541,27 +541,27 @@ def render_tab_campanas(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, se
       <table style="width:100%; border-collapse:collapse; font-family:{_FS}; font-size:11px; text-align:center;">
         <thead>
           <tr style="background-color:rgba(46, 125, 70, 0.08); color:{_G2}; font-weight:800; text-transform:uppercase; letter-spacing:0.6px;">
-            <th style="padding:8px 10px; border-bottom:1px solid {_BR}; text-align:left; border-radius:6px 0 0 6px;">⚙️ Tipo de Corrida</th>
-            <th style="padding:8px 10px; border-bottom:1px solid {_BR};">🚀 Total Corridas</th>
-            <th style="padding:8px 10px; border-bottom:1px solid {_BR};">⚠️ Corridas Falladas</th>
-            <th style="padding:8px 10px; border-bottom:1px solid {_BR}; border-radius:0 6px 6px 0;">📈 Tasa de Fallas</th>
+            <th style="padding:8px 10px; border-bottom:1px solid {_BR}; text-align:left; border-radius:6px 0 0 6px;">Tipo de Corrida</th>
+            <th style="padding:8px 10px; border-bottom:1px solid {_BR};">Total Corridas</th>
+            <th style="padding:8px 10px; border-bottom:1px solid {_BR};">Corridas Falladas</th>
+            <th style="padding:8px 10px; border-bottom:1px solid {_BR}; border-radius:0 6px 6px 0;">Tasa de Fallas</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td style="padding:8px 10px; font-weight:700; color:{_G2}; text-align:left; border-bottom:1px solid rgba(220, 226, 216, 0.6);">🆕 NUEVO (Corrida = 1)</td>
+            <td style="padding:8px 10px; font-weight:700; color:{_G2}; text-align:left; border-bottom:1px solid rgba(220, 226, 216, 0.6);">NUEVO (Corrida = 1)</td>
             <td style="padding:8px 10px; font-weight:700; font-family:{_FN}; font-size:13px; border-bottom:1px solid rgba(220, 226, 216, 0.6);">{val_nuevos}</td>
             <td style="padding:8px 10px; color:{_R}; font-weight:700; font-family:{_FN}; font-size:13px; border-bottom:1px solid rgba(220, 226, 216, 0.6);">{fallados_nuevos}</td>
             <td style="padding:8px 10px; font-weight:700; border-bottom:1px solid rgba(220, 226, 216, 0.6); color:{_R};">{pct_nuevos:.1f}%</td>
           </tr>
           <tr style="background-color:rgba(201, 138, 44, 0.03);">
-            <td style="padding:8px 10px; font-weight:700; color:{_Y}; text-align:left; border-bottom:1px solid rgba(220, 226, 216, 0.6);">🛠️ WELL SERVICE (Corrida > 1)</td>
+            <td style="padding:8px 10px; font-weight:700; color:{_Y}; text-align:left; border-bottom:1px solid rgba(220, 226, 216, 0.6);">WELL SERVICE (Corrida > 1)</td>
             <td style="padding:8px 10px; font-weight:700; font-family:{_FN}; font-size:13px; border-bottom:1px solid rgba(220, 226, 216, 0.6);">{val_ws}</td>
             <td style="padding:8px 10px; color:{_R}; font-weight:700; font-family:{_FN}; font-size:13px; border-bottom:1px solid rgba(220, 226, 216, 0.6);">{fallados_ws}</td>
             <td style="padding:8px 10px; font-weight:700; border-bottom:1px solid rgba(220, 226, 216, 0.6); color:{_R};">{pct_ws:.1f}%</td>
           </tr>
           <tr style="background-color:rgba(46, 125, 70, 0.06); font-weight:800;">
-            <td style="padding:8px 10px; text-align:left; color:{_G2}; border-radius:0 0 0 6px;">📊 TOTAL CAMPAÑA</td>
+            <td style="padding:8px 10px; text-align:left; color:{_G2}; border-radius:0 0 0 6px;">TOTAL CAMPANA</td>
             <td style="padding:8px 10px; font-family:{_FN}; font-size:14px; color:{_T};">{total_corridas}</td>
             <td style="padding:8px 10px; color:{_R}; font-family:{_FN}; font-size:14px;">{total_falladas}</td>
             <td style="padding:8px 10px; color:{_G2}; font-size:12px; border-radius:0 0 6px 0;">{pct_total:.1f}%</td>
@@ -574,7 +574,7 @@ def render_tab_campanas(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, se
     # ── DISTRIBUCIÓN DE FALLAS POR CATEGORÍA Y ETAPA ─────────────────────────
     df_fallas = df_camp[df_camp['Falla'] == 1].copy()
     if not df_fallas.empty:
-        st.markdown(f"<h6 style='color:{_G2}; font-family:{_FS}; font-weight:800; letter-spacing:0.8px; text-transform:uppercase; font-size:0.75rem; margin-bottom:8px;'>🎯 Distribución de Fallas: Categoría vs Etapa de Vida</h6>", unsafe_allow_html=True)
+        st.markdown(f"<h6 style='color:{_G2}; font-family:{_FS}; font-weight:800; letter-spacing:0.8px; text-transform:uppercase; font-size:0.75rem; margin-bottom:8px;'>Distribucion de Fallas: Categoria vs Etapa de Vida</h6>", unsafe_allow_html=True)
         col_razon = 'RAZON_DE_PULL' if 'RAZON_DE_PULL' in df_fallas.columns else ('RAZON ESPECIFICA PULL' if 'RAZON ESPECIFICA PULL' in df_fallas.columns else None)
             
         def obtener_causa_dist(row_fallas):
@@ -610,7 +610,7 @@ def render_tab_campanas(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, se
         series_data[-1]["markLine"] = {
             "symbol": "none",
             "lineStyle": {"color": _R, "type": "dashed", "width": 1.5},
-            "label": {"show": True, "position": "middle", "formatter": "ALS ⬅️ | ➡️ Externas", "color": _R, "fontSize": 10, "fontWeight": "bold", "fontFamily": "Inter, sans-serif"},
+            "label": {"show": True, "position": "middle", "formatter": "ALS <- | -> Externas", "color": _R, "fontSize": 10, "fontWeight": "bold", "fontFamily": "Inter, sans-serif"},
             "data": [{"xAxis": 1.5}]
         }
         

@@ -300,7 +300,7 @@ def _css():
     line-height: 1.2;
 }}
 
-.tbl-lbl.xl {{ font-size: 15px; }}
+.tbl-lbl.xl {{ font-size: 14px; }}
 .tbl-lbl.lg {{ font-size: 13px; }}
 .tbl-lbl.md {{ font-size: 11.5px; }}
 
@@ -314,7 +314,7 @@ def _css():
     letter-spacing: -0.5px;
 }}
 
-.tbl-num.xxl {{ font-size: 50px; }}
+.tbl-num.xxl {{ font-size: 44px; }}
 .tbl-num.xl  {{ font-size: 40px; }}
 .tbl-num.lg  {{ font-size: 34px; }}
 .tbl-num.md  {{ font-size: 30px; }}
@@ -333,7 +333,7 @@ def _css():
     align-items: center;
     justify-content: space-between;
     gap: 14px;
-    height: 130px;
+    height: 150px;
     box-sizing: border-box;
 }}
 
@@ -341,67 +341,127 @@ def _css():
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 7px;
+    gap: 4px;
+    flex: 0 0 auto;
+    max-width: 40%;
 }}
 
-/* ── Mini barras por tipo de ALS ── */
+/* ── Barras por sistema ALS ── */
+.tbl-als-panel {{
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    gap: 6px;
+    flex: 1 1 auto;
+    min-width: 0;
+}}
+
 .tbl-mini-chart-container {{
     display: flex;
-    gap: 4px;
     align-items: flex-end;
-    height: 100px;
+    justify-content: space-between;
+    gap: 12px;
+    height: 96px;
 }}
 
 .tbl-mini-bar-col {{
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 34px;
+    flex: 1 1 0;
+    min-width: 0;
+    height: 100%;
 }}
 
 .tbl-mini-bar-val {{
-    font-family: {_FS};
-    font-size: 8.5px;
+    font-family: {_FN};
+    font-size: 12px;
     font-weight: 700;
-    color: {_T2};
-    letter-spacing: -0.2px;
+    color: {_T};
     margin-bottom: 4px;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
+    line-height: 1;
 }}
 
-.tbl-mini-bar-track {{
-    width: 20px;
-    height: 54px;
-    background: {_R2};
-    border-radius: 4px;
-    display: flex;
-    flex-direction: column-reverse;
-    overflow: hidden;
-    box-shadow: inset 0 1px 3px rgba(31,70,32,0.12);
+.tbl-mini-bar-sub {{
+    font-family: {_FS};
+    font-size: 8.5px;
+    font-weight: 600;
+    color: {_T2};
+    margin-top: 1px;
+    white-space: nowrap;
 }}
 
-.tbl-mini-bar-fill {{
+/* El hueco fija la línea base; la pila crece desde abajo */
+.tbl-mini-bar-slot {{
+    flex: 1;
     width: 100%;
-    background: linear-gradient(180deg, #4CA46A 0%, {_G} 100%);
-    border-radius: 4px;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.30);
-    transition: height 0.8s cubic-bezier(0.4,0,0.2,1);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    min-height: 0;
 }}
+
+.tbl-mini-bar-stack {{
+    width: 100%;
+    height: 100%;
+    max-width: 78px;
+    display: flex;
+    flex-direction: column;
+    border-radius: 5px;
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(31,70,32,0.16), inset 0 1px 0 rgba(255,255,255,0.35);
+    min-height: 4px;
+}}
+
+.tbl-mini-bar-stack .seg {{ width: 100%; }}
+.tbl-mini-bar-stack .seg.on   {{ background: linear-gradient(180deg, #4CA46A 0%, {_G} 100%); }}
+.tbl-mini-bar-stack .seg.off  {{ background: #93A29A; }}
+.tbl-mini-bar-stack .seg.fall {{ background: {_R}; }}
 
 .tbl-mini-bar-label {{
     font-family: {_FS};
     font-size: 11px;
     font-weight: 700;
     color: {_G2};
-    margin-top: 6px;
+    margin-top: 5px;
+    letter-spacing: 0.3px;
+    line-height: 1.1;
 }}
+
+/* Leyenda de la composición */
+.tbl-als-leg {{
+    display: flex;
+    justify-content: center;
+    gap: 13px;
+    font-family: {_FS};
+    font-size: 8.5px;
+    font-weight: 600;
+    color: {_T2};
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}}
+
+.tbl-als-leg span {{ display: inline-flex; align-items: center; gap: 4px; }}
+
+.tbl-als-leg i {{
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    display: inline-block;
+}}
+
+.tbl-als-leg i.on   {{ background: {_G}; }}
+.tbl-als-leg i.off  {{ background: #93A29A; }}
+.tbl-als-leg i.fall {{ background: {_R}; }}
 
 /* ── Fila media: fallados | disponibles + activos/inactivos ── */
 .tbl-grid-bottom {{
     display: flex;
     gap: 12px;
-    height: 236px;
+    height: 216px;
 }}
 
 .tbl-card-fallados {{
@@ -421,7 +481,7 @@ def _css():
 
 .tbl-fallados-note {{
     font-family: {_FS};
-    font-size: 10px;
+    font-size: 9.5px;
     font-weight: 700;
     color: {_G2};
     line-height: 1.35;
@@ -433,11 +493,14 @@ def _css():
 
 .tbl-fallados-atrib {{
     border-top: 1px solid {_BR};
-    padding-top: 6px;
-    margin-top: 6px;
+    padding-top: 5px;
+    margin-top: 5px;
     width: 100%;
     text-align: left;
 }}
+
+/* El último bloque no debe rozar el borde inferior de la tarjeta */
+.tbl-fallados-atrib:last-child {{ padding-bottom: 2px; }}
 
 .tbl-fallados-atrib-lbl {{
     font-family: {_FS};
@@ -450,7 +513,7 @@ def _css():
 
 .tbl-fallados-atrib-val {{
     font-family: {_FN};
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 700;
     color: {_T};
     font-variant-numeric: tabular-nums;
@@ -585,14 +648,14 @@ def _css():
 
 .tbl-fallas-head {{
     text-align: center;
-    padding-bottom: 9px;
-    margin-bottom: 10px;
+    padding-bottom: 7px;
+    margin-bottom: 7px;
     border-bottom: 1px solid {_BR};
 }}
 
 .tbl-fallas-title {{
     font-family: {_FS};
-    font-size: 13px;
+    font-size: 12.5px;
     font-weight: 700;
     color: {_G2};
     letter-spacing: 0.8px;
@@ -601,7 +664,7 @@ def _css():
 
 .tbl-fallas-sub {{
     font-family: {_FS};
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 500;
     color: {_T2};
     margin-top: 4px;
@@ -621,14 +684,14 @@ def _css():
 }}
 
 .tbl-ft th {{
-    font-size: 10.5px;
+    font-size: 10px;
     font-weight: 700;
     color: {_T2};
     text-transform: uppercase;
     letter-spacing: 0.4px;
     text-align: center;
     white-space: nowrap;
-    padding: 0 4px 7px;
+    padding: 0 4px 5px;
     border-bottom: 1px solid {_BR};
 }}
 
@@ -636,11 +699,11 @@ def _css():
 
 .tbl-ft td {{
     font-family: {_FN};
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 700;
     color: {_T2};
     text-align: center;
-    padding: 5px 6px;
+    padding: 3px 6px;
     font-variant-numeric: tabular-nums;
 }}
 
@@ -659,7 +722,7 @@ def _css():
 
 .tbl-ft td.et {{
     font-family: {_FS};
-    font-size: 12.5px;
+    font-size: 12px;
     font-weight: 700;
     color: {_G2};
     text-align: left;
@@ -668,7 +731,7 @@ def _css():
 
 .tbl-ft td.et span {{
     display: block;
-    font-size: 9.5px;
+    font-size: 8.5px;
     font-weight: 500;
     color: {_T2};
     margin-top: 1px;
@@ -679,7 +742,7 @@ def _css():
 .tbl-ft tr.tot td {{
     border-top: 1.5px solid {_BR};
     color: {_T};
-    padding-top: 7px;
+    padding-top: 5px;
 }}
 
 .tbl-ft tr.tot td.et {{
@@ -691,11 +754,11 @@ def _css():
 
 .tbl-fallas-foot {{
     font-family: {_FS};
-    font-size: 9px;
+    font-size: 8.5px;
     font-style: italic;
     color: {_T2};
     text-align: center;
-    margin-top: 6px;
+    margin-top: 4px;
 }}
 
 /* ── Entrada suave de las cifras ── */
@@ -1291,30 +1354,30 @@ def render_tab_tablero(
             idx_sev = 0.0
 
         # ── Barras por sistema ALS: encendidos / apagados / fallados ─────────
-        # Sólo se dibujan los sistemas presentes, para no gastar ancho en ceros.
+        # Cada barra ocupa el alto completo y muestra la COMPOSICIÓN del sistema.
+        # Escalarlas por tamaño absoluto no sirve: ESP tiene ~1.000 pozos y EPCP
+        # puede tener 1, con lo que las pequeñas desaparecerían.
         _tipos_vis = [t for t in ALS_TIPOS if als_breakdown.get(t, {}).get('total', 0) > 0]
-        _tope = max((als_breakdown[t]['total'] for t in _tipos_vis), default=1)
 
         mini_bars_html = ""
         for t in _tipos_vis:
             bd = als_breakdown[t]
             tot = bd['total']
-            # La altura del tramo es proporcional al sistema más numeroso, de modo
-            # que las barras sean comparables entre sí.
-            alto = tot / _tope * 100
-            seg = lambda n: (n / tot * 100) if tot else 0
+            pct = lambda n: (n / tot * 100) if tot else 0
             mini_bars_html += (
                 f'<div class="tbl-mini-bar-col">'
-                f'<div class="tbl-mini-bar-val">{_fmt(bd["on"])}<span>/{_fmt(tot)}</span></div>'
+                f'<div class="tbl-mini-bar-val">{_fmt(bd["on"])}</div>'
                 f'<div class="tbl-mini-bar-slot">'
-                f'<div class="tbl-mini-bar-stack" style="height:{alto:.1f}%;" '
-                f'title="{t}: {bd["on"]} encendidos · {bd["off"]} apagados · {bd["fall"]} fallados">'
-                f'<div class="seg fall" style="height:{seg(bd["fall"]):.1f}%;"></div>'
-                f'<div class="seg off"  style="height:{seg(bd["off"]):.1f}%;"></div>'
-                f'<div class="seg on"   style="height:{seg(bd["on"]):.1f}%;"></div>'
+                f'<div class="tbl-mini-bar-stack" '
+                f'title="{t} · {_fmt(tot)} pozos: {bd["on"]} encendidos, '
+                f'{bd["off"]} apagados, {bd["fall"]} fallados">'
+                f'<div class="seg fall" style="height:{pct(bd["fall"]):.1f}%;"></div>'
+                f'<div class="seg off"  style="height:{pct(bd["off"]):.1f}%;"></div>'
+                f'<div class="seg on"   style="height:{pct(bd["on"]):.1f}%;"></div>'
                 f'</div>'
                 f'</div>'
                 f'<div class="tbl-mini-bar-label">{t}</div>'
+                f'<div class="tbl-mini-bar-sub">de {_fmt(tot)}</div>'
                 f'</div>'
             )
 
@@ -1370,8 +1433,11 @@ def render_tab_tablero(
       <div class="tbl-num xxl">{_fmt(als_fondo)}</div>
     </div>
 
-    <div class="tbl-mini-chart-container">
-      {mini_bars_html}
+    <div class="tbl-als-panel">
+      <div class="tbl-mini-chart-container">
+        {mini_bars_html}
+      </div>
+      {_leyenda_als}
     </div>
   </div>
 
