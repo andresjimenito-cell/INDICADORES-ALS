@@ -1513,7 +1513,7 @@ def render_tab_tablero(
                     min: 0,
                     max: maxVal,
                     center: ["50%", "58%"],
-                    radius: "96%",
+                    radius: "90%",
                     splitNumber: 4,
                     axisLine: {{
                         roundCap: true,
@@ -1550,13 +1550,13 @@ def render_tab_tablero(
                         fontSize: 38,
                         fontWeight: "700",
                         fontFamily: "Source Serif 4, Cambria, Georgia, serif",
-                        offsetCenter: [0, "26%"],
+                        offsetCenter: [0, "22%"],
                         borderRadius: 4,
                         padding: [4, 8]
                     }},
                     title: {{
                         show: true,
-                        offsetCenter: [0, "58%"],
+                        offsetCenter: [0, "52%"],
                         color: "{_T2}",
                         fontSize: 13,
                         fontWeight: "700",

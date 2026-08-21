@@ -272,35 +272,35 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
     if if_pct is not None:
         if if_pct > 10:  # Crítico
             if_status_color = COLOR_DANGER
-            if_status_icon = "🔴"
+            if_status_icon = "●"
             if_status_label = "CRÍTICO"
         elif if_pct > 7.5:  # Advertencia
             if_status_color = COLOR_WARNING
-            if_status_icon = "🟡"
+            if_status_icon = "●"
             if_status_label = "ALERTA"
         else:  # OK
             if_status_color = COLOR_SUCCESS
-            if_status_icon = "🟢"
+            if_status_icon = "●"
             if_status_label = "OK"
     else:
         if_status_color = COLOR_INFO
-        if_status_icon = "⚪"
+        if_status_icon = "●"
         if_status_label = "N/D"
 
     # 2. MTBF vs Meta: success/warning/danger (meta 2190 días)
     mtbf_status_color = COLOR_SUCCESS
-    mtbf_status_icon = "🟢"
+    mtbf_status_icon = "●"
     mtbf_status_label = "OK"
     try:
         mtbf_val = float(mtbf_total_str) if mtbf_total_str != "N/D" else None
         if mtbf_val is not None:
             if mtbf_val < 1000:
                 mtbf_status_color = COLOR_DANGER
-                mtbf_status_icon = "🔴"
+                mtbf_status_icon = "●"
                 mtbf_status_label = "CRÍTICO"
             elif mtbf_val < 1800:
                 mtbf_status_color = COLOR_WARNING
-                mtbf_status_icon = "🟡"
+                mtbf_status_icon = "●"
                 mtbf_status_label = "ALERTA"
     except Exception:
         pass

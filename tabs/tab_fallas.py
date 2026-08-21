@@ -381,7 +381,7 @@ def render_tab_fallas(df_bd_filtered, fecha_evaluacion):
                 run_val = row.get('RUN', 1)
                 tipo_badge = '<span class="badge-custom badge-nuevo">PERFORADO</span>' if run_val == 1 else '<span class="badge-custom badge-ws">WS</span>'
                 if pd.notna(ff):
-                    estado_badge = '<span class="badge-custom badge-fallado">⚠️ FALLA</span>'
+                    estado_badge = '<span class="badge-custom badge-fallado">FALLA</span>'
                     run_life = (ff - fr).days if pd.notna(fr) else '-'
                     sub_tipo = row.get('SUB TIPO DE FALLA')
                     if pd.notna(sub_tipo) and str(sub_tipo).strip():
@@ -390,7 +390,7 @@ def render_tab_fallas(df_bd_filtered, fecha_evaluacion):
                         causa = clasificar_razon_ia(razon) if razon.strip() else 'Desc.'
                         if pd.isna(fp): causa = f"Posible {causa}"
                 else:
-                    estado_badge = '<span class="badge-custom badge-operativo">✓ OK</span>'
+                    estado_badge = '<span class="badge-custom badge-operativo">OK</span>'
                     run_life = '<span style="color:#707070;">-</span>'
                     causa = '<span style="color:#707070;">-</span>'
                 rows.append({'Pozo': pozo, 'F.Run': fr_str, 'F.Falla': ff_str, 'F.Pull': fp_str,
