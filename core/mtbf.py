@@ -114,12 +114,12 @@ def mostrar_mtbf(mtbf_global, mtbf_por_pozo, mtbf_efectivo=None, df_bd=None, fec
     # Layout de KPIs principales usando clases HUD
     k1, k2 = st.columns(2)
     with k1:
-        st.markdown(f'<div class="kpi-card"><div class="kpi-icon">🕒</div><div class="kpi-label">TMEF GLOBAL</div><div class="kpi-value">{mtbf_global:.0f}</div><div class="kpi-trend-positive">Días Run Life</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="kpi-card"><div class="kpi-icon">●</div><div class="kpi-label">TMEF GLOBAL</div><div class="kpi-value">{mtbf_global:.0f}</div><div class="kpi-trend-positive">Dias Run Life</div></div>', unsafe_allow_html=True)
     with k2:
         if mtbf_efectivo is not None:
-            st.markdown(f'<div class="kpi-card"><div class="kpi-icon">⚡</div><div class="kpi-label">TMEF EFECTIVO</div><div class="kpi-value" style="color:#00ff9d;">{mtbf_efectivo:.0f}</div><div class="kpi-trend-positive">Días Trabajados</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="kpi-card"><div class="kpi-icon">●</div><div class="kpi-label">TMEF EFECTIVO</div><div class="kpi-value" style="color:#00ff9d;">{mtbf_efectivo:.0f}</div><div class="kpi-trend-positive">Dias Trabajados</div></div>', unsafe_allow_html=True)
         else:
-            st.markdown(f'<div class="kpi-card"><div class="kpi-icon">📊</div><div class="kpi-label">PRECISIÓN</div><div class="kpi-value">98%</div><div class="kpi-trend-positive">Análisis Estadístico</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="kpi-card"><div class="kpi-icon">●</div><div class="kpi-label">PRECISION</div><div class="kpi-value">98%</div><div class="kpi-trend-positive">Analisis Estadistico</div></div>', unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -127,7 +127,7 @@ def mostrar_mtbf(mtbf_global, mtbf_por_pozo, mtbf_efectivo=None, df_bd=None, fec
     with col_tabla:
         grupo_col = 'CAMPO' if df_bd is not None and 'CAMPO' in df_bd.columns else 'ACTIVO'
         if df_bd is not None and grupo_col in df_bd.columns:
-            st.markdown(f"<h5>📊 TMEF POR {grupo_col}</h5>", unsafe_allow_html=True)
+            st.markdown(f"<h5>TMEF POR {grupo_col}</h5>", unsafe_allow_html=True)
             res_campo = []
             for item in sorted(df_bd[grupo_col].dropna().unique()):
                 df_c = df_bd[df_bd[grupo_col] == item]

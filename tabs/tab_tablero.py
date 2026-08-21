@@ -895,15 +895,6 @@ def render_tab_tablero(
     als_fallados  = df_falla['POZO'].nunique() if 'POZO' in df_falla.columns else 0
     als_operativos = df_fondo[df_fondo['_FALL'].isna() | (df_fondo['_FALL'] > fecha_eval_date)]['POZO'].nunique() if 'POZO' in df_fondo.columns else 0
 
-    # ── Breakdown por tipo ALS ───────────────────────────────────────────────
-    als_breakdown = {}
-    if 'ALS' in df_fondo.columns:
-        for t in ALS_TIPOS:
-            sub  = df_fondo[df_fondo['ALS'].astype(str).str.strip().str.upper() == t]
-            tot  = sub['POZO'].nunique() if 'POZO' in sub.columns else 0
-            fall = sub[sub['_FALL'].notna() & (sub['_FALL'] <= fecha_eval_date)]['POZO'].nunique() if 'POZO' in sub.columns else 0
-            als_breakdown[t] = {'total': tot, 'op': tot - fall}
-
     # ── Activos / Inactivos ────
     df_f9_raw = st.session_state.get('df_forma9_calculated')
     if df_f9_raw is not None:
@@ -929,8 +920,33 @@ def render_tab_tablero(
         activos   = len(pozos_on)
         inactivos = max(0, als_operativos - activos)
     else:
+        pozos_on  = set()
         activos   = als_operativos
         inactivos = 0
+
+    # ── Composición por tipo de ALS ──────────────────────────────────────────
+    # Cada sistema se descompone en encendidos (reportan días trabajados en el
+    # mes), apagados (operativos pero sin producción) y fallados en fondo.
+    als_breakdown = {}
+    if 'ALS' in df_fondo.columns and 'POZO' in df_fondo.columns:
+        for t in ALS_TIPOS:
+            sub = df_fondo[df_fondo['ALS'].astype(str).str.strip().str.upper() == t]
+            pozos_t = set(sub['POZO'].astype(str).str.strip().unique())
+            fallados_t = set(
+                sub[sub['_FALL'].notna() & (sub['_FALL'] <= fecha_eval_date)]['POZO']
+                .astype(str).str.strip().unique()
+            )
+            operativos_t = pozos_t - fallados_t
+            on_t  = len(operativos_t & pozos_on)
+            off_t = len(operativos_t) - on_t
+            als_breakdown[t] = {
+                'total': len(pozos_t),
+                'on':    on_t,
+                'off':   off_t,
+                'fall':  len(fallados_t),
+            }
+    else:
+        als_breakdown = {t: {'total': 0, 'on': 0, 'off': 0, 'fall': 0} for t in ALS_TIPOS}
 
     total_pozos  = max(activos + inactivos, 1)
     disp_oper    = activos   / total_pozos * 100
@@ -1274,22 +1290,41 @@ def render_tab_tablero(
             pozos_fallados_periodo = 0
             idx_sev = 0.0
 
-        # Barras verticales ALS con animación CSS
+        # ── Barras por sistema ALS: encendidos / apagados / fallados ─────────
+        # Sólo se dibujan los sistemas presentes, para no gastar ancho en ceros.
+        _tipos_vis = [t for t in ALS_TIPOS if als_breakdown.get(t, {}).get('total', 0) > 0]
+        _tope = max((als_breakdown[t]['total'] for t in _tipos_vis), default=1)
+
         mini_bars_html = ""
-        for t in ALS_TIPOS:
-            bd_info = als_breakdown.get(t, {'total': 0, 'op': 0})
-            tot = bd_info['total']
-            op = bd_info['op']
-            op_pct = (op / tot * 100) if tot > 0 else 0
+        for t in _tipos_vis:
+            bd = als_breakdown[t]
+            tot = bd['total']
+            # La altura del tramo es proporcional al sistema más numeroso, de modo
+            # que las barras sean comparables entre sí.
+            alto = tot / _tope * 100
+            seg = lambda n: (n / tot * 100) if tot else 0
             mini_bars_html += (
                 f'<div class="tbl-mini-bar-col">'
-                f'<div class="tbl-mini-bar-val">{op}/{tot}</div>'
-                f'<div class="tbl-mini-bar-track">'
-                f'<div class="tbl-mini-bar-fill" style="height: {op_pct:.1f}%;"></div>'
+                f'<div class="tbl-mini-bar-val">{_fmt(bd["on"])}<span>/{_fmt(tot)}</span></div>'
+                f'<div class="tbl-mini-bar-slot">'
+                f'<div class="tbl-mini-bar-stack" style="height:{alto:.1f}%;" '
+                f'title="{t}: {bd["on"]} encendidos · {bd["off"]} apagados · {bd["fall"]} fallados">'
+                f'<div class="seg fall" style="height:{seg(bd["fall"]):.1f}%;"></div>'
+                f'<div class="seg off"  style="height:{seg(bd["off"]):.1f}%;"></div>'
+                f'<div class="seg on"   style="height:{seg(bd["on"]):.1f}%;"></div>'
+                f'</div>'
                 f'</div>'
                 f'<div class="tbl-mini-bar-label">{t}</div>'
                 f'</div>'
             )
+
+        _leyenda_als = (
+            '<div class="tbl-als-leg">'
+            '<span><i class="on"></i>Encendidos</span>'
+            '<span><i class="off"></i>Apagados</span>'
+            '<span><i class="fall"></i>Fallados</span>'
+            '</div>'
+        )
 
         # Color del medidor según cumplimiento
         _disp_cls = 'g' if disp_oper >= 80 else ('y' if disp_oper >= 60 else 'r')

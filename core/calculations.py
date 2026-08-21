@@ -149,8 +149,8 @@ def perform_initial_calculations(df_forma9, df_bd, fecha_evaluacion):
         (merged_asof['FECHA_FORMA9'] < merged_asof['FECHA_PULL'].fillna(fecha_evaluacion))
     )
 
-    merged_asof.loc[~is_match, 'RUN'] = 'NO DATA✍️'
-    merged_asof.loc[~is_match, 'PROVEEDOR'] = 'NO DATA✍️'
+    merged_asof.loc[~is_match, 'RUN'] = 'NO DATA'
+    merged_asof.loc[~is_match, 'PROVEEDOR'] = 'NO DATA'
 
     # Re-establecer el orden e índice original de Forma 9
     df_forma9_copy = merged_asof.sort_values('original_index').set_index('original_index')

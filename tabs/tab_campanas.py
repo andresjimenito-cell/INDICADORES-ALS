@@ -96,7 +96,7 @@ def render_campanas_table(df_camp, table_id="campanas_table"):
             
         is_falla = row.get('Falla', 0)
         if is_falla == 1:
-            estado_badge = '<span class="badge-custom badge-fallado">⚠️ FALLA</span>'
+            estado_badge = '<span class="badge-custom badge-fallado">FALLA</span>'
             run_life = (ff - fr).days if pd.notna(ff) and pd.notna(fr) else '-'
             sub_tipo = row.get('SUB TIPO DE FALLA')
             if pd.notna(sub_tipo) and str(sub_tipo).strip() != '':
@@ -106,7 +106,7 @@ def render_campanas_table(df_camp, table_id="campanas_table"):
                 if pd.isna(fp):
                     causa = f"Posible {causa}"
         else:
-            estado_badge = '<span class="badge-custom badge-operativo">✓ OK</span>'
+            estado_badge = '<span class="badge-custom badge-operativo">OK</span>'
             run_life = '<span style="color:#707070;">-</span>'
             causa = '<span style="color:#707070;">-</span>'
             
@@ -199,7 +199,7 @@ def render_campanas_table(df_camp, table_id="campanas_table"):
                 "language": {{ "url": "https://cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json" }},
                 "dom": 'ft',
                 "createdRow": function(row, data, dataIndex) {{
-                    if (data[7] && data[7].indexOf("⚠️") !== -1) {{
+                    if (data[7] && data[7].indexOf("FALLA") !== -1) {{
                         $(row).css("background-color", "rgba(192, 57, 43, 0.04)");
                     }}
                 }}
@@ -244,7 +244,7 @@ def render_tab_campanas(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, se
     
     years = sorted(df_bd_untr['FECHA_RUN'].dt.year.dropna().unique().astype(int))
     if not years:
-        st.warning("⚠️ No hay campañas disponibles en los datos filtrados.")
+        st.warning("No hay campanas disponibles en los datos filtrados.")
         return
         
     fecha_eval_dt = pd.to_datetime(fecha_evaluacion)

@@ -535,16 +535,16 @@ def _render_seccion_run_life_bloque(df_bloque_raw, fecha_eval_norm_b, anio_prev,
                 y=y_op,
                 name="🟢 Pozos Operativos (RL Actual)",
                 marker=dict(
-                    color="#137659",
-                    line=dict(color="#095139", width=1)
+                    color=_G,
+                    line=dict(color=_G2, width=1)
                 ),
                 text=text_op,
                 textposition="outside",
-                textfont=dict(size=9, color="#137659", family="Inter, sans-serif"),
+                textfont=dict(size=9, color=_G, family="Inter, sans-serif"),
                 hovertext=hover_op_texts,
                 hoverinfo="text",
-                hoverlabel=dict(bgcolor="rgba(255,255,255,0.97)", bordercolor="#137659",
-                                font=dict(size=10, family="Inter, sans-serif", color="#1f221e")),
+                hoverlabel=dict(bgcolor="rgba(255,255,255,0.97)", bordercolor=_G,
+                                font=dict(size=10, family="Inter, sans-serif", color=_T)),
             ))
 
             # Barra 2: Pozos Fallados
@@ -553,16 +553,16 @@ def _render_seccion_run_life_bloque(df_bloque_raw, fecha_eval_norm_b, anio_prev,
                 y=y_fall,
                 name="🔴 Pozos Fallados ALS (RL a la Falla)",
                 marker=dict(
-                    color="#c62828",
+                    color=_R,
                     line=dict(color="#8e0000", width=1)
                 ),
                 text=text_fall,
                 textposition="outside",
-                textfont=dict(size=9, color="#c62828", family="Inter, sans-serif"),
+                textfont=dict(size=9, color=_R, family="Inter, sans-serif"),
                 hovertext=hover_fall_texts,
                 hoverinfo="text",
-                hoverlabel=dict(bgcolor="rgba(255,255,255,0.97)", bordercolor="#c62828",
-                                font=dict(size=10, family="Inter, sans-serif", color="#1f221e")),
+                hoverlabel=dict(bgcolor="rgba(255,255,255,0.97)", bordercolor=_R,
+                                font=dict(size=10, family="Inter, sans-serif", color=_T)),
             ))
 
             # Barra 3: MTBF Solo Fallas
@@ -572,16 +572,16 @@ def _render_seccion_run_life_bloque(df_bloque_raw, fecha_eval_norm_b, anio_prev,
                 y=y_mtbf_sf,
                 name=nombre_mtbf_sf,
                 marker=dict(
-                    color="#c09c2e",
-                    line=dict(color="#8c6e18", width=1)
+                    color=_Y,
+                    line=dict(color="#A06E22", width=1)
                 ),
                 text=text_mtbf_sf,
                 textposition="outside",
-                textfont=dict(size=9, color="#c09c2e", family="Inter, sans-serif"),
+                textfont=dict(size=9, color=_Y, family="Inter, sans-serif"),
                 hovertext=hover_mtbf_sf_texts,
                 hoverinfo="text",
-                hoverlabel=dict(bgcolor="rgba(255,255,255,0.97)", bordercolor="#c09c2e",
-                                font=dict(size=10, family="Inter, sans-serif", color="#1f221e")),
+                hoverlabel=dict(bgcolor="rgba(255,255,255,0.97)", bordercolor=_Y,
+                                font=dict(size=10, family="Inter, sans-serif", color=_T)),
             ))
 
             # Barra 4: MTBF Flota Total
@@ -591,27 +591,27 @@ def _render_seccion_run_life_bloque(df_bloque_raw, fecha_eval_norm_b, anio_prev,
                 y=y_mtbf_flota,
                 name=nombre_mtbf_flota,
                 marker=dict(
-                    color="#095139",
-                    line=dict(color="#052e20", width=1)
+                    color=_G2,
+                    line=dict(color="#102511", width=1)
                 ),
                 text=text_mtbf_flota,
                 textposition="outside",
-                textfont=dict(size=9, color="#095139", family="Inter, sans-serif"),
+                textfont=dict(size=9, color=_G2, family="Inter, sans-serif"),
                 hovertext=hover_mtbf_flota_texts,
                 hoverinfo="text",
-                hoverlabel=dict(bgcolor="rgba(255,255,255,0.97)", bordercolor="#095139",
-                                font=dict(size=10, family="Inter, sans-serif", color="#1f221e")),
+                hoverlabel=dict(bgcolor="rgba(255,255,255,0.97)", bordercolor=_G2,
+                                font=dict(size=10, family="Inter, sans-serif", color=_T)),
             ))
 
             # Línea de Meta (1500 días)
             fig_rl_bloque.add_hline(
                 y=1500,
                 line_dash="dash",
-                line_color="#137659",
-                line_width=1.5,
+                line_color=_R,
+                line_width=1.8,
                 annotation_text="Meta 1500d (Garantía)",
                 annotation_position="top left",
-                annotation_font=dict(size=9, color="#137659", family="Inter, sans-serif")
+                annotation_font=dict(size=9.5, color=_R, family="Inter, sans-serif", weight="bold")
             )
 
             max_y = max(
@@ -625,16 +625,16 @@ def _render_seccion_run_life_bloque(df_bloque_raw, fecha_eval_norm_b, anio_prev,
             fig_rl_bloque.update_layout(
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
-                font=dict(family="Inter, sans-serif", color="#1f221e", size=10),
+                font=dict(family="Inter, sans-serif", color=_T, size=10),
                 margin=dict(l=30, r=10, t=50, b=55),
                 barmode="group",
-                xaxis=dict(title="", showgrid=False, showline=True, linecolor="rgba(19,118,89,0.15)",
-                           tickfont=dict(size=9, color="#1f221e", family="Inter, sans-serif"),
+                xaxis=dict(title="", showgrid=False, showline=True, linecolor=_BR,
+                           tickfont=dict(size=9.5, color=_T, family="Inter, sans-serif"),
                            tickangle=-35 if len(names) > 8 else 0),
                 yaxis=dict(title=f"{opcion_rl_bloque} / MTBF (días)", range=[0, max_y * 1.35] if max_y > 0 else [0, 1000],
-                            showgrid=True, gridcolor="rgba(19,118,89,0.08)", gridwidth=1,
+                            showgrid=True, gridcolor="rgba(46,125,70,0.07)", gridwidth=1,
                             showline=False,
-                            tickfont=dict(size=8, color="#5b5c55", family="Inter, sans-serif"),
+                            tickfont=dict(size=8.5, color=_T2, family="Inter, sans-serif"),
                             ticksuffix="d"),
                 bargap=0.25,
                 bargroupgap=0.06,
@@ -644,9 +644,9 @@ def _render_seccion_run_life_bloque(df_bloque_raw, fecha_eval_norm_b, anio_prev,
                     y=1.03,
                     xanchor="center",
                     x=0.5,
-                    font=dict(size=10, family="Inter, sans-serif", color="#1f221e"),
+                    font=dict(size=9.5, family="Inter, sans-serif", color=_T),
                     bgcolor="rgba(255,255,255,0.95)",
-                    bordercolor="rgba(19,118,89,0.2)",
+                    bordercolor=_BR,
                     borderwidth=1
                 ),
                 height=chart_h_rl
@@ -874,16 +874,16 @@ def _render_seccion_campana_gauss(df_fallas_als_all, df_bloque_raw, fecha_eval_n
             pct_bin = (c_val / n_cg * 100.0) if n_cg > 0 else 0.0
             
             if b_end <= 365:
-                color_bar = "#c62828"
+                color_bar = _R
                 etapa = "Fallas Infantiles (&lt; 365 días)"
             elif b_end <= 1000:
-                color_bar = "#c09c2e"
+                color_bar = _Y
                 etapa = "Vida Media Inicial (365 - 1000 días)"
             elif b_end <= 1500:
-                color_bar = "#137659"
+                color_bar = _G
                 etapa = "Vida Madura (1000 - 1500 días)"
             else:
-                color_bar = "#095139"
+                color_bar = _G2
                 etapa = "Alta Durabilidad (&gt; 1500 días)"
                 
             bar_colors.append(color_bar)
@@ -901,8 +901,8 @@ def _render_seccion_campana_gauss(df_fallas_als_all, df_bloque_raw, fecha_eval_n
             name="Fallas Observadas",
             hovertext=hover_texts,
             hoverinfo="text",
-            hoverlabel=dict(bgcolor="rgba(255,255,255,0.97)", bordercolor="#137659",
-                            font=dict(size=11, family="Inter, sans-serif", color="#1f221e")),
+            hoverlabel=dict(bgcolor="rgba(255,255,255,0.97)", bordercolor=_G,
+                            font=dict(size=11, family="Inter, sans-serif", color=_T)),
         ))
 
         # 2. Curva Real de Frecuencia Observada (KDE) - Verde Parex
@@ -918,7 +918,7 @@ def _render_seccion_campana_gauss(df_fallas_als_all, df_bloque_raw, fecha_eval_n
                 y=y_kde,
                 mode='lines',
                 name="Curva Real Observada (KDE)",
-                line=dict(color="#137659", width=3.5, shape="spline"),
+                line=dict(color=_G, width=3.5, shape="spline"),
                 hoverinfo="skip"
             ))
 
@@ -934,7 +934,7 @@ def _render_seccion_campana_gauss(df_fallas_als_all, df_bloque_raw, fecha_eval_n
                 y=y_curve,
                 mode='lines',
                 name=f"Campana de Gauss Teórica [N({mu_cg:.0f}d, ±{sigma_cg:.0f}d)]",
-                line=dict(color="#c09c2e", width=2.5, dash='dash'),
+                line=dict(color=_Y, width=2.5, dash='dash'),
                 hoverinfo="skip"
             ))
 
@@ -942,53 +942,53 @@ def _render_seccion_campana_gauss(df_fallas_als_all, df_bloque_raw, fecha_eval_n
         fig_cg.add_vline(
             x=mu_cg,
             line_dash="dash",
-            line_color="#c62828",
+            line_color=_R,
             line_width=2,
             annotation_text=f"Media μ: {mu_cg:.0f}d",
             annotation_position="top left",
-            annotation_font=dict(size=10, color="#c62828", family="Inter, sans-serif")
+            annotation_font=dict(size=10, color=_R, family="Inter, sans-serif")
         )
 
         fig_cg.add_vline(
             x=med_cg,
             line_dash="dot",
-            line_color="#5b5c55",
+            line_color="#5C6B73",
             line_width=2,
             annotation_text=f"Mediana P50: {med_cg:.0f}d",
             annotation_position="top right",
-            annotation_font=dict(size=10, color="#5b5c55", family="Inter, sans-serif")
+            annotation_font=dict(size=10, color="#5C6B73", family="Inter, sans-serif")
         )
 
         if mtbf_solo_fallas and mtbf_solo_fallas > 0:
             fig_cg.add_vline(
                 x=mtbf_solo_fallas,
                 line_dash="dashdot",
-                line_color="#c09c2e",
+                line_color=_Y,
                 line_width=2,
                 annotation_text=f"MTBF Solo Fallas: {mtbf_solo_fallas:.0f}d",
                 annotation_position="bottom right",
-                annotation_font=dict(size=10, color="#c09c2e", family="Inter, sans-serif")
+                annotation_font=dict(size=10, color=_Y, family="Inter, sans-serif")
             )
 
         if mtbf_flota and mtbf_flota > 0 and abs(mtbf_flota - mtbf_solo_fallas) > 50:
             fig_cg.add_vline(
                 x=mtbf_flota,
                 line_dash="longdash",
-                line_color="#095139",
+                line_color=_G2,
                 line_width=2,
                 annotation_text=f"MTBF Flota: {mtbf_flota:.0f}d",
                 annotation_position="top right",
-                annotation_font=dict(size=10, color="#095139", family="Inter, sans-serif")
+                annotation_font=dict(size=10, color=_G2, family="Inter, sans-serif")
             )
 
         fig_cg.add_vline(
             x=1500,
             line_dash="dash",
-            line_color="#137659",
+            line_color=_G,
             line_width=1.5,
             annotation_text="Garantía 1500d",
             annotation_position="bottom left",
-            annotation_font=dict(size=9, color="#137659", family="Inter, sans-serif")
+            annotation_font=dict(size=9, color=_G, family="Inter, sans-serif")
         )
 
         max_curve_val = float(np.max(y_curve)) if len(y_curve) > 0 else 0.0
@@ -998,26 +998,26 @@ def _render_seccion_campana_gauss(df_fallas_als_all, df_bloque_raw, fecha_eval_n
         fig_cg.update_layout(
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
-            font=dict(family="Inter, sans-serif", color="#1f221e", size=10),
+            font=dict(family="Inter, sans-serif", color=_T, size=10),
             margin=dict(l=30, r=15, t=50, b=45),
             xaxis=dict(
                 title=f"{cg_metric} a la Falla (días)",
                 range=[0, max_limit_x + bin_size],
                 showgrid=True,
-                gridcolor="rgba(19,118,89,0.06)",
+                gridcolor="rgba(46,125,70,0.06)",
                 showline=True,
-                linecolor="rgba(19,118,89,0.2)",
-                tickfont=dict(size=9, color="#1f221e", family="Inter, sans-serif"),
+                linecolor=_BR,
+                tickfont=dict(size=9, color=_T, family="Inter, sans-serif"),
                 ticksuffix="d"
             ),
             yaxis=dict(
                 title="Número de Fallas ALS",
                 range=[0, max_hist_y * 1.25 if max_hist_y > 0 else 10],
                 showgrid=True,
-                gridcolor="rgba(19,118,89,0.08)",
+                gridcolor="rgba(46,125,70,0.07)",
                 gridwidth=1,
                 showline=False,
-                tickfont=dict(size=8, color="#5b5c55", family="Inter, sans-serif")
+                tickfont=dict(size=8.5, color=_T2, family="Inter, sans-serif")
             ),
             legend=dict(
                 orientation="h",
@@ -1025,9 +1025,9 @@ def _render_seccion_campana_gauss(df_fallas_als_all, df_bloque_raw, fecha_eval_n
                 y=1.02,
                 xanchor="center",
                 x=0.5,
-                font=dict(size=10, family="Inter, sans-serif", color="#1f221e"),
+                font=dict(size=9.5, family="Inter, sans-serif", color=_T),
                 bgcolor="rgba(255,255,255,0.95)",
-                bordercolor="rgba(19,118,89,0.2)",
+                bordercolor=_BR,
                 borderwidth=1
             ),
             height=430
@@ -1097,8 +1097,8 @@ def _render_seccion_campana_gauss(df_fallas_als_all, df_bloque_raw, fecha_eval_n
                         fillcolor='rgba(192, 156, 46, 0.15)',
                         hovertext=hover_sf_texts,
                         hoverinfo="text",
-                        hoverlabel=dict(bgcolor="rgba(255,255,255,0.97)", bordercolor="#c09c2e",
-                                        font=dict(size=11, family="Inter, sans-serif", color="#1f221e")),
+                        hoverlabel=dict(bgcolor="rgba(255,255,255,0.97)", bordercolor=_Y,
+                                        font=dict(size=10.5, family="Inter, sans-serif", color=_T)),
                     ))
 
                 # 2. Curva Flota Completa con Censuras (Área = mtbf_flota) - Verde Parex
@@ -1119,87 +1119,87 @@ def _render_seccion_campana_gauss(df_fallas_als_all, df_bloque_raw, fecha_eval_n
                         y=ys_fl,
                         mode='lines',
                         name=f"Curva R(t) Flota Completa con Censura [Área = {mtbf_flota:.0f}d]",
-                        line=dict(color="#137659", width=3, dash='solid', shape="hv"),
+                        line=dict(color=_G, width=3, dash='solid', shape="hv"),
                         hovertext=hover_fl_texts,
                         hoverinfo="text",
-                        hoverlabel=dict(bgcolor="rgba(255,255,255,0.97)", bordercolor="#137659",
-                                        font=dict(size=11, family="Inter, sans-serif", color="#1f221e")),
+                        hoverlabel=dict(bgcolor="rgba(255,255,255,0.97)", bordercolor=_G,
+                                        font=dict(size=10.5, family="Inter, sans-serif", color=_T)),
                     ))
 
                 fig_surv.add_vline(
                     x=mtbf_solo_fallas,
                     line_dash="dash",
-                    line_color="#c09c2e",
+                    line_color=_Y,
                     line_width=2.5,
                     annotation_text=f"MTBF Solo Fallas: {mtbf_solo_fallas:.0f}d",
                     annotation_position="top right",
-                    annotation_font=dict(size=11, color="#c09c2e", family="Inter, sans-serif")
+                    annotation_font=dict(size=10.5, color=_Y, family="Inter, sans-serif")
                 )
 
                 if abs(mtbf_flota - mtbf_solo_fallas) > 50:
                     fig_surv.add_vline(
                         x=mtbf_flota,
                         line_dash="longdash",
-                        line_color="#095139",
+                        line_color=_G2,
                         line_width=2,
                         annotation_text=f"MTBF Flota: {mtbf_flota:.0f}d",
                         annotation_position="bottom right",
-                        annotation_font=dict(size=10, color="#095139", family="Inter, sans-serif")
+                        annotation_font=dict(size=10, color=_G2, family="Inter, sans-serif")
                     )
 
                 fig_surv.add_vline(
                     x=mu_cg,
                     line_dash="dot",
-                    line_color="#c62828",
+                    line_color=_R,
                     line_width=2,
                     annotation_text=f"Media Simple: {mu_cg:.0f}d",
                     annotation_position="top left",
-                    annotation_font=dict(size=10, color="#c62828", family="Inter, sans-serif")
+                    annotation_font=dict(size=10, color=_R, family="Inter, sans-serif")
                 )
 
                 fig_surv.add_vline(
                     x=med_cg,
                     line_dash="dashdot",
-                    line_color="#5b5c55",
+                    line_color="#5C6B73",
                     line_width=2,
                     annotation_text=f"Mediana: {med_cg:.0f}d",
                     annotation_position="bottom left",
-                    annotation_font=dict(size=10, color="#5b5c55", family="Inter, sans-serif")
+                    annotation_font=dict(size=10, color="#5C6B73", family="Inter, sans-serif")
                 )
 
                 fig_surv.add_hline(
                     y=50,
                     line_dash="dot",
-                    line_color="#5b5c55",
+                    line_color=_T2,
                     line_width=1,
                     annotation_text="50% Supervivencia",
                     annotation_position="right",
-                    annotation_font=dict(size=9, color="#5b5c55", family="Inter, sans-serif")
+                    annotation_font=dict(size=9, color=_T2, family="Inter, sans-serif")
                 )
 
                 fig_surv.update_layout(
                     paper_bgcolor="rgba(0,0,0,0)",
                     plot_bgcolor="rgba(0,0,0,0)",
-                    font=dict(family="Inter, sans-serif", color="#1f221e", size=11),
+                    font=dict(family="Inter, sans-serif", color=_T, size=10),
                     margin=dict(l=35, r=15, t=50, b=45),
                     xaxis=dict(
                         title=f"{cg_metric} a la Falla (días)",
                         range=[0, max(max_limit_x, 1600)],
                         showgrid=True,
-                        gridcolor="rgba(19,118,89,0.06)",
+                        gridcolor="rgba(46,125,70,0.06)",
                         showline=True,
-                        linecolor="rgba(19,118,89,0.2)",
-                        tickfont=dict(size=10, color="#1f221e", family="Inter, sans-serif"),
+                        linecolor=_BR,
+                        tickfont=dict(size=9.5, color=_T, family="Inter, sans-serif"),
                         ticksuffix="d"
                     ),
                     yaxis=dict(
                         title="Probabilidad de Supervivencia R(t) (%)",
                         range=[0, 105],
                         showgrid=True,
-                        gridcolor="rgba(19,118,89,0.08)",
+                        gridcolor="rgba(46,125,70,0.07)",
                         gridwidth=1,
                         showline=False,
-                        tickfont=dict(size=9, color="#5b5c55", family="Inter, sans-serif"),
+                        tickfont=dict(size=8.5, color=_T2, family="Inter, sans-serif"),
                         ticksuffix="%"
                     ),
                     legend=dict(
@@ -1208,9 +1208,9 @@ def _render_seccion_campana_gauss(df_fallas_als_all, df_bloque_raw, fecha_eval_n
                         y=1.02,
                         xanchor="center",
                         x=0.5,
-                        font=dict(size=10, family="Inter, sans-serif", color="#1f221e"),
+                        font=dict(size=9.5, family="Inter, sans-serif", color=_T),
                         bgcolor="rgba(255,255,255,0.95)",
-                        bordercolor="rgba(19,118,89,0.2)",
+                        bordercolor=_BR,
                         borderwidth=1
                     ),
                     height=420
@@ -1219,10 +1219,10 @@ def _render_seccion_campana_gauss(df_fallas_als_all, df_bloque_raw, fecha_eval_n
                 st.plotly_chart(fig_surv, use_container_width=True, config=plotly_config_cg)
 
                 st.markdown(f"""
-                <div style='background:rgba(19,118,89,0.06); padding:10px 14px; border-radius:10px; border:1px solid rgba(19,118,89,0.2); font-size:0.8rem; color:#1f221e;'>
+                <div style="{_CARD} padding:12px 16px; margin-top:8px; border-left:3px solid {_G}; font-size:0.8rem; color:{_T};">
                     💡 <b>Demostración Visual de la Integral y Censura Actuarial:</b><br>
-                    • <b style='color:#c09c2e;'>Curva Dorada (MTBF Solo Fallas = {mtbf_solo_fallas:.1f}d):</b> Calcula el área bajo la curva considerando <b>únicamente los pozos que fallaron</b>.<br>
-                    • <b style='color:#137659;'>Curva Verde (MTBF Flota Total = {mtbf_flota:.1f}d):</b> Integra los retiros programados sin falla (censuras R=1), reflejando la durabilidad real de la flota antes de cualquier intervención.
+                    • <b style='color:{_Y};'>Curva Dorada (MTBF Solo Fallas = {mtbf_solo_fallas:.1f}d):</b> Calcula el área bajo la curva considerando <b>únicamente los pozos que fallaron</b>.<br>
+                    • <b style='color:{_G};'>Curva Verde (MTBF Flota Total = {mtbf_flota:.1f}d):</b> Integra los retiros programados sin falla (censuras R=1), reflejando la durabilidad real de la flota antes de cualquier intervención.
                 </div>
                 """, unsafe_allow_html=True)
             except Exception as e_surv:
@@ -1986,42 +1986,40 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
 
             echarts_line = {
                 "backgroundColor": "transparent",
-                "title": {"text": "EVOLUCIÓN DE ÍNDICES (Rolling 12M)", "left": "center", "top": 4,
-                          "textStyle": {"color": "#137659", "fontSize": 12, "fontFamily": "Inter, sans-serif", "fontWeight": "bold"},
+                "title": {"text": "EVOLUCIÓN DE ÍNDICES (Rolling 12M)", "left": "center", "top": 8,
+                          "textStyle": {"color": _G2, "fontSize": 12, "fontFamily": "Inter, sans-serif", "fontWeight": "800"},
                           "subtext": f"Media histórica: {if_mean:.2f}% | Alerta si supera {(if_mean+if_std):.2f}%",
-                          "subtextStyle": {"color": "#5b5c55", "fontSize": 9, "fontFamily": "Inter, sans-serif"}},
+                          "subtextStyle": {"color": _T2, "fontSize": 9.5, "fontFamily": "Inter, sans-serif"}},
                 "textStyle": {"fontFamily": "Inter, sans-serif"},
-                "tooltip": {"trigger": "axis", "backgroundColor": "rgba(255,255,255,0.97)", "borderColor": "#137659",
-                            "textStyle": {"color": "#1f221e", "fontFamily": "Inter, sans-serif"}, "axisPointer": {"type": "cross"}},
-                "legend": {"data": ["I.F. Total", "I.F. ALS", "I.F. <1500", "I.F. ALS <1500"], "bottom": 0,
-                           "textStyle": {"color": "#5b5c55", "fontSize": 9, "fontFamily": "Inter, sans-serif"}, "icon": "circle"},
-                "grid": {"left": "3%", "right": "4%", "bottom": "18%", "top": "20%", "containLabel": True},
+                "tooltip": {"trigger": "axis", "backgroundColor": "rgba(255,255,255,0.97)", "borderColor": _BR,
+                            "textStyle": {"color": _T, "fontFamily": "Inter, sans-serif"}, "axisPointer": {"type": "cross"}},
+                "legend": {"data": ["I.F. Total", "I.F. ALS", "I.F. <1500", "I.F. ALS <1500"], "bottom": 4,
+                           "textStyle": {"color": _T2, "fontSize": 9.5, "fontFamily": "Inter, sans-serif"}, "icon": "circle"},
+                "grid": {"left": "4%", "right": "4%", "bottom": "18%", "top": "22%", "containLabel": True},
                 "xAxis": [{"type": "category", "data": months_idx,
-                           "axisLabel": {"color": "#5b5c55", "fontSize": 9, "fontFamily": "Inter, sans-serif", "rotate": 30}}],
+                           "axisLabel": {"color": _T2, "fontSize": 8.5, "fontFamily": "Inter, sans-serif", "rotate": 30}}],
                 "yAxis": [{"type": "value",
-                           "axisLabel": {"formatter": "{value}%", "color": "#5b5c55", "fontFamily": "Inter, sans-serif"},
-                           "splitLine": {"lineStyle": {"color": "rgba(19,118,89,0.06)"}}}],
+                           "axisLabel": {"formatter": "{value}%", "color": _T2, "fontFamily": "Inter, sans-serif", "fontSize": 8.5},
+                           "splitLine": {"lineStyle": {"color": "rgba(46,125,70,0.06)"}}}],
                 "series": [
                     {"name": "I.F. Total", "type": "line", "smooth": True, "data": val_if_on,
-                     "itemStyle": {"color": "#137659"}, "lineStyle": {"width": 3},
-                     "areaStyle": {"color": "rgba(19,118,89,0.06)"},
+                     "itemStyle": {"color": _G}, "lineStyle": {"width": 2.5, "color": _G},
+                     "areaStyle": {"color": f"{_G}12"},
                      "markPoint": {"data": mark_points, "label": {"show": False}},
                      "markLine": {"silent": True, "data": [
                          {"yAxis": 7.5, "label": {"show": True, "formatter": "Meta 7.5%",
-                                                   "color": "#c62828", "fontSize": 9},
-                          "lineStyle": {"color": "#c62828", "type": "dashed", "width": 2}}
+                                                   "color": _R, "fontSize": 9, "fontFamily": "Inter, sans-serif"},
+                          "lineStyle": {"color": _R, "type": "dashed", "width": 1.8}}
                      ]}},
                     {"name": "I.F. ALS", "type": "line", "smooth": True, "data": val_if_als,
-                     "itemStyle": {"color": "#c09c2e"}, "lineStyle": {"width": 3}},
+                     "itemStyle": {"color": _Y}, "lineStyle": {"width": 2.5, "color": _Y}},
                     {"name": "I.F. <1500", "type": "line", "smooth": True, "data": val_if_on_1500,
-                     "itemStyle": {"color": "#5b5c55"}, "lineStyle": {"width": 2, "type": "dashed"}},
+                     "itemStyle": {"color": "#5C6B73"}, "lineStyle": {"width": 1.8, "type": "dashed", "color": "#5C6B73"}},
                     {"name": "I.F. ALS <1500", "type": "line", "smooth": True, "data": val_if_als_1500,
-                     "itemStyle": {"color": "#095139"}, "lineStyle": {"width": 2, "type": "dashed"}}
+                     "itemStyle": {"color": _G2}, "lineStyle": {"width": 1.8, "type": "dashed", "color": _G2}}
                 ]
             }
-            components.html(f'<div id="echarts-if-line" style="width:100%;height:370px;background:#ffffff;'
-                            f'border-radius:14px;overflow:hidden;border:1px solid rgba(19,118,89,0.13);'
-                            f'box-shadow:0 2px 8px rgba(0,0,0,0.04);"></div>'
+            components.html(f'<div id="echarts-if-line" style="width:100%;height:370px;{_CARD}overflow:hidden;box-sizing:border-box;"></div>'
                             f'<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>'
                             f'<script>(function(){{var c=echarts.init(document.getElementById("echarts-if-line"),null);'
                             f'c.setOption({_json.dumps(echarts_line)});'
@@ -2033,29 +2031,29 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
             f_tots = df_mensual_grafico['Fallas Totales'].tolist()
             echarts_op = {
                 "backgroundColor": "transparent",
-                "title": {"text": "TENDENCIA OPERATIVIDAD VS EVENTOS", "left": "center", "top": 0,
-                          "textStyle": {"color": "#137659", "fontSize": 13, "fontFamily": "Arial, sans-serif", "fontWeight": "bold"}},
-                "textStyle": {"fontFamily": "Arial, sans-serif"},
-                "tooltip": {"trigger": "axis", "backgroundColor": "rgba(255,255,255,0.95)", "borderColor": "#137659",
-                            "textStyle": {"color": "#1f221e", "fontFamily": "Arial, sans-serif"}},
-                "legend": {"data": ["Pozos Operativos", "Eventos Totales"], "bottom": 0,
-                           "textStyle": {"color": "#475569", "fontSize": 10, "fontFamily": "Arial, sans-serif"}, "icon": "circle"},
-                "grid": {"left": "3%", "right": "8%", "bottom": "18%", "top": "15%", "containLabel": True},
-                "xAxis": [{"type": "category", "data": months_idx, "axisLabel": {"color": "#475569", "fontSize": 9, "fontFamily": "Arial, sans-serif"}}],
+                "title": {"text": "TENDENCIA OPERATIVIDAD VS EVENTOS", "left": "center", "top": 8,
+                          "textStyle": {"color": _G2, "fontSize": 12, "fontFamily": "Inter, sans-serif", "fontWeight": "800"}},
+                "textStyle": {"fontFamily": "Inter, sans-serif"},
+                "tooltip": {"trigger": "axis", "backgroundColor": "rgba(255,255,255,0.97)", "borderColor": _BR,
+                            "textStyle": {"color": _T, "fontFamily": "Inter, sans-serif"}},
+                "legend": {"data": ["Pozos Operativos", "Eventos Totales"], "bottom": 4,
+                           "textStyle": {"color": _T2, "fontSize": 9.5, "fontFamily": "Inter, sans-serif"}, "icon": "circle"},
+                "grid": {"left": "4%", "right": "8%", "bottom": "18%", "top": "18%", "containLabel": True},
+                "xAxis": [{"type": "category", "data": months_idx, "axisLabel": {"color": _T2, "fontSize": 8.5, "fontFamily": "Inter, sans-serif", "rotate": 30}}],
                 "yAxis": [
-                    {"type": "value", "name": "POZOS",   "axisLabel": {"color": "#475569", "fontFamily": "Arial, sans-serif"}, "splitLine": {"lineStyle": {"color": "rgba(19,118,89,0.05)"}}},
-                    {"type": "value", "name": "EVENTOS", "position": "right", "axisLabel": {"color": "#475569", "fontFamily": "Arial, sans-serif"}, "splitLine": {"show": False}}
+                    {"type": "value", "name": "POZOS", "nameTextStyle": {"color": _T2, "fontSize": 9}, "axisLabel": {"color": _T2, "fontFamily": "Inter, sans-serif", "fontSize": 8.5}, "splitLine": {"lineStyle": {"color": "rgba(46,125,70,0.06)"}}},
+                    {"type": "value", "name": "EVENTOS", "position": "right", "nameTextStyle": {"color": _Y, "fontSize": 9}, "axisLabel": {"color": _Y, "fontFamily": "Inter, sans-serif", "fontSize": 8.5}, "splitLine": {"show": False}}
                 ],
                 "series": [
                     {"name": "Pozos Operativos", "type": "line", "smooth": True, "data": p_ops,
-                     "itemStyle": {"color": "#137659"}, "lineStyle": {"width": 3},
-                     "areaStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 0, "y2": 1,
-                                             "colorStops": [{"offset": 0, "color": "rgba(19,118,89,0.15)"}, {"offset": 1, "color": "transparent"}]}}},
+                     "itemStyle": {"color": _G}, "lineStyle": {"width": 2.5, "color": _G},
+                     "areaStyle": {"color": f"{_G}15"}},
                     {"name": "Eventos Totales", "type": "bar", "yAxisIndex": 1, "data": f_tots,
-                     "itemStyle": {"color": "rgba(192,156,46,0.8)", "borderRadius": [4, 4, 0, 0]}}
+                     "barWidth": "35%",
+                     "itemStyle": {"color": f"{_Y}85", "borderRadius": [4, 4, 0, 0]}}
                 ]
             }
-            components.html(f'<div id="echarts-op-fallas" style="width:100%;height:360px;background:#ffffff;border-radius:15px;overflow:hidden;border:1px solid rgba(19,118,89,0.15);"></div>'
+            components.html(f'<div id="echarts-op-fallas" style="width:100%;height:370px;{_CARD}overflow:hidden;box-sizing:border-box;"></div>'
                             f'<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>'
                             f'<script>(function(){{var c=echarts.init(document.getElementById("echarts-op-fallas"),null);c.setOption({_json.dumps(echarts_op)});window.addEventListener("resize",function(){{c.resize();}});}})();</script>',
                             height=380)

@@ -396,7 +396,7 @@ def render_tab_fallas(df_bd_filtered, fecha_evaluacion):
                 rows.append({'Pozo': pozo, 'F.Run': fr_str, 'F.Falla': ff_str, 'F.Pull': fp_str,
                              'RL(d)': str(run_life), 'Causa': causa, 'Tipo': tipo_badge, 'Estado': estado_badge})
 
-            rows = sorted(rows, key=lambda x: 0 if '⚠️' in x['Estado'] else 1)
+            rows = sorted(rows, key=lambda x: 0 if 'FALLA' in x['Estado'] else 1)
             df_html = pd.DataFrame(rows)
             html_tbl = df_html.to_html(index=False, table_id="fallas_main_table",
                                         classes='display nowrap hud-table', escape=False)
@@ -538,9 +538,9 @@ def render_tab_fallas(df_bd_filtered, fecha_evaluacion):
     )
     plan_cols = st.columns(3)
     plan_items = [
-        ("plan_bombas",    "input_bombas",    "⚙️", "Tecnología de Bombas",        "Metalurgia y recubrimientos",   _G),
-        ("plan_arena",     "input_arena",     "⏳", "Manejo de Sólidos",           "Equipos para arena y sólidos",  _Y),
-        ("plan_proveedor", "input_proveedor", "🤝", "Gestión de Proveedores",      "Estrategia de suministro",      "#5C6B73"),
+        ("plan_bombas",    "input_bombas",    "", "Tecnologia de Bombas",        "Metalurgia y recubrimientos",   _G),
+        ("plan_arena",     "input_arena",     "", "Manejo de Solidos",           "Equipos para arena y solidos",  _Y),
+        ("plan_proveedor", "input_proveedor", "", "Gestion de Proveedores",      "Estrategia de suministro",      "#5C6B73"),
     ]
     for col, (sk, wk, icon, title, sub, color) in zip(plan_cols, plan_items):
         with col:

@@ -31,12 +31,12 @@ def generar_grafico_run_life(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfic
     # Inyectar estilos dinámicos de Plotly
     inject_plotly_dynamic_styles()
     
-    # Colores corporativos Parex Resources (Tema Claro Oficial)
-    COLOR_RUNLIFE = '#137659'       # Verde principal Parex
-    COLOR_RUNLIFE_GEN = '#095139'   # Verde oscuro Parex
-    COLOR_RLE = '#c09c2e'           # Dorado Parex
-    COLOR_RLE_FALLA = '#0284c7'     # Azul zafiro
-    COLOR_TMEF = '#8c6e18'          # Dorado oscuro
+    # Colores corporativos Parex Resources (Tema Claro Oficial - tab_tablero)
+    COLOR_RUNLIFE     = '#2E7D46'   # Verde principal Parex
+    COLOR_RUNLIFE_GEN = '#1F4620'   # Verde oscuro Parex
+    COLOR_RLE         = '#C98A2C'   # Dorado Parex
+    COLOR_RLE_FALLA   = '#C0392B'   # Rojo falla
+    COLOR_TMEF        = '#5C6B73'   # Gris pizarra corporativo
 
     fig = go.Figure()
 
@@ -132,23 +132,23 @@ def generar_grafico_run_life(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfic
             xanchor='center',
             x=0.5,
             bgcolor='rgba(255, 255, 255, 0.95)',
-            bordercolor='rgba(19, 118, 89, 0.25)',
+            bordercolor='#DCE2D8',
             borderwidth=1,
-            font=dict(color='#1f221e', size=10, family='Inter, sans-serif')
+            font=dict(color='#262626', size=9.5, family='Inter, sans-serif')
         ),
         xaxis=dict(
             title=None,
             tickformat='%Y-%m',
             range=[x_start, x_end],
-            gridcolor='rgba(19, 118, 89, 0.08)',
-            linecolor='rgba(19, 118, 89, 0.25)',
-            tickfont=dict(size=9, color='#1f221e', family='Inter, sans-serif')
+            gridcolor='rgba(46, 125, 70, 0.07)',
+            linecolor='#DCE2D8',
+            tickfont=dict(size=9, color='#262626', family='Inter, sans-serif')
         ),
         yaxis=dict(
             title=None,
-            gridcolor='rgba(19, 118, 89, 0.08)',
-            linecolor='rgba(19, 118, 89, 0.25)',
-            tickfont=dict(size=9, color='#1f221e', family='Inter, sans-serif')
+            gridcolor='rgba(46, 125, 70, 0.07)',
+            linecolor='#DCE2D8',
+            tickfont=dict(size=9, color='#707070', family='Inter, sans-serif')
         ),
         margin=dict(t=40, b=30, l=35, r=35),
         height=280

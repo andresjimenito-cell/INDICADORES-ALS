@@ -338,18 +338,18 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
     # --- PALETA CROMÁTICA CORPORATIVA PAREX ---
     inject_plotly_dynamic_styles()
     
-    # Colores corporativos Parex Resources (Tema Claro Oficial)
-    COLOR_POZOS_ON = '#137659'      # Verde principal Parex
-    COLOR_POZOS_OFF = '#5b5c55'     # Gris corporativo silenciado
-    COLOR_RUNLIFE = '#137659'       # Verde principal Parex
-    COLOR_RUNLIFE_GEN = '#095139'   # Verde oscuro Parex
-    COLOR_RLE = '#c09c2e'           # Dorado Parex
-    COLOR_RLE_FALLA = '#0284c7'     # Azul zafiro
-    COLOR_TMEF = '#8c6e18'          # Dorado oscuro
-    COLOR_IF_ON = '#c62828'         # Rojo falla
-    COLOR_IF_ALS = '#d97706'        # Ámbar / Naranja falla ALS
-    COLOR_IF_1500 = '#7c3aed'       # Púrpura <1500d
-    COLOR_IF_ALS_1500 = '#ec4899'   # Rosa intenso ALS <1500d
+    # Colores corporativos Parex Resources (Tema Claro Oficial - tab_tablero)
+    COLOR_POZOS_ON    = '#2E7D46'   # Verde principal Parex
+    COLOR_POZOS_OFF   = '#5C6B73'   # Gris pizarra corporativo
+    COLOR_RUNLIFE     = '#2E7D46'   # Verde principal Parex
+    COLOR_RUNLIFE_GEN = '#1F4620'   # Verde oscuro Parex
+    COLOR_RLE         = '#C98A2C'   # Dorado Parex
+    COLOR_RLE_FALLA   = '#C0392B'   # Rojo falla
+    COLOR_TMEF        = '#707070'   # Gris neutro
+    COLOR_IF_ON       = '#C0392B'   # Rojo falla
+    COLOR_IF_ALS      = '#C98A2C'   # Dorado falla ALS
+    COLOR_IF_1500     = '#223A5E'   # Azul petróleo <1500d
+    COLOR_IF_ALS_1500 = '#1F4620'   # Verde oscuro ALS <1500d
 
     fig = go.Figure()
 
@@ -516,23 +516,23 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
             xanchor='center',
             x=0.5,
             bgcolor='rgba(255, 255, 255, 0.95)',
-            bordercolor='rgba(19, 118, 89, 0.25)',
+            bordercolor='#DCE2D8',
             borderwidth=1,
-            font=dict(color='#1f221e', size=10, family='Inter, sans-serif')
+            font=dict(color='#262626', size=9.5, family='Inter, sans-serif')
         ),
         xaxis=dict(
             title=None,
             tickformat='%Y-%m',
             range=[x_start, x_end],
-            gridcolor='rgba(19, 118, 89, 0.08)',
-            linecolor='rgba(19, 118, 89, 0.25)',
-            tickfont=dict(size=9, color='#1f221e', family='Inter, sans-serif')
+            gridcolor='rgba(46, 125, 70, 0.07)',
+            linecolor='#DCE2D8',
+            tickfont=dict(size=9, color='#262626', family='Inter, sans-serif')
         ),
         yaxis=dict(
             title=None,
-            gridcolor='rgba(19, 118, 89, 0.08)',
-            linecolor='rgba(19, 118, 89, 0.25)',
-            tickfont=dict(size=9, color='#1f221e', family='Inter, sans-serif')
+            gridcolor='rgba(46, 125, 70, 0.07)',
+            linecolor='#DCE2D8',
+            tickfont=dict(size=9, color='#707070', family='Inter, sans-serif')
         ),
         yaxis2=dict(
             title=None,
@@ -541,8 +541,8 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
             range=[0, upper_y2],
             tickformat='.0%',
             showgrid=False,
-            linecolor='rgba(192, 156, 46, 0.35)',
-            tickfont=dict(size=9, color='#8c6e18', family='Inter, sans-serif')
+            linecolor='#DCE2D8',
+            tickfont=dict(size=9, color='#C98A2C', family='Inter, sans-serif')
         ),
         margin=dict(t=40, b=30, l=35, r=35),
         height=280
@@ -572,12 +572,16 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
     categories = [str(m) for m in df_monthly['Mes'].dt.strftime('%b %Y')]
 
     
-    # Colores del tema HUD Premium
-    COLOR_PRIMARY = "#137659"
-    COLOR_ACCENT = "#095139"  
-    COLOR_SUCCESS = "#137659" 
-    COLOR_DANGER = "#d32f2f"  
-    COLOR_WARNING = "#c09c2e" 
+    # Colores del tema Parex / tab_tablero
+    COLOR_PRIMARY   = "#2E7D46"
+    COLOR_ACCENT    = "#1F4620"  
+    COLOR_SUCCESS   = "#2E7D46" 
+    COLOR_DANGER    = "#C0392B"  
+    COLOR_WARNING   = "#C98A2C" 
+    COLOR_MUTED     = "#5C6B73"
+    COLOR_TEXT      = "#262626"
+    COLOR_TEXT_MUTED= "#707070"
+    COLOR_BORDER    = "#DCE2D8"
 
     def _safe_list(series):
         return [round(float(x), 2) if pd.notna(x) else None for x in series.tolist()]
@@ -601,33 +605,33 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
             "show": bool(titulo),
             "text": titulo.upper(),
             "left": "center",
-            "top": 10,
+            "top": 8,
             "textStyle": {
-                "color": "#137659",
-                "fontSize": 14,
-                "fontFamily": "Arial, sans-serif",
-                "fontWeight": "bold"
+                "color": COLOR_ACCENT,
+                "fontSize": 13,
+                "fontFamily": "Inter, sans-serif",
+                "fontWeight": "800"
             }
         },
-        "textStyle": {"fontFamily": "Arial, sans-serif"},
+        "textStyle": {"fontFamily": "Inter, sans-serif"},
         "tooltip": {
             "trigger": "axis",
-            "backgroundColor": "rgba(255, 255, 255, 0.95)",
-            "borderColor": "#137659",
+            "backgroundColor": "rgba(255, 255, 255, 0.97)",
+            "borderColor": COLOR_BORDER,
             "borderWidth": 1,
-            "textStyle": {"color": "#1f221e", "fontSize": 12, "fontFamily": "Arial, sans-serif"},
+            "textStyle": {"color": COLOR_TEXT, "fontSize": 11, "fontFamily": "Inter, sans-serif"},
             "axisPointer": {"type": "cross", "label": {"backgroundColor": "#6a7985"}}
         },
         "legend": {
             "data": ["Pozos ON", "Pozos OFF", "T. Vida Prom", "T. Vida Total", "T. Vida Efectivo", "T. V. Efec. Fallados", "TMEF", "Ind. Falla ON", "Ind. Falla ALS", "Ind. Falla ON <1500", "Ind. Falla ALS <1500"],
-            "bottom": 0,
-            "textStyle": {"color": "#475569", "fontSize": 10, "fontFamily": "Arial, sans-serif"},
+            "bottom": 4,
+            "textStyle": {"color": COLOR_TEXT_MUTED, "fontSize": 9.5, "fontFamily": "Inter, sans-serif"},
             "icon": "circle",
-            "itemGap": 15
+            "itemGap": 12
         },
         "grid": {
-            "left": "3%",
-            "right": "4%",
+            "left": "4%",
+            "right": "5%",
             "bottom": "15%",
             "top": "18%",
             "containLabel": True
@@ -637,8 +641,8 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
                 "type": "category",
                 "boundaryGap": True,
                 "data": categories,
-                "axisLine": {"lineStyle": {"color": "rgba(19, 118, 89, 0.15)"}},
-                "axisLabel": {"color": "#475569", "fontSize": 10, "fontFamily": "Arial, sans-serif"}
+                "axisLine": {"lineStyle": {"color": COLOR_BORDER}},
+                "axisLabel": {"color": COLOR_TEXT_MUTED, "fontSize": 9, "fontFamily": "Inter, sans-serif"}
             }
         ],
         "yAxis": [
@@ -646,9 +650,9 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
                 "type": "value",
                 "name": "POZOS / DÍAS",
                 "position": "left",
-                "splitLine": {"lineStyle": {"color": "rgba(19, 118, 89, 0.05)"}},
+                "splitLine": {"lineStyle": {"color": "rgba(46, 125, 70, 0.06)"}},
                 "axisLine": {"show": True, "lineStyle": {"color": COLOR_PRIMARY}},
-                "axisLabel": {"color": "#475569", "fontFamily": "Arial, sans-serif"}
+                "axisLabel": {"color": COLOR_TEXT_MUTED, "fontSize": 8.5, "fontFamily": "Inter, sans-serif"}
             },
             {
                 "type": "value",
@@ -656,7 +660,7 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
                 "position": "right",
                 "splitLine": {"show": False},
                 "axisLine": {"show": True, "lineStyle": {"color": COLOR_DANGER}},
-                "axisLabel": {"color": "#475569", "formatter": "{value} %", "fontFamily": "Arial, sans-serif"}
+                "axisLabel": {"color": COLOR_TEXT_MUTED, "fontSize": 8.5, "formatter": "{value}%", "fontFamily": "Inter, sans-serif"}
             }
         ],
         "series": [
@@ -664,11 +668,11 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
                 "name": "Pozos ON",
                 "type": "bar",
                 "stack": "Total",
-                "barWidth": "60%",
+                "barWidth": "55%",
                 "itemStyle": {
                     "color": {
                         "type": "linear", "x": 0, "y": 0, "x2": 0, "y2": 1,
-                        "colorStops": [{"offset": 0, "color": COLOR_ACCENT}, {"offset": 1, "color": "rgba(19, 118, 89, 0.1)"}]
+                        "colorStops": [{"offset": 0, "color": COLOR_PRIMARY}, {"offset": 1, "color": "rgba(46, 125, 70, 0.15)"}]
                     },
                     "borderRadius": [4, 4, 0, 0]
                 },
@@ -679,8 +683,8 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
                 "type": "bar",
                 "stack": "Total",
                 "itemStyle": {
-                    "color": "#5b5c55", 
-                    "opacity": 0.4,
+                    "color": COLOR_MUTED, 
+                    "opacity": 0.45,
                     "decal": {
                         "symbol": "rect",
                         "size": 1,
@@ -696,41 +700,41 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
                 "type": "line",
                 "smooth": True,
                 "symbol": "circle",
-                "symbolSize": 8,
-                "lineStyle": {"width": 3, "color": COLOR_SUCCESS},
-                "itemStyle": {"color": COLOR_SUCCESS},
+                "symbolSize": 7,
+                "lineStyle": {"width": 2.5, "color": COLOR_PRIMARY},
+                "itemStyle": {"color": COLOR_PRIMARY},
                 "data": rl_prom
             },
             {
                 "name": "T. Vida Total",
                 "type": "line",
                 "smooth": True,
-                "lineStyle": {"width": 2, "type": "dashed", "color": "#095139"},
-                "itemStyle": {"color": "#095139"},
+                "lineStyle": {"width": 2, "type": "dashed", "color": COLOR_ACCENT},
+                "itemStyle": {"color": COLOR_ACCENT},
                 "data": rl_gen
             },
             {
                 "name": "T. Vida Efectivo",
                 "type": "line",
                 "smooth": True,
-                "lineStyle": {"width": 2, "type": "dotted", "color": "#c09c2e"},
-                "itemStyle": {"color": "#c09c2e"},
+                "lineStyle": {"width": 2, "type": "dotted", "color": COLOR_WARNING},
+                "itemStyle": {"color": COLOR_WARNING},
                 "data": rle
             },
             {
                 "name": "T. V. Efec. Fallados",
                 "type": "line",
                 "smooth": True,
-                "lineStyle": {"width": 2, "type": "dotted", "color": "#a28834"},
-                "itemStyle": {"color": "#a28834"},
+                "lineStyle": {"width": 2, "type": "dotted", "color": "#A06E22"},
+                "itemStyle": {"color": "#A06E22"},
                 "data": rle_fallados
             },
             {
                 "name": "TMEF",
                 "type": "line",
                 "smooth": True,
-                "lineStyle": {"width": 1, "type": "dashed", "color": "#5b5c55"},
-                "itemStyle": {"color": "#5b5c55"},
+                "lineStyle": {"width": 1.5, "type": "dashed", "color": COLOR_TEXT_MUTED},
+                "itemStyle": {"color": COLOR_TEXT_MUTED},
                 "data": tmef
             },
             {
@@ -739,13 +743,13 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
                 "yAxisIndex": 1,
                 "smooth": True,
                 "symbol": "diamond",
-                "symbolSize": 10,
-                "lineStyle": {"width": 4, "color": COLOR_DANGER},
+                "symbolSize": 8,
+                "lineStyle": {"width": 3, "color": COLOR_DANGER},
                 "itemStyle": {"color": COLOR_DANGER},
                 "areaStyle": {
                     "color": {
                         "type": "linear", "x": 0, "y": 0, "x2": 0, "y2": 1,
-                        "colorStops": [{"offset": 0, "color": "rgba(211, 47, 47, 0.1)"}, {"offset": 1, "color": "transparent"}]
+                        "colorStops": [{"offset": 0, "color": "rgba(192, 57, 43, 0.12)"}, {"offset": 1, "color": "transparent"}]
                     }
                 },
                 "data": if_on
@@ -756,8 +760,8 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
                 "yAxisIndex": 1,
                 "smooth": True,
                 "symbol": "diamond",
-                "symbolSize": 8,
-                "lineStyle": {"width": 3, "color": COLOR_WARNING},
+                "symbolSize": 7,
+                "lineStyle": {"width": 2.5, "color": COLOR_WARNING},
                 "itemStyle": {"color": COLOR_WARNING},
                 "data": if_als
             },
@@ -767,9 +771,9 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
                 "yAxisIndex": 1,
                 "smooth": True,
                 "symbol": "triangle",
-                "symbolSize": 8,
-                "lineStyle": {"width": 3, "type": "dashed", "color": "#c09c2e"},
-                "itemStyle": {"color": "#c09c2e"},
+                "symbolSize": 7,
+                "lineStyle": {"width": 2, "type": "dashed", "color": "#223A5E"},
+                "itemStyle": {"color": "#223A5E"},
                 "data": if_on_1500
             },
             {
@@ -779,8 +783,8 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
                 "smooth": True,
                 "symbol": "triangle",
                 "symbolSize": 6,
-                "lineStyle": {"width": 2, "type": "dashed", "color": "#d32f2f"},
-                "itemStyle": {"color": "#d32f2f"},
+                "lineStyle": {"width": 2, "type": "dashed", "color": COLOR_DANGER},
+                "itemStyle": {"color": COLOR_DANGER},
                 "data": if_als_1500
             }
         ]
@@ -796,17 +800,17 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
             position: relative; 
             width:100%; 
             height:{chart_height}px; 
-            background: #ffffff; 
-            border: 1.5px solid rgba(19, 118, 89, 0.13); 
-            border-radius: 16px; 
+            background: linear-gradient(180deg, #ffffff 0%, #FCFDFA 100%);
+            border: 1px solid #DCE2D8; 
+            border-radius: 13px; 
             overflow: hidden;
-            box-shadow: 0 2px 8px rgba(19, 118, 89, 0.04), 0 8px 32px rgba(19, 118, 89, 0.06);
+            box-shadow: 0 1px 2px rgba(31,70,32,0.05), 0 4px 12px rgba(126,143,124,0.13), inset 0 1px 0 rgba(255,255,255,0.9);
             transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
         }}
         #chart-container:hover {{
             transform: translateY(-2px);
-            border-color: rgba(19, 118, 89, 0.25);
-            box-shadow: 0 6px 20px rgba(19, 118, 89, 0.10), 0 12px 40px rgba(19, 118, 89, 0.12);
+            border-color: rgba(46, 125, 70, 0.30);
+            box-shadow: 0 2px 5px rgba(31,70,32,0.07), 0 14px 32px rgba(126,143,124,0.22);
         }}
         #zoom-btn {{
             position: absolute; 
@@ -814,12 +818,12 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
             right: 10px; 
             z-index: 1000; 
             background: rgba(255, 255, 255, 0.95); 
-            border: 1px solid rgba(19, 118, 89, 0.25); 
-            color: #137659; 
+            border: 1px solid rgba(46, 125, 70, 0.25); 
+            color: #1F4620; 
             padding: 4px 10px; 
             border-radius: 6px; 
             cursor: pointer; 
-            font-size: 8px; 
+            font-size: 8.5px; 
             font-family: 'Inter', sans-serif;
             font-weight: 700;
             text-transform: uppercase;
@@ -832,10 +836,10 @@ def render_premium_echarts(df_monthly, titulo="PERFORMANCE DASHBOARD"):
             align-items: center;
         }}
         #zoom-btn:hover {{
-            background: #137659;
+            background: #2E7D46;
             color: #ffffff;
-            border-color: #137659;
-            box-shadow: 0 4px 12px rgba(19, 118, 89, 0.2);
+            border-color: #2E7D46;
+            box-shadow: 0 4px 12px rgba(46, 125, 70, 0.2);
         }}
     </style>
     <div id="chart-container">
