@@ -58,6 +58,37 @@ def _apply_styles_internal():
         div[data-testid="stVerticalBlock"] {
             gap: 0.15rem !important;
         }
+
+        /* ── ESTILO EXTRA REDONDEADO Y ELEVADO PARA GRÁFICAS (PLOTLY & ECHARTS) ── */
+        .stPlotlyChart, div[data-testid="stPlotlyChart"] {
+            background: linear-gradient(180deg, #ffffff 0%, #FCFDFA 100%) !important;
+            border: 1px solid #DCE2D8 !important;
+            border-radius: 18px !important;
+            box-shadow: 0 1px 3px rgba(31,70,32,0.05), 0 6px 18px rgba(126,143,124,0.11), inset 0 1px 0 rgba(255,255,255,0.95) !important;
+            padding: 12px 14px !important;
+            margin-bottom: 14px !important;
+            overflow: hidden !important;
+            transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease !important;
+        }
+        .stPlotlyChart:hover, div[data-testid="stPlotlyChart"]:hover {
+            border-color: rgba(46, 125, 70, 0.35) !important;
+            box-shadow: 0 2px 6px rgba(31,70,32,0.08), 0 12px 28px rgba(126,143,124,0.18) !important;
+            transform: translateY(-2px) !important;
+        }
+        /* Píldora redondeada para la leyenda SVG de Plotly */
+        .stPlotlyChart .legend rect.bg {
+            rx: 16px !important;
+            ry: 16px !important;
+            fill: rgba(255, 255, 255, 0.96) !important;
+            stroke: #DCE2D8 !important;
+            stroke-width: 1.2px !important;
+            filter: drop-shadow(0 2px 6px rgba(0,0,0,0.05)) !important;
+        }
+        /* Barras con esquinas suavizadas en Plotly */
+        .stPlotlyChart .bars path {
+            rx: 6px !important;
+            ry: 6px !important;
+        }
         
         /* Espacio superior de los contenidos de las pestañas */
         div[data-testid="stTabContent"] {
@@ -536,7 +567,7 @@ def _apply_styles_internal():
             color: #137659 !important;
         }
 
-        /* ── FLOATING BOTTOM NAV (refined: accessible, persistent, mobile-safe) ── */
+/* ── FLOATING BOTTOM NAV (clean, professional with Parex green) ── */
         div[data-testid="stTabs"] {
             display: flex !important;
             flex-direction: column !important;
@@ -544,24 +575,20 @@ def _apply_styles_internal():
 
         div[data-testid="stTabs"] [role="tablist"] {
             position: fixed !important;
-            bottom: env(safe-area-inset-bottom, 16px) !important;
-            left: 50% !important;
-            transform: translateX(-50%) !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            transform: none !important;
             z-index: 1000 !important;
-            background: rgba(255, 255, 255, 0.98) !important;
-            backdrop-filter: blur(20px) saturate(180%) !important;
-            padding: 8px 20px !important;
-            border-radius: 9999px !important;
-            border: 1.5px solid rgba(19, 118, 89, 0.2) !important;
-            box-shadow: 
-                0 8px 32px rgba(0,0,0,0.08), 
-                0 2px 8px rgba(19,118,89,0.08),
-                0 0 0 1px rgba(255,255,255,0.5) inset !important;
-            width: auto !important;
-            max-width: calc(100vw - 32px) !important;
+            background: linear-gradient(180deg, rgba(19, 118, 89, 0.03) 0%, #ffffff 100%) !important;
+            border-top: 2px solid #137659 !important;
+            box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.06), 0 -1px 0 rgba(19, 118, 89, 0.1) !important;
+            padding: 6px env(safe-area-inset-right, 16px) 6px env(safe-area-inset-left, 16px) !important;
+            border-radius: 0 !important;
             display: flex !important;
-            justify-content: center !important;
-            gap: 4px !important;
+            justify-content: space-around !important;
+            align-items: center !important;
+            gap: 0 !important;
             order: 2 !important;
             overflow-x: auto !important;
             scrollbar-width: none !important;
@@ -578,65 +605,60 @@ def _apply_styles_internal():
             background: transparent !important;
             border: none !important;
             padding-top: 0px !important;
-            padding-bottom: 100px !important;
+            padding-bottom: 72px !important;
             width: 100% !important;
-        }
-
-        /* Quitar la línea inferior por defecto de los tabs */
-        div[data-testid="stTabs"] [role="tablist"] {
-            border: none !important;
         }
 
         /* Estilo de cada botón de tab */
         div[data-testid="stTabs"] button[data-baseweb="tab"] {
             background: transparent !important;
             border: none !important;
-            padding: 10px 18px !important;
-            color: #5b5c55 !important;
+            padding: 8px 12px !important;
+            color: #6b7a6f !important;
             font-family: 'Inter', sans-serif !important;
-            font-size: 0.7rem !important;
+            font-size: 0.62rem !important;
             font-weight: 600 !important;
-            letter-spacing: 0.5px !important;
+            letter-spacing: 0.4px !important;
             text-transform: uppercase !important;
-            transition: all 0.2s ease !important;
-            border-radius: 9999px !important;
+            transition: color 0.15s ease, background 0.15s ease !important;
+            border-radius: 8px !important;
             height: auto !important;
             min-height: 44px !important;
+            min-width: 0 !important;
             white-space: nowrap !important;
-            flex-shrink: 0 !important;
+            flex: 1 1 auto !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            gap: 6px !important;
+            gap: 4px !important;
+            max-width: 100% !important;
+            position: relative !important;
         }
         
         div[data-testid="stTabs"] button[data-baseweb="tab"]:hover {
             color: #137659 !important;
-            background: rgba(19, 118, 89, 0.08) !important;
+            background: rgba(19, 118, 89, 0.1) !important;
         }
         
-        /* Tab seleccionado (Estado Activo) - con semántica visual clara */
+        /* Tab seleccionado - verde Parex fuerte */
         div[data-testid="stTabs"] button[aria-selected="true"] {
-            color: #ffffff !important;
-            background: linear-gradient(135deg, #137659 0%, #0a4d34 100%) !important;
-            box-shadow: 
-                0 4px 16px rgba(19, 118, 89, 0.35),
-                0 0 0 2px rgba(255,255,255,0.2) inset !important;
+            color: #137659 !important;
+            background: rgba(19, 118, 89, 0.12) !important;
+            box-shadow: none !important;
             border: none !important;
+            font-weight: 700 !important;
         }
 
-        /* Indicador visual sutil para tab activo */
+        /* Subrayado verde Parex del tab activo */
         div[data-testid="stTabs"] button[aria-selected="true"]::after {
             content: '';
             position: absolute;
-            bottom: -2px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 8px;
-            height: 8px;
+            bottom: 0;
+            left: 16%;
+            right: 16%;
+            height: 3px;
             background: #137659;
-            border-radius: 50%;
-            opacity: 0.8;
+            border-radius: 3px 3px 0 0;
         }
 
         /* Esconder la barra nativa debajo del tab seleccionado */
@@ -644,6 +666,17 @@ def _apply_styles_internal():
         div[data-baseweb="tab-border"],
         [data-testid="stTabHighlight"] {
             display: none !important;
+        }
+
+        /* Línea superior verde sutil en contenedor */
+        div[data-testid="stTabs"] [role="tablist"]::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #137659, transparent);
         }
 
         /* ── REDUCED MOTION / ACCESSIBILITY ── */

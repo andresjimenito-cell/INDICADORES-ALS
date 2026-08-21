@@ -45,7 +45,7 @@ _SH2 = ("0 2px 5px rgba(31,70,32,0.07), 0 14px 32px rgba(126,143,124,0.22), "
         "inset 0 1px 0 rgba(255,255,255,0.9)")
 
 _CARD = (f"background:linear-gradient(180deg,#ffffff 0%,#FCFDFA 100%);"
-         f"border:1px solid {_BR};border-radius:13px;box-shadow:{_SH1};")
+         f"border:1px solid {_BR};border-radius:18px;box-shadow:{_SH1};")
 
 
 def _halo(color):
@@ -656,13 +656,16 @@ def _render_seccion_run_life_bloque(df_bloque_raw, fecha_eval_norm_b, anio_prev,
                 legend=dict(
                     orientation="h",
                     yanchor="bottom",
-                    y=1.03,
+                    y=1.04,
                     xanchor="center",
                     x=0.5,
-                    font=dict(size=9.5, family="Inter, sans-serif", color=_T),
-                    bgcolor="rgba(255,255,255,0.95)",
+                    font=dict(size=10, family="Inter, sans-serif", color=_T, weight=600),
+                    bgcolor="rgba(255,255,255,0.96)",
                     bordercolor=_BR,
-                    borderwidth=1
+                    borderwidth=1.2,
+                    itemwidth=35,
+                    itemsizing="constant",
+                    tracegroupgap=12
                 ),
                 height=chart_h_rl
             )
@@ -1037,13 +1040,16 @@ def _render_seccion_campana_gauss(df_fallas_als_all, df_bloque_raw, fecha_eval_n
             legend=dict(
                 orientation="h",
                 yanchor="bottom",
-                y=1.02,
+                y=1.04,
                 xanchor="center",
                 x=0.5,
-                font=dict(size=9.5, family="Inter, sans-serif", color=_T),
-                bgcolor="rgba(255,255,255,0.95)",
+                font=dict(size=10, family="Inter, sans-serif", color=_T, weight=600),
+                bgcolor="rgba(255,255,255,0.96)",
                 bordercolor=_BR,
-                borderwidth=1
+                borderwidth=1.2,
+                itemsizing="constant",
+                itemwidth=35,
+                tracegroupgap=12
             ),
             height=430
         )
@@ -1220,13 +1226,16 @@ def _render_seccion_campana_gauss(df_fallas_als_all, df_bloque_raw, fecha_eval_n
                     legend=dict(
                         orientation="h",
                         yanchor="bottom",
-                        y=1.02,
+                        y=1.04,
                         xanchor="center",
                         x=0.5,
-                        font=dict(size=9.5, family="Inter, sans-serif", color=_T),
-                        bgcolor="rgba(255,255,255,0.95)",
+                        font=dict(size=10, family="Inter, sans-serif", color=_T, weight=600),
+                        bgcolor="rgba(255,255,255,0.96)",
                         bordercolor=_BR,
-                        borderwidth=1
+                        borderwidth=1.2,
+                        itemsizing="constant",
+                        itemwidth=35,
+                        tracegroupgap=12
                     ),
                     height=420
                 )
@@ -1700,13 +1709,16 @@ def _render_seccion_dispersion_modelo_bomba(df_bloque_raw, fecha_eval_norm_b, fe
         legend=dict(
             orientation="h",
             yanchor="bottom",
-            y=1.02,
+            y=1.04,
             xanchor="center",
             x=0.5,
-            font=dict(size=9.5, family="Inter, sans-serif", color=_T),
-            bgcolor="rgba(255,255,255,0.95)",
+            font=dict(size=10, family="Inter, sans-serif", color=_T, weight=600),
+            bgcolor="rgba(255,255,255,0.96)",
             bordercolor=_BR,
-            borderwidth=1
+            borderwidth=1.2,
+            itemsizing="constant",
+            itemwidth=35,
+            tracegroupgap=12
         ),
         height=470
     )
@@ -2026,9 +2038,21 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                 "textStyle": {"fontFamily": "Inter, sans-serif"},
                 "tooltip": {"trigger": "axis", "backgroundColor": "rgba(255,255,255,0.97)", "borderColor": _BR,
                             "textStyle": {"color": _T, "fontFamily": "Inter, sans-serif"}, "axisPointer": {"type": "cross"}},
-                "legend": {"data": ["I.F. Total", "I.F. ALS", "I.F. <1500", "I.F. ALS <1500"], "bottom": 4,
-                           "textStyle": {"color": _T2, "fontSize": 9.5, "fontFamily": "Inter, sans-serif"}, "icon": "circle"},
-                "grid": {"left": "4%", "right": "4%", "bottom": "18%", "top": "22%", "containLabel": True},
+                "legend": {
+                    "data": ["I.F. Total", "I.F. ALS", "I.F. <1500", "I.F. ALS <1500"],
+                    "bottom": 6,
+                    "textStyle": {"color": _T2, "fontSize": 9.5, "fontFamily": "Inter, sans-serif", "fontWeight": "600"},
+                    "icon": "circle",
+                    "itemWidth": 9,
+                    "itemHeight": 9,
+                    "itemGap": 14,
+                    "backgroundColor": "rgba(255, 255, 255, 0.94)",
+                    "borderColor": _BR,
+                    "borderWidth": 1,
+                    "borderRadius": 20,
+                    "padding": [5, 14]
+                },
+                "grid": {"left": "4%", "right": "4%", "bottom": "20%", "top": "22%", "containLabel": True},
                 "xAxis": [{"type": "category", "data": months_idx,
                            "axisLabel": {"color": _T2, "fontSize": 8.5, "fontFamily": "Inter, sans-serif", "rotate": 30}}],
                 "yAxis": [{"type": "value",
@@ -2052,7 +2076,7 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                      "itemStyle": {"color": _G2}, "lineStyle": {"width": 1.8, "type": "dashed", "color": _G2}}
                 ]
             }
-            components.html(f'<div id="echarts-if-line" style="width:100%;height:370px;{_CARD}overflow:hidden;box-sizing:border-box;"></div>'
+            components.html(f'<div id="echarts-if-line" style="width:100%;height:370px;{_CARD}border-radius:18px!important;overflow:hidden;box-sizing:border-box;"></div>'
                             f'<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>'
                             f'<script>(function(){{var c=echarts.init(document.getElementById("echarts-if-line"),null);'
                             f'c.setOption({_json.dumps(echarts_line)});'
@@ -2069,9 +2093,21 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                 "textStyle": {"fontFamily": "Inter, sans-serif"},
                 "tooltip": {"trigger": "axis", "backgroundColor": "rgba(255,255,255,0.97)", "borderColor": _BR,
                             "textStyle": {"color": _T, "fontFamily": "Inter, sans-serif"}},
-                "legend": {"data": ["Pozos Operativos", "Eventos Totales"], "bottom": 4,
-                           "textStyle": {"color": _T2, "fontSize": 9.5, "fontFamily": "Inter, sans-serif"}, "icon": "circle"},
-                "grid": {"left": "4%", "right": "8%", "bottom": "18%", "top": "18%", "containLabel": True},
+                "legend": {
+                    "data": ["Pozos Operativos", "Eventos Totales"],
+                    "bottom": 6,
+                    "textStyle": {"color": _T2, "fontSize": 9.5, "fontFamily": "Inter, sans-serif", "fontWeight": "600"},
+                    "icon": "circle",
+                    "itemWidth": 9,
+                    "itemHeight": 9,
+                    "itemGap": 14,
+                    "backgroundColor": "rgba(255, 255, 255, 0.94)",
+                    "borderColor": _BR,
+                    "borderWidth": 1,
+                    "borderRadius": 20,
+                    "padding": [5, 14]
+                },
+                "grid": {"left": "4%", "right": "8%", "bottom": "20%", "top": "18%", "containLabel": True},
                 "xAxis": [{"type": "category", "data": months_idx, "axisLabel": {"color": _T2, "fontSize": 8.5, "fontFamily": "Inter, sans-serif", "rotate": 30}}],
                 "yAxis": [
                     {"type": "value", "name": "POZOS", "nameTextStyle": {"color": _T2, "fontSize": 9}, "axisLabel": {"color": _T2, "fontFamily": "Inter, sans-serif", "fontSize": 8.5}, "splitLine": {"lineStyle": {"color": "rgba(46,125,70,0.06)"}}},
@@ -2083,10 +2119,10 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                      "areaStyle": {"color": f"{_G}15"}},
                     {"name": "Eventos Totales", "type": "bar", "yAxisIndex": 1, "data": f_tots,
                      "barWidth": "35%",
-                     "itemStyle": {"color": f"{_Y}85", "borderRadius": [4, 4, 0, 0]}}
+                     "itemStyle": {"color": f"{_Y}85", "borderRadius": [8, 8, 0, 0]}}
                 ]
             }
-            components.html(f'<div id="echarts-op-fallas" style="width:100%;height:370px;{_CARD}overflow:hidden;box-sizing:border-box;"></div>'
+            components.html(f'<div id="echarts-op-fallas" style="width:100%;height:370px;{_CARD}border-radius:18px!important;overflow:hidden;box-sizing:border-box;"></div>'
                             f'<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>'
                             f'<script>(function(){{var c=echarts.init(document.getElementById("echarts-op-fallas"),null);c.setOption({_json.dumps(echarts_op)});window.addEventListener("resize",function(){{c.resize();}});}})();</script>',
                             height=380)

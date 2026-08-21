@@ -50,7 +50,7 @@ _SH2 = ("0 2px 5px rgba(31,70,32,0.07), 0 14px 32px rgba(126,143,124,0.22), "
 
 # Tarjeta base: degradado casi imperceptible que aclara el borde superior
 _CARD = (f"background:linear-gradient(180deg,#ffffff 0%,#FCFDFA 100%);"
-         f"border:1px solid {_BR};border-radius:13px;box-shadow:{_SH1};")
+         f"border:1px solid {_BR};border-radius:18px;box-shadow:{_SH1};")
 
 
 def _fmt(n, dec=0):
