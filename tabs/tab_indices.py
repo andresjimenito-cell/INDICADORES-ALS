@@ -12,11 +12,47 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 import plotly.graph_objects as go_fig
-from config import COLOR_PRINCIPAL
-from indice_falla import calcular_indice_falla_anual
-from mtbf import calcular_mtbf
-from styles import render_hud_table
-from calculations import clasificar_razon_ia
+from data.config import COLOR_PRINCIPAL
+from core.indice_falla import calcular_indice_falla_anual
+from core.mtbf import calcular_mtbf
+from ui.styles import render_hud_table
+from core.calculations import clasificar_razon_ia
+
+# ── Paleta Corporativa Parex ─────────────────────────────────────────────────
+_G   = "#2E7D46"        # Verde principal
+_G2  = "#1F4620"        # Verde oscuro
+_G3  = "#EEF3EA"        # Verde muy claro (fondo)
+_R   = "#C0392B"        # Rojo falla
+_R2  = "#FBE8E6"        # Rojo claro fondo
+_Y   = "#C98A2C"        # Dorado acento
+_Y2  = "#FDF6E9"        # Dorado fondo
+_T   = "#262626"        # Texto oscuro
+_T2  = "#707070"        # Texto suave
+_W   = "#ffffff"
+_N   = "#223A5E"        # Azul petróleo
+_BR  = "#DCE2D8"        # Borde hairline de tarjeta
+_BG  = "#F7F8F5"        # Fondo tenue
+
+_FS  = "'Inter', 'Segoe UI', Calibri, Arial, sans-serif"
+_FN  = "'Source Serif 4', Cambria, Georgia, 'Times New Roman', serif"
+_FONTS_URL = ("https://fonts.googleapis.com/css2?"
+              "family=Inter:wght@400;500;600;700;800&"
+              "family=Source+Serif+4:opsz,wght@8..60,600;8..60,700;8..60,900&display=swap")
+
+_SH1 = ("0 1px 2px rgba(31,70,32,0.05), 0 4px 12px rgba(126,143,124,0.13), "
+        "inset 0 1px 0 rgba(255,255,255,0.9)")
+_SH2 = ("0 2px 5px rgba(31,70,32,0.07), 0 14px 32px rgba(126,143,124,0.22), "
+        "inset 0 1px 0 rgba(255,255,255,0.9)")
+
+_CARD = (f"background:linear-gradient(180deg,#ffffff 0%,#FCFDFA 100%);"
+         f"border:1px solid {_BR};border-radius:13px;box-shadow:{_SH1};")
+
+
+def _halo(color):
+    """Anillo suave + sombra proyectada bajo un icono circular."""
+    r, g, b = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
+    return (f"0 0 0 4px rgba({r},{g},{b},0.10), 0 4px 10px rgba({r},{g},{b},0.30), "
+            f"inset 0 1px 0 rgba(255,255,255,0.28)")
 
 def render_general_table(df_bd, table_id="general_table"):
     """Renderiza la tabla de detalles generales con estilo HUD (scrollX activado)."""
@@ -1270,13 +1306,13 @@ def _render_seccion_dispersion_modelo_bomba(df_bloque_raw, fecha_eval_norm_b, fe
     st.markdown("<div style='height:18px;'></div>", unsafe_allow_html=True)
     st.markdown(
         f"""
-        <div style='background:linear-gradient(90deg, rgba(19,118,89,0.08) 0%, rgba(192,156,46,0.06) 100%); padding:12px 16px; border-radius:12px; border-left:4px solid #137659; margin-bottom:12px;'>
-            <div style='display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;'>
+        <div style="{_CARD} padding:14px 18px; margin-bottom:12px; border-left:4px solid {_G}; box-sizing:border-box;">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
                 <div>
-                    <h6 style='color:#137659; font-family:Inter, sans-serif; font-weight:800; letter-spacing:0.8px; text-transform:uppercase; font-size:0.88rem; margin:0;'>
+                    <h6 style="color:{_G2}; font-family:{_FS}; font-weight:800; letter-spacing:0.8px; text-transform:uppercase; font-size:0.85rem; margin:0;">
                         🎯 DISPERSIÓN DE FALLAS Y MTBF POR MODELO DE BOMBA (SOLO FALLAS ALS)
                     </h6>
-                    <span style='font-size:0.75rem; color:#5b5c55; font-family:Inter, sans-serif;'>
+                    <span style="font-size:0.75rem; color:{_T2}; font-family:{_FS};">
                         Puntos individuales de eventos de falla (dispersión) sobre la línea de MTBF actuarial por modelo de equipo a {fecha_eval_dt_b.strftime('%Y-%m-%d')}
                     </span>
                 </div>
@@ -1742,33 +1778,125 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
             fecha_inicio
         )
         
-        # --- 1. KPI SEMÁFOROS PREMIUM con comparativa vs mes anterior ---
-        st.markdown("""
+        # ── ENCABEZADO EJECUTIVO (ESTILO TABLERO) ──────────────────────────────────
+        _filtros_ind = {
+            'ACTIVO':    st.session_state.get('general_activo_filter',    'TODOS'),
+            'BLOQUE':    st.session_state.get('general_bloque_filter',    'TODOS'),
+            'CAMPO':     st.session_state.get('general_campo_filter',     'TODOS'),
+            'ALS':       st.session_state.get('general_als_filter',       'TODOS'),
+        }
+        _activos_lbl_ind = " · ".join(v for v in _filtros_ind.values() if v != 'TODOS') or "Todos los activos"
+        fecha_eval_dt_ind = pd.to_datetime(fecha_evaluacion)
+
+        hero_html_ind = f"""
         <style>
-        .if-semaforo { background:#ffffff; border:1px solid rgba(19,118,89,0.12); border-radius:16px;
-            padding:14px 16px; display:flex; flex-direction:column; align-items:center; text-align:center;
-            position:relative; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.04);
-            transition:transform 0.2s,box-shadow 0.2s; }
-        .if-semaforo:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,0.08); }
-        .if-sem-lbl { font-family:'Inter',sans-serif; font-size:0.58rem; font-weight:800;
-            letter-spacing:1.2px; text-transform:uppercase; color:#5b5c55; margin-bottom:6px; }
-        .if-sem-val { font-family:'Inter',sans-serif; font-size:2rem; font-weight:900; line-height:1.1; }
-        .if-sem-dot { width:12px; height:12px; border-radius:50%; margin:6px auto 2px;
-            box-shadow:0 0 8px currentColor; }
-        .if-sem-delta { font-family:'Inter',sans-serif; font-size:0.65rem; font-weight:700;
-            padding:2px 8px; border-radius:20px; margin-top:4px; display:inline-block; }
-        .if-sem-sub { font-family:'Inter',sans-serif; font-size:0.58rem; color:#94a3b8; margin-top:3px; }
+        @import url('{_FONTS_URL}');
+        .tbl-hero {{
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 22px;
+            background:
+                radial-gradient(120% 180% at 0% 0%, rgba(76,164,106,0.42) 0%, rgba(31,70,32,0) 55%),
+                linear-gradient(110deg, {_G2} 0%, #17381A 45%, {_G2} 100%);
+            border-radius: 14px;
+            padding: 14px 22px;
+            overflow: hidden;
+            margin-bottom: 14px;
+            box-shadow: 0 2px 5px rgba(31,70,32,0.13), 0 16px 38px rgba(31,70,32,0.24), inset 0 1px 0 rgba(255,255,255,0.16);
+        }}
+        .tbl-hero-brand {{ display: flex; align-items: center; gap: 14px; position: relative; z-index: 1; flex-shrink: 0; }}
+        .tbl-hero-mark {{
+            width: 42px; height: 42px; border-radius: 11px;
+            background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.24);
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.30), 0 4px 12px rgba(0,0,0,0.18);
+        }}
+        .tbl-hero-title {{ font-family: {_FN}; font-size: 20px; font-weight: 700; color: #ffffff; line-height: 1.15; }}
+        .tbl-hero-dot {{ width: 6px; height: 6px; border-radius: 50%; background: #6FD08C; box-shadow: 0 0 0 3px rgba(111,208,140,0.22); }}
+        .tbl-hero-ctx {{ display: flex; align-items: stretch; position: relative; z-index: 1; flex: 1; justify-content: flex-end; }}
+        .tbl-hero-item {{ padding: 0 16px; border-left: 1px solid rgba(255,255,255,0.15); display: flex; flex-direction: column; justify-content: center; gap: 2px; }}
+        .tbl-hero-k {{ font-family: {_FS}; font-size: 9px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: rgba(255,255,255,0.55); }}
+        .tbl-hero-v {{ font-family: {_FS}; font-size: 12.5px; font-weight: 600; color: #ffffff; display: flex; align-items: center; gap: 6px; }}
+        </style>
+        <div class="tbl-hero">
+          <div class="tbl-hero-brand">
+            <div class="tbl-hero-mark">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="20" x2="18" y2="10"/>
+                <line x1="12" y1="20" x2="12" y2="4"/>
+                <line x1="6" y1="20" x2="6" y2="14"/>
+              </svg>
+            </div>
+            <div>
+              <div class="tbl-hero-title">Índices de Falla y Operatividad Anualizada</div>
+              <div style="font-family:{_FS}; font-size:11.5px; color:rgba(255,255,255,0.72); display:flex; align-items:center; gap:6px;">
+                <div class="tbl-hero-dot"></div>
+                <span>Tasa de falla rolling 12 meses, campanas de Gauss y dispersión de modelos</span>
+              </div>
+            </div>
+          </div>
+          <div class="tbl-hero-ctx">
+            <div class="tbl-hero-item">
+              <span class="tbl-hero-k">Corte Evaluación</span>
+              <span class="tbl-hero-v">{fecha_eval_dt_ind.strftime('%d/%m/%Y')}</span>
+            </div>
+            <div class="tbl-hero-item">
+              <span class="tbl-hero-k">Filtros Activos</span>
+              <span class="tbl-hero-v">{_activos_lbl_ind}</span>
+            </div>
+            <div class="tbl-hero-item">
+              <span class="tbl-hero-k">Meta Corporativa IF</span>
+              <span class="tbl-hero-v">≤ 7.5%</span>
+            </div>
+          </div>
+        </div>
+        """
+        st.markdown(hero_html_ind, unsafe_allow_html=True)
+
+        # ── 1. KPI SEMÁFOROS (4 TARJETAS CON ELEVACIÓN _CARD Y HALOS) ────────────
+        st.markdown(f"""
+        <style>
+        .if-card {{
+            {_CARD}
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 14px 12px;
+            text-align: center;
+            position: relative;
+            transition: box-shadow 0.24s ease, transform 0.24s ease, border-color 0.24s ease;
+        }}
+        .if-card:hover {{
+            border-color: rgba(46,125,70,0.30);
+            box-shadow: {_SH2};
+            transform: translateY(-2px);
+        }}
+        .if-icon {{
+            width: 32px; height: 32px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 6px;
+        }}
+        .if-lbl {{ font-family: {_FS}; font-size: 10px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: {_T2}; margin-bottom: 2px; }}
+        .if-val {{ font-family: {_FN}; font-size: 32px; font-weight: 700; line-height: 1.05; letter-spacing: -0.5px; }}
+        .if-sub {{ font-family: {_FS}; font-size: 10px; color: {_T2}; margin-top: 4px; }}
+        .if-badge {{
+            font-family: {_FS}; font-size: 8.5px; font-weight: 700;
+            padding: 2px 8px; border-radius: 12px; margin-top: 4px; display: inline-block;
+            letter-spacing: 0.4px;
+        }}
         </style>""", unsafe_allow_html=True)
 
         def get_val_num(ind_name):
-            """Retorna el IF como número flotante (0-1)."""
             try:
                 raw = indice_resumen_df[indice_resumen_df['Indicador'] == ind_name]['Valor'].values[0]
                 return float(str(raw).replace('%','').strip()) / 100
             except: return 0.0
 
         def get_prev_if(col_name, df_hist):
-            """Retorna el IF del mes anterior (penúltimo mes disponible)."""
             try:
                 vals = df_mensual_hist[col_name].dropna().values
                 return float(vals[-2]) if len(vals) >= 2 else float(vals[-1])
@@ -1777,20 +1905,32 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
         META_IF = 0.075  # 7.5%
 
         def _semaforo_card(label, val_num, prev_num, meta=META_IF):
-            """Construye un KPI card con semáforo y delta."""
-            if val_num <= meta:          color = '#137659';  dot_label = '● VERDE'
-            elif val_num <= meta * 1.33: color = '#c09c2e';  dot_label = '● ALERTA'
-            else:                         color = '#c62828';  dot_label = '● ROJO'
+            if val_num <= meta:
+                color = _G
+                bg = _G3
+                dot_label = '● OK'
+            elif val_num <= meta * 1.33:
+                color = _Y
+                bg = _Y2
+                dot_label = '● ALERTA'
+            else:
+                color = _R
+                bg = _R2
+                dot_label = '● CRÍTICO'
+
             delta = val_num - prev_num
             delta_s = f"{'▲' if delta > 0 else '▼'} {abs(delta)*100:.2f}pp vs mes ant."
-            delta_c = '#c62828' if delta > 0 else '#137659'
-            return f"""<div class="if-semaforo" style="border-top:3px solid {color};">
-                <div class="if-sem-lbl">{label}</div>
-                <div class="if-sem-val" style="color:{color};">{val_num*100:.2f}<span style="font-size:1rem;">%</span></div>
-                <div class="if-sem-dot" style="background:{color};color:{color};"></div>
-                <span style="font-family:'Inter',sans-serif;font-size:0.6rem;font-weight:700;color:{color};">{dot_label}</span>
-                <div class="if-sem-delta" style="background:{delta_c}15;color:{delta_c};border:1px solid {delta_c}40;">{delta_s}</div>
-                <div class="if-sem-sub">Meta: {meta*100:.1f}%</div>
+            delta_c = _R if delta > 0 else _G
+            delta_bg = _R2 if delta > 0 else _G3
+
+            return f"""<div class="if-card">
+                <div class="if-icon" style="background:{color}; box-shadow:{_halo(color)};">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#ffffff" stroke-width="2.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                </div>
+                <div class="if-lbl">{label}</div>
+                <div class="if-val" style="color:{color};">{val_num*100:.2f}<span style="font-size:16px;">%</span></div>
+                <span class="if-badge" style="background:{bg}; color:{color}; border:1px solid {color}50;">{dot_label}</span>
+                <div class="if-sub" style="color:{delta_c}; font-weight:600;">{delta_s}</div>
             </div>"""
 
         if_on    = get_val_num('Índice de Falla Total')
@@ -1806,7 +1946,7 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
         with c3: st.markdown(_semaforo_card('I.F. ON (Pozos ON)', if_on2, prev_on), unsafe_allow_html=True)
         with c4: st.markdown(_semaforo_card('I.F. ALS ON (<1500d)', if_als2, prev_als), unsafe_allow_html=True)
 
-        st.markdown("<div style='height:18px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height:14px;'></div>", unsafe_allow_html=True)
 
         # --- 2. GRÁFICOS DE TENDENCIA ---
         df_mensual_grafico = df_mensual_hist.copy()

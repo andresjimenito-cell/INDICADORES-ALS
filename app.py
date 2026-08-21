@@ -17,7 +17,7 @@ import tema
 
 # === CONFIGURACIÓN DE PÁGINA ===
 st.set_page_config(
-    page_title="🚀 Sistema Parex Resources (Frontera)",
+    page_title="Sistema Parex Resources (Frontera)",
     layout="wide",
     initial_sidebar_state="collapsed"
 )

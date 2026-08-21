@@ -46,63 +46,60 @@ def _init_session_state():
 
 _HEADER_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700;8..60,900&display=swap');
 
 /* ── Barra principal ── */
 .als-header-bar {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 8px 16px;
-    background: linear-gradient(135deg, 
-        rgba(255, 255, 255, 0.98) 0%, 
-        rgba(252, 254, 253, 0.99) 100%
-    );
-    border: 1px solid rgba(19, 118, 89, 0.16);
-    border-top: 3px solid #137659;
-    border-radius: 12px;
+    gap: 14px;
+    padding: 10px 18px;
+    background: linear-gradient(180deg, #ffffff 0%, #FCFDFA 100%);
+    border: 1px solid #DCE2D8;
+    border-top: 3px solid #2E7D46;
+    border-radius: 13px;
     margin-bottom: 0px;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 4px 18px rgba(19, 118, 89, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
-    transition: box-shadow 0.3s ease, border-color 0.3s ease;
+    box-shadow: 0 1px 2px rgba(31,70,32,0.05), 0 4px 12px rgba(126,143,124,0.13), inset 0 1px 0 rgba(255,255,255,0.9);
+    transition: box-shadow 0.24s ease, border-color 0.24s ease;
     width: 100% !important;
     box-sizing: border-box;
 }
 
 .als-header-bar:hover {
-    box-shadow: 0 6px 24px rgba(19, 118, 89, 0.07), 0 2px 4px rgba(0, 0, 0, 0.02);
-    border-color: rgba(19, 118, 89, 0.25);
+    box-shadow: 0 2px 5px rgba(31,70,32,0.07), 0 14px 32px rgba(126,143,124,0.22);
+    border-color: rgba(46, 125, 70, 0.35);
 }
 
 /* ── Logo / ícono ── */
 .als-logo-wrap {
     flex-shrink: 0;
-    width: 32px; height: 32px;
-    border: 1px solid rgba(19, 118, 89, 0.25);
-    border-radius: 8px;
+    width: 36px; height: 36px;
+    border: 1px solid rgba(46, 125, 70, 0.25);
+    border-radius: 10px;
     display: flex; align-items: center; justify-content: center;
-    background: linear-gradient(135deg, #e8f5ee 0%, #c5e8d5 100%);
-    font-size: 1.1rem;
-    box-shadow: 0 2px 6px rgba(19, 118, 89, 0.08);
+    background: linear-gradient(135deg, #EEF3EA 0%, #d8ebd2 100%);
+    font-size: 1.15rem;
+    box-shadow: 0 2px 6px rgba(46, 125, 70, 0.12);
 }
 
 /* ── Título + subtítulo ── */
 .als-title-block { flex-shrink: 0; }
 .als-title {
-    font-family: 'Inter', sans-serif !important;
-    font-weight: 800;
-    font-size: 0.95rem;
-    letter-spacing: 0.5px;
-    color: #137659;
-    line-height: 1.1;
+    font-family: 'Source Serif 4', Georgia, serif !important;
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: -0.2px;
+    color: #1F4620;
+    line-height: 1.15;
     margin: 0;
 }
 .als-subtitle {
     font-family: 'Inter', sans-serif !important;
-    font-size: 0.58rem;
-    font-weight: 600;
-    color: #64748b;
+    font-size: 0.60rem;
+    font-weight: 700;
+    color: #707070;
     letter-spacing: 0.8px;
     text-transform: uppercase;
     margin: 2px 0 0 0;
@@ -111,7 +108,7 @@ _HEADER_CSS = """
 /* ── Separador vertical ── */
 .als-vdivider {
     width: 1px; height: 26px;
-    background: linear-gradient(180deg, transparent, rgba(19, 118, 89, 0.22), transparent);
+    background: linear-gradient(180deg, transparent, rgba(46, 125, 70, 0.22), transparent);
     flex-shrink: 0;
 }
 
@@ -123,18 +120,18 @@ _HEADER_CSS = """
 }
 .als-date-label {
     font-family: 'Inter', sans-serif !important;
-    font-size: 0.52rem; font-weight: 800;
-    color: #64748b; letter-spacing: 1px; text-transform: uppercase;
+    font-size: 0.54rem; font-weight: 800;
+    color: #707070; letter-spacing: 1px; text-transform: uppercase;
 }
 .als-date-value {
     font-family: 'Inter', sans-serif !important;
-    font-size: 0.72rem; font-weight: 700;
-    color: #137659;
+    font-size: 0.74rem; font-weight: 700;
+    color: #1F4620;
     letter-spacing: 0.2px;
-    background: rgba(19, 118, 89, 0.05);
-    padding: 2px 8px;
-    border-radius: 6px;
-    border: 1px solid rgba(19, 118, 89, 0.1);
+    background: rgba(46, 125, 70, 0.08);
+    padding: 3px 9px;
+    border-radius: 8px;
+    border: 1px solid rgba(46, 125, 70, 0.15);
     margin-top: 3px;
     display: inline-block;
 }
@@ -179,7 +176,7 @@ def render_header(titulo_pagina: str = "INDICADORES ALS", fecha_eval=None, df_bd
     if os.path.exists("logo.png"):
         logo_inner = '<img src="logo.png" style="width:24px;height:24px;object-fit:contain;">'
     else:
-        logo_inner = "🛡️"
+        logo_inner = "ALS"
 
     # HTML + CSS completo del header
     st.markdown(_HEADER_CSS + f"""

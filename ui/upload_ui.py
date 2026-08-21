@@ -39,7 +39,7 @@ def render_upload_section(sidebar: bool = False):
     # Determinar si expandir (sin datos calculados)
     expander_state = st.session_state.get('df_bd_calculated') is None
 
-    label_popover = "⚙️ Configuración"
+    label_popover = "Configuración"
 
     ctx = st.sidebar if sidebar else st
     with ctx.popover(label_popover, use_container_width=sidebar):
@@ -47,13 +47,13 @@ def render_upload_section(sidebar: bool = False):
         
         # --- Tarjeta 1: FORMA 9 ---
         st.markdown("""
-        <div class='compact-card'><span>🗃️ FORMA 9</span></div>
+        <div class='compact-card'><span>FORMA 9</span></div>
         <div class='upload-area'>
         """, unsafe_allow_html=True)
         forma9_file = st.file_uploader("Subir F9", type=["csv", "xlsx"], key="forma9_file", label_visibility="collapsed")
         st.markdown("</div>", unsafe_allow_html=True)
         url_forma9 = st.text_input(
-            "🔗 URL ONEDRIVE", key="url_forma9_excel",
+            "URL ONEDRIVE", key="url_forma9_excel",
             value="https://1drv.ms/x/c/06cc4035ad46ff97/IQAlCua1BGOXRbcSzUY0OVyzAS8KOoDNxuvUqrsORhjMcKM?e=o8FZyJ",
         )
         forma9_online_file = None
@@ -68,13 +68,13 @@ def render_upload_section(sidebar: bool = False):
 
         # --- Tarjeta 2: BD ---
         st.markdown("""
-        <div class='compact-card'><span>📊 BASE DE DATOS</span></div>
+        <div class='compact-card'><span>BASE DE DATOS</span></div>
         <div class='upload-area'>
         """, unsafe_allow_html=True)
         bd_file = st.file_uploader("Subir BD", type=["csv", "xlsx"], key="bd_file", label_visibility="collapsed")
         st.markdown("</div>", unsafe_allow_html=True)
         url_bd = st.text_input(
-            "🔗 URL ONEDRIVE", key="url_bd_excel",
+            "URL ONEDRIVE", key="url_bd_excel",
             value="https://1drv.ms/x/c/06cc4035ad46ff97/IQBFUqV7GWUfTqIPciLZeNEIAdlrMygqQITAR9Ku5frPrZE?e=P0xf75",
         )
         bd_online_file = None
@@ -89,21 +89,21 @@ def render_upload_section(sidebar: bool = False):
 
         # --- Tarjeta 3: Parámetros ---
         st.markdown("""
-        <div class='compact-card'><span>⚙️ PARÁMETROS</span></div>
+        <div class='compact-card'><span>PARAMETROS</span></div>
         """, unsafe_allow_html=True)
         
         default_date = get_last_day_of_previous_month()
         default_start_date = default_date - timedelta(days=365)
         
         fecha_inicio = st.date_input(
-            "🗓️ FECHA INICIO",
+            "FECHA INICIO",
             value=default_start_date,
             key="fecha_ini_input",
             max_value=datetime.now().date(),
         )
         
         fecha_evaluacion = st.date_input(
-            "🗓️ FECHA EVALUACIÓN",
+            "FECHA EVALUACIÓN",
             value=default_date,
             key="fecha_eval",
             max_value=datetime.now().date(),
@@ -117,18 +117,18 @@ def render_upload_section(sidebar: bool = False):
         """, unsafe_allow_html=True)
 
         st.markdown('<div style="margin-top:15px;"></div>', unsafe_allow_html=True)
-        calcular_btn = st.button("🚀 EJECUTAR CÁLCULOS", key="calcular_btn", use_container_width=True)
+        calcular_btn = st.button("EJECUTAR CALCULOS", key="calcular_btn", use_container_width=True)
         
         # --- NUEVA SECCIÓN DISCRETA DE EXPORTACIÓN ---
         df_monthly = st.session_state.get('df_monthly_summary')
         if df_monthly is not None and not df_monthly.empty:
             st.markdown('<div style="margin-top:20px; border-top:1px solid rgba(0,217,255,0.1); padding-top:10px;"></div>', unsafe_allow_html=True)
-            st.markdown("<div style='font-family:Arial, sans-serif !important; font-size:0.6rem; color:#475569; letter-spacing:1px; margin-bottom:5px;'>📂 EXPORTAR</div>", unsafe_allow_html=True)
+            st.markdown("<div style='font-family:Arial, sans-serif !important; font-size:0.6rem; color:#475569; letter-spacing:1px; margin-bottom:5px;'>EXPORTAR</div>", unsafe_allow_html=True)
             
             excel_bytes = exportar_resumen_performance(df_monthly)
             if excel_bytes:
                 st.download_button(
-                    label="💾 DESCARGAR PERFORMANCE (.XLSX)",
+                    label="DESCARGAR PERFORMANCE (.XLSX)",
                     data=excel_bytes,
                     file_name=f"ALS_Performance_{datetime.now().strftime('%Y%m%d')}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -173,7 +173,7 @@ def render_upload_section(sidebar: bool = False):
                                 reporte_runes_final, historico_run_life, reporte_fallas,
                                 fecha_ini=fecha_inicio
                             )
-                            st.toast("Datos guardados en caché para carga rápida", icon="💾")
+                            st.toast("Datos guardados en caché para carga rápida")
 
                             st.session_state['df_forma9_raw']          = df_forma9_raw
                             st.session_state['df_bd_raw']              = df_bd_raw

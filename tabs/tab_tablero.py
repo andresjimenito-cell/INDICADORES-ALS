@@ -53,6 +53,13 @@ _CARD = (f"background:linear-gradient(180deg,#ffffff 0%,#FCFDFA 100%);"
          f"border:1px solid {_BR};border-radius:13px;box-shadow:{_SH1};")
 
 
+def _fmt(n, dec=0):
+    """Formato es-CO: punto para miles, coma para decimales."""
+    entero, _, dec_str = f"{n:,.{dec}f}".partition(".")
+    entero = entero.replace(",", ".")
+    return f"{entero},{dec_str}" if dec_str else entero
+
+
 def _glow(color, alpha=0.10):
     """Resplandor de esquina en el color semántico de la tarjeta."""
     r, g, b = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
@@ -88,8 +95,8 @@ def _css():
     background:
         radial-gradient(120% 180% at 0% 0%, rgba(76,164,106,0.42) 0%, rgba(31,70,32,0) 55%),
         linear-gradient(110deg, {_G2} 0%, #17381A 45%, {_G2} 100%);
-    border-radius: 15px;
-    padding: 19px 28px;
+    border-radius: 14px;
+    padding: 15px 24px;
     overflow: hidden;
     box-shadow:
         0 2px 5px rgba(31,70,32,0.13),
@@ -147,35 +154,14 @@ def _css():
 
 .tbl-hero-title {{
     font-family: {_FN};
-    font-size: 23px;
+    font-size: 21px;
     font-weight: 700;
     color: #ffffff;
     line-height: 1.15;
     margin-bottom: 3px;
 }}
 
-.tbl-hero-meta {{
-    font-family: {_FS};
-    font-size: 11px;
-    font-weight: 500;
-    color: rgba(255,255,255,0.75);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}}
 
-.tbl-hero-chip {{
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(255,255,255,0.11);
-    border: 1px solid rgba(255,255,255,0.16);
-    border-radius: 20px;
-    padding: 2px 10px;
-    font-size: 10px;
-    font-weight: 600;
-    color: rgba(255,255,255,0.92);
-}}
 
 .tbl-hero-dot {{
     width: 6px;
@@ -185,86 +171,68 @@ def _css():
     box-shadow: 0 0 0 3px rgba(111,208,140,0.22);
 }}
 
-.tbl-hero-kpis {{
+.tbl-hero-ctx {{
     display: flex;
     align-items: stretch;
     position: relative;
     z-index: 1;
     flex: 1;
     justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0;
 }}
 
-.tbl-hero-kpi {{
-    padding: 0 20px;
-    border-left: 1px solid rgba(255,255,255,0.14);
+.tbl-hero-item {{
+    padding: 0 18px;
+    border-left: 1px solid rgba(255,255,255,0.15);
     display: flex;
     flex-direction: column;
     justify-content: center;
-    min-width: 112px;
+    gap: 3px;
+    min-width: 0;
 }}
 
-.tbl-hero-kpi:first-child {{ border-left: none; }}
-.tbl-hero-kpi:last-child  {{ padding-right: 2px; }}
+.tbl-hero-item:last-child {{ padding-right: 2px; }}
 
-.tbl-hero-kpi-lbl {{
+.tbl-hero-k {{
     font-family: {_FS};
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 700;
-    letter-spacing: 1.2px;
+    letter-spacing: 1.3px;
     text-transform: uppercase;
-    color: rgba(255,255,255,0.62);
+    color: rgba(255,255,255,0.55);
     white-space: nowrap;
 }}
 
-.tbl-hero-kpi-val {{
-    font-family: {_FN};
-    font-size: 30px;
-    font-weight: 700;
-    color: #ffffff;
-    line-height: 1.1;
-    margin-top: 2px;
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-}}
-
-.tbl-hero-kpi-val .u {{
+.tbl-hero-v {{
     font-family: {_FS};
     font-size: 13px;
     font-weight: 600;
-    color: rgba(255,255,255,0.58);
-    margin-left: 3px;
-}}
-
-.tbl-hero-delta {{
-    font-family: {_FS};
-    font-size: 10px;
-    font-weight: 700;
-    margin-top: 3px;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
+    color: #ffffff;
     white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }}
-
-.tbl-hero-delta.up   {{ color: #7BD79A; }}
-.tbl-hero-delta.down {{ color: #F09B90; }}
-.tbl-hero-delta.flat {{ color: rgba(255,255,255,0.58); }}
 
 /* ══════════════════════════════════════════════════════════════════
    COLUMNA IZQUIERDA — TARJETAS DE KPI
    ══════════════════════════════════════════════════════════════════ */
 .tbl-panel-lateral {{
-    height: 520px;
+    margin: 7px;
+    height: 506px;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 12px;
 }}
 
 /* Tarjeta genérica */
 .tbl-card-base {{
     {_CARD}
     box-sizing: border-box;
+    min-width: 0;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -291,8 +259,15 @@ def _css():
 .tbl-head-row {{
     display: flex;
     align-items: center;
-    gap: 11px;
+    gap: 9px;
     width: 100%;
+    min-width: 0;
+}}
+
+.tbl-head-row .tbl-lbl {{
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }}
 
 .tbl-icon {{
@@ -303,9 +278,9 @@ def _css():
     flex-shrink: 0;
 }}
 
-.tbl-icon.lg {{ width: 46px; height: 46px; }}
-.tbl-icon.md {{ width: 38px; height: 38px; }}
-.tbl-icon.sm {{ width: 32px; height: 32px; }}
+.tbl-icon.lg {{ width: 44px; height: 44px; }}
+.tbl-icon.md {{ width: 36px; height: 36px; }}
+.tbl-icon.sm {{ width: 28px; height: 28px; }}
 
 .tbl-icon.green  {{ background: linear-gradient(160deg, #4CA46A 0%, {_G} 100%);  box-shadow: {_halo(_G)}; }}
 .tbl-icon.dark   {{ background: linear-gradient(160deg, {_G} 0%, {_G2} 100%);      box-shadow: {_halo(_G2)}; }}
@@ -325,9 +300,9 @@ def _css():
     line-height: 1.2;
 }}
 
-.tbl-lbl.xl {{ font-size: 16px; }}
-.tbl-lbl.lg {{ font-size: 14px; }}
-.tbl-lbl.md {{ font-size: 12.5px; }}
+.tbl-lbl.xl {{ font-size: 15px; }}
+.tbl-lbl.lg {{ font-size: 13px; }}
+.tbl-lbl.md {{ font-size: 11.5px; }}
 
 /* ── Cifras ── */
 .tbl-num {{
@@ -340,7 +315,7 @@ def _css():
 }}
 
 .tbl-num.xxl {{ font-size: 50px; }}
-.tbl-num.xl  {{ font-size: 42px; }}
+.tbl-num.xl  {{ font-size: 40px; }}
 .tbl-num.lg  {{ font-size: 34px; }}
 .tbl-num.md  {{ font-size: 30px; }}
 
@@ -352,12 +327,13 @@ def _css():
 .tbl-kpi-fondo-card {{
     {_CARD}
     background: {_glow(_G, 0.13)}, linear-gradient(180deg, {_G3} 0%, #ffffff 62%);
-    padding: 14px 17px;
+    padding: 14px 18px;
+    border-left: 3px solid {_G2};
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 14px;
-    height: 134px;
+    height: 130px;
     box-sizing: border-box;
 }}
 
@@ -371,30 +347,31 @@ def _css():
 /* ── Mini barras por tipo de ALS ── */
 .tbl-mini-chart-container {{
     display: flex;
-    gap: 9px;
+    gap: 4px;
     align-items: flex-end;
-    height: 104px;
+    height: 100px;
 }}
 
 .tbl-mini-bar-col {{
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 28px;
+    width: 34px;
 }}
 
 .tbl-mini-bar-val {{
     font-family: {_FS};
-    font-size: 10px;
+    font-size: 8.5px;
     font-weight: 700;
     color: {_T2};
+    letter-spacing: -0.2px;
     margin-bottom: 4px;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
 }}
 
 .tbl-mini-bar-track {{
-    width: 22px;
+    width: 20px;
     height: 54px;
     background: {_R2};
     border-radius: 4px;
@@ -423,7 +400,7 @@ def _css():
 /* ── Fila media: fallados | disponibles + activos/inactivos ── */
 .tbl-grid-bottom {{
     display: flex;
-    gap: 15px;
+    gap: 12px;
     height: 236px;
 }}
 
@@ -431,18 +408,20 @@ def _css():
     background: {_glow(_R, 0.10)}, linear-gradient(180deg,#ffffff 0%,#FFFCFC 100%);
     width: 46%;
     height: 100%;
-    justify-content: flex-start;
+    justify-content: space-between;
     align-items: flex-start;
-    padding: 15px;
+    padding: 14px 15px;
     border-color: rgba(192,57,43,0.24);
-    gap: 4px;
+    border-left: 3px solid {_R};
+    gap: 0;
+    overflow: hidden;
 }}
 
 .tbl-card-fallados:hover {{ border-color: rgba(192,57,43,0.40); }}
 
 .tbl-fallados-note {{
     font-family: {_FS};
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 700;
     color: {_G2};
     line-height: 1.35;
@@ -454,8 +433,8 @@ def _css():
 
 .tbl-fallados-atrib {{
     border-top: 1px solid {_BR};
-    padding-top: 7px;
-    margin-top: 7px;
+    padding-top: 6px;
+    margin-top: 6px;
     width: 100%;
     text-align: left;
 }}
@@ -471,7 +450,7 @@ def _css():
 
 .tbl-fallados-atrib-val {{
     font-family: {_FN};
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
     color: {_T};
     font-variant-numeric: tabular-nums;
@@ -480,48 +459,75 @@ def _css():
 
 .tbl-col-operativos {{
     width: 54%;
+    min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 12px;
     height: 100%;
 }}
 
 .tbl-card-operativos {{
     background: {_glow(_G, 0.10)}, linear-gradient(180deg,#ffffff 0%,#FCFDFA 100%);
-    height: 92px;
-    align-items: flex-start;
-    justify-content: center;
-    padding: 12px 15px;
-    gap: 6px;
+    height: 96px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 17px;
+    gap: 12px;
+    border-left: 3px solid {_G};
 }}
 
 .tbl-row-act-inact {{
     display: flex;
-    gap: 15px;
+    gap: 12px;
     flex: 1;
 }}
 
-.tbl-card-sub {{
-    flex: 1;
+.tbl-card-sub .tbl-head-row {{
+    flex-direction: column;
     align-items: flex-start;
-    justify-content: center;
-    padding: 14px;
     gap: 7px;
 }}
+
+.tbl-card-sub .tbl-lbl {{
+    overflow: visible;
+    text-overflow: clip;
+}}
+
+.tbl-card-sub {{
+    flex: 1 1 0;
+    min-width: 0;
+    align-items: stretch;
+    justify-content: center;
+    padding: 13px 15px;
+    gap: 8px;
+}}
+
+.tbl-card-sub .tbl-num {{ text-align: right; }}
 
 /* ── Fila de medidores: disponibilidad y uso ── */
 .tbl-row-meters {{
     display: flex;
-    gap: 15px;
-    height: 120px;
+    gap: 12px;
+    height: 116px;
 }}
 
 .tbl-card-meter {{
     background: {_glow(_G2, 0.07)}, linear-gradient(180deg,#ffffff 0%,#FCFDFA 100%);
-    flex: 1;
-    align-items: flex-start;
+    flex: 1 1 0;
+    min-width: 0;
+    align-items: stretch;
+    justify-content: center;
+    padding: 14px 17px;
+    gap: 10px;
+    overflow: hidden;
+}}
+
+.tbl-meter-top {{
+    display: flex;
+    align-items: center;
     justify-content: space-between;
-    padding: 15px 17px;
+    gap: 10px;
 }}
 
 .tbl-meter-lbl {{
@@ -537,7 +543,7 @@ def _css():
 
 .tbl-meter-pct {{
     font-family: {_FN};
-    font-size: 40px;
+    font-size: 36px;
     font-weight: 700;
     line-height: 1;
     font-variant-numeric: tabular-nums;
@@ -569,8 +575,9 @@ def _css():
    ══════════════════════════════════════════════════════════════════ */
 .tbl-fallas-panel {{
     {_CARD}
-    padding: 16px 18px;
-    height: 320px;
+    margin: 7px;
+    padding: 14px 16px;
+    height: 316px;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -585,7 +592,7 @@ def _css():
 
 .tbl-fallas-title {{
     font-family: {_FS};
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 700;
     color: {_G2};
     letter-spacing: 0.8px;
@@ -614,13 +621,14 @@ def _css():
 }}
 
 .tbl-ft th {{
-    font-size: 11.5px;
+    font-size: 10.5px;
     font-weight: 700;
     color: {_T2};
     text-transform: uppercase;
-    letter-spacing: 0.6px;
+    letter-spacing: 0.4px;
     text-align: center;
-    padding: 0 6px 8px;
+    white-space: nowrap;
+    padding: 0 4px 7px;
     border-bottom: 1px solid {_BR};
 }}
 
@@ -628,26 +636,34 @@ def _css():
 
 .tbl-ft td {{
     font-family: {_FN};
-    font-size: 21px;
+    font-size: 18px;
     font-weight: 700;
     color: {_T2};
     text-align: center;
-    padding: 9px 6px;
+    padding: 5px 6px;
     font-variant-numeric: tabular-nums;
 }}
 
-.tbl-ft td.hit {{
+.tbl-ft td .v {{
+    display: inline-block;
+    min-width: 34px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    line-height: 1.25;
+}}
+
+.tbl-ft td .v.hit {{
     color: {_R};
     background: {_R2};
-    border-radius: 4px;
 }}
 
 .tbl-ft td.et {{
     font-family: {_FS};
-    font-size: 13.5px;
+    font-size: 12.5px;
     font-weight: 700;
     color: {_G2};
     text-align: left;
+    white-space: nowrap;
 }}
 
 .tbl-ft td.et span {{
@@ -658,13 +674,12 @@ def _css():
     margin-top: 1px;
 }}
 
-.tbl-ft tr.alt td {{ background: {_G3}; }}
-.tbl-ft tr.alt td.hit {{ background: {_R2}; }}
+.tbl-ft tr.alt td {{ background: #F6F8F3; }}
 
 .tbl-ft tr.tot td {{
     border-top: 1.5px solid {_BR};
     color: {_T};
-    padding-top: 9px;
+    padding-top: 7px;
 }}
 
 .tbl-ft tr.tot td.et {{
@@ -676,11 +691,11 @@ def _css():
 
 .tbl-fallas-foot {{
     font-family: {_FS};
-    font-size: 9.5px;
+    font-size: 9px;
     font-style: italic;
     color: {_T2};
     text-align: center;
-    margin-top: 8px;
+    margin-top: 6px;
 }}
 
 /* ── Entrada suave de las cifras ── */
@@ -1158,11 +1173,6 @@ def render_tab_tablero(
     series_antig = {t: [mat_periodo[et][t] for et in RL_ETAPAS] for t in TIPOS_FALLA}
     tot_mes      = {t: sum(mat_mes[et][t] for et in RL_ETAPAS) for t in TIPOS_FALLA}
 
-    # ── Variaciones para el encabezado ejecutivo ──────────────────────────────
-    delta_fondo = balance['final'] - balance['base']
-    delta_if    = (if_vals[-1] - if_vals[-2]) if len(if_vals) >= 2 else 0.0
-    delta_mtbf  = (mtbf_val - mtbf_prev_val) if mtbf_prev_val > 0 else 0.0
-
     _MESES_LARGO = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio',
                     'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
     fecha_corte_lbl = f"{fecha_eval_dt.day} de {_MESES_LARGO[mes_eval - 1]} de {anio_eval}"
@@ -1171,23 +1181,29 @@ def render_tab_tablero(
     # Migas de pan con los filtros activos del sidebar
     _activos_lbl = " · ".join(v for v in _filtros.values() if v != 'TODOS') or "Todos los activos"
 
+    # ── Alcance del análisis (contexto que no se repite en ningún panel) ──────
+    def _n_unicos(col):
+        return int(df_resumen[col].nunique()) if col in df_resumen.columns else 0
+
+    n_bloques  = _n_unicos('BLOQUE')
+    n_campos   = _n_unicos('CAMPO')
+    n_corridas = int(len(df_resumen))
+
+    _MES_CORTO = ['ene', 'feb', 'mar', 'abr', 'may', 'jun',
+                  'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+    periodo_lbl = (f"{_MES_CORTO[fecha_ini_dt.month - 1]} {fecha_ini_dt.year} — "
+                   f"{_MES_CORTO[mes_eval - 1]} {anio_eval}")
+
     # ═════════════════════════════════════════════════════════════════════════
     # ENCABEZADO EJECUTIVO
+    # Sólo contexto y alcance: las cifras de KPI viven en sus propios paneles y
+    # no se repiten aquí.
     # ═════════════════════════════════════════════════════════════════════════
-    def _delta_chip(valor, sufijo="", mejor_es_alto=True, decimales=0):
-        """Chip de variación: flecha, signo y color según convenga al indicador."""
-        if abs(valor) < (0.05 if decimales else 0.5):
-            return '<div class="tbl-hero-delta flat">— sin variación</div>'
-        bueno = (valor > 0) if mejor_es_alto else (valor < 0)
-        flecha = "▲" if valor > 0 else "▼"
-        return (f'<div class="tbl-hero-delta {"up" if bueno else "down"}">'
-                f'{flecha} {abs(valor):,.{decimales}f}{sufijo}</div>')
-
     hero_html = f"""
 <div class="tbl-hero">
   <div class="tbl-hero-brand">
     <div class="tbl-hero-mark">
-      <svg viewBox="0 0 100 100" width="30" height="30" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <svg viewBox="0 0 100 100" width="27" height="27" fill="none" xmlns="http://www.w3.org/2000/svg">
         <rect x="10" y="73" width="80" height="6" fill="#ffffff" opacity="0.95"/>
         <path d="M35 73 L47.5 30 L52.5 30 L65 73 H59 L50 42 L41 73 Z" fill="#ffffff" opacity="0.95"/>
         <path d="M27.5 20.5 L73 31.5 L71.5 36.5 L26 25.5 Z" fill="#ffffff" opacity="0.8"/>
@@ -1199,38 +1215,29 @@ def render_tab_tablero(
     <div>
       <div class="tbl-hero-kicker">Levantamiento Artificial · Parex</div>
       <div class="tbl-hero-title">Tablero Ejecutivo ALS</div>
-      <div class="tbl-hero-meta">
-        <span class="tbl-hero-chip"><span class="tbl-hero-dot"></span>{_activos_lbl}</span>
-        <span>Corte al {fecha_corte_lbl}</span>
-      </div>
     </div>
   </div>
 
-  <div class="tbl-hero-kpis">
-    <div class="tbl-hero-kpi">
-      <div class="tbl-hero-kpi-lbl">ALS en fondo</div>
-      <div class="tbl-hero-kpi-val">{als_fondo:,}</div>
-      {_delta_chip(delta_fondo, " pozos ON vs. inicio", mejor_es_alto=True)}
+  <div class="tbl-hero-ctx">
+    <div class="tbl-hero-item">
+      <span class="tbl-hero-k">Alcance</span>
+      <span class="tbl-hero-v"><span class="tbl-hero-dot"></span>{_activos_lbl}</span>
     </div>
-    <div class="tbl-hero-kpi">
-      <div class="tbl-hero-kpi-lbl">Disponibilidad</div>
-      <div class="tbl-hero-kpi-val">{disp_oper:.0f}<span class="u">%</span></div>
-      <div class="tbl-hero-delta flat">{activos:,} de {total_pozos:,} pozos</div>
+    <div class="tbl-hero-item">
+      <span class="tbl-hero-k">Periodo evaluado</span>
+      <span class="tbl-hero-v">{periodo_lbl}</span>
     </div>
-    <div class="tbl-hero-kpi">
-      <div class="tbl-hero-kpi-lbl">Índice de falla</div>
-      <div class="tbl-hero-kpi-val">{if_actual:.1f}<span class="u">%</span></div>
-      {_delta_chip(delta_if, " pp vs. mes anterior", mejor_es_alto=False, decimales=1)}
+    <div class="tbl-hero-item">
+      <span class="tbl-hero-k">Cobertura</span>
+      <span class="tbl-hero-v">{n_bloques} bloques · {n_campos} campos</span>
     </div>
-    <div class="tbl-hero-kpi">
-      <div class="tbl-hero-kpi-lbl">MTBF</div>
-      <div class="tbl-hero-kpi-val">{mtbf_val:,.0f}<span class="u">d</span></div>
-      {_delta_chip(delta_mtbf, " d vs. cierre anterior", mejor_es_alto=True)}
+    <div class="tbl-hero-item">
+      <span class="tbl-hero-k">Corridas analizadas</span>
+      <span class="tbl-hero-v">{_fmt(n_corridas)}</span>
     </div>
-    <div class="tbl-hero-kpi">
-      <div class="tbl-hero-kpi-lbl">Run Life</div>
-      <div class="tbl-hero-kpi-val">{rl_val:,.0f}<span class="u">d</span></div>
-      <div class="tbl-hero-delta {'up' if rl_val >= meta_rl_calc else 'down'}">Meta {meta_rl_calc:,.0f} d</div>
+    <div class="tbl-hero-item">
+      <span class="tbl-hero-k">Fecha de corte</span>
+      <span class="tbl-hero-v">{fecha_corte_lbl}</span>
     </div>
   </div>
 </div>
@@ -1240,8 +1247,8 @@ def render_tab_tablero(
     # ═════════════════════════════════════════════════════════════════════════
     # LAYOUT DE 3 COLUMNAS SIMÉTRICAS
     # ═════════════════════════════════════════════════════════════════════════
-    st.markdown("<div style='height:18px;'></div>", unsafe_allow_html=True)
-    col_l, col_c, col_r = st.columns([1, 1.25, 1.25], gap="large")
+    st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
+    col_l, col_c, col_r = st.columns([1, 1, 1], gap="medium")
 
     # ─────────────────────────────────────────────────────────────────────────
     # COLUMNA 1: KPIs OPERATIVOS (RENDERIZADO HTML COMPLETO)
@@ -1325,7 +1332,7 @@ def render_tab_tablero(
         </div>
         <div class="tbl-lbl xl">ALS en fondo</div>
       </div>
-      <div class="tbl-num xxl">{als_fondo:,}</div>
+      <div class="tbl-num xxl">{_fmt(als_fondo)}</div>
     </div>
 
     <div class="tbl-mini-chart-container">
@@ -1341,7 +1348,7 @@ def render_tab_tablero(
         <div class="tbl-icon md red">{_SVG_ALERTA}</div>
         <div class="tbl-lbl lg">ALS fallados</div>
       </div>
-      <div class="tbl-num xl red" style="margin-top:6px;">{als_fallados:,}</div>
+      <div class="tbl-num xl red" style="margin-top:6px;">{_fmt(als_fallados)}</div>
       <div class="tbl-fallados-note">Pozos con falla en fondo a espera de pull</div>
 
       <div class="tbl-fallados-atrib">
@@ -1350,7 +1357,7 @@ def render_tab_tablero(
       </div>
       <div class="tbl-fallados-atrib">
         <div class="tbl-fallados-atrib-lbl">Índice de severidad</div>
-        <div class="tbl-fallados-atrib-val">{idx_sev:.2f}</div>
+        <div class="tbl-fallados-atrib-val">{_fmt(idx_sev, 2)}</div>
       </div>
     </div>
 
@@ -1358,11 +1365,11 @@ def render_tab_tablero(
     <div class="tbl-col-operativos">
 
       <div class="tbl-card-base tbl-card-operativos">
-        <div class="tbl-head-row">
+        <div class="tbl-head-row" style="width:auto;">
           <div class="tbl-icon md green">{_SVG_CHECK}</div>
           <div class="tbl-lbl lg">ALS disponibles</div>
         </div>
-        <div class="tbl-num lg" style="margin-left:49px;">{als_operativos:,}</div>
+        <div class="tbl-num lg">{_fmt(als_operativos)}</div>
       </div>
 
       <div class="tbl-row-act-inact">
@@ -1372,7 +1379,7 @@ def render_tab_tablero(
             <div class="tbl-icon sm green">{_SVG_PLAY}</div>
             <div class="tbl-lbl md">Activos</div>
           </div>
-          <div class="tbl-num md" style="margin-left:43px;">{activos:,}</div>
+          <div class="tbl-num md">{_fmt(activos)}</div>
         </div>
 
         <div class="tbl-card-base tbl-card-sub">
@@ -1380,7 +1387,7 @@ def render_tab_tablero(
             <div class="tbl-icon sm slate">{_SVG_PAUSA}</div>
             <div class="tbl-lbl md">Inactivos</div>
           </div>
-          <div class="tbl-num md" style="margin-left:43px;">{inactivos:,}</div>
+          <div class="tbl-num md">{_fmt(inactivos)}</div>
         </div>
 
       </div>
@@ -1393,16 +1400,20 @@ def render_tab_tablero(
   <div class="tbl-row-meters">
 
     <div class="tbl-card-base tbl-card-meter">
-      <div class="tbl-meter-lbl">Disponibilidad<br/>operacional</div>
-      <div class="tbl-meter-pct" style="color:{_disp_col};">{disp_oper:.0f}%</div>
+      <div class="tbl-meter-top">
+        <div class="tbl-meter-lbl">Disponibilidad<br/>operacional</div>
+        <div class="tbl-meter-pct" style="color:{_disp_col};">{disp_oper:.0f}%</div>
+      </div>
       <div class="tbl-meter-track">
         <div class="tbl-meter-fill {_disp_cls}" style="width:{min(disp_oper, 100):.0f}%;"></div>
       </div>
     </div>
 
     <div class="tbl-card-base tbl-card-meter">
-      <div class="tbl-meter-lbl">Uso<br/>operativo</div>
-      <div class="tbl-meter-pct" style="color:{_uso_col};">{uso_oper:.0f}%</div>
+      <div class="tbl-meter-top">
+        <div class="tbl-meter-lbl">Uso<br/>operativo</div>
+        <div class="tbl-meter-pct" style="color:{_uso_col};">{uso_oper:.0f}%</div>
+      </div>
       <div class="tbl-meter-track">
         <div class="tbl-meter-fill {_uso_cls}" style="width:{min(uso_oper, 100):.0f}%;"></div>
       </div>
@@ -1433,11 +1444,12 @@ def render_tab_tablero(
             background: transparent;
             font-family: {_FS};
             overflow: hidden;
+            padding: 7px;
         }}
         .tbl-panel {{
             {_CARD}
             padding: 18px;
-            height: 520px;
+            height: 506px;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
@@ -1474,8 +1486,8 @@ def render_tab_tablero(
 <body>
     <div class="tbl-panel">
         <div class="tbl-sec-title">Índice de Falla (I.F. ALS &lt;1500) <span class="tbl-live-dot"></span></div>
-        <div id="gauge_if" class="chart-container" style="height: 215px;"></div>
-        <div id="chart_if_anual" class="chart-container" style="height: 250px;"></div>
+        <div id="gauge_if" class="chart-container" style="height: 192px;"></div>
+        <div id="chart_if_anual" class="chart-container" style="height: 234px;"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
@@ -1500,8 +1512,8 @@ def render_tab_tablero(
                     endAngle: -25,
                     min: 0,
                     max: maxVal,
-                    center: ["50%", "54%"],
-                    radius: "82%",
+                    center: ["50%", "58%"],
+                    radius: "96%",
                     splitNumber: 4,
                     axisLine: {{
                         roundCap: true,
@@ -1533,24 +1545,24 @@ def render_tab_tablero(
                     }},
                     detail: {{
                         valueAnimation: true,
-                        formatter: function(val) {{ return val.toFixed(2) + "%"; }},
+                        formatter: function(val) {{ return val.toFixed(2).replace(".", ",") + "%"; }},
                         color: valColor,
                         fontSize: 38,
                         fontWeight: "700",
                         fontFamily: "Source Serif 4, Cambria, Georgia, serif",
-                        offsetCenter: [0, "30%"],
+                        offsetCenter: [0, "26%"],
                         borderRadius: 4,
                         padding: [4, 8]
                     }},
                     title: {{
                         show: true,
-                        offsetCenter: [0, "68%"],
+                        offsetCenter: [0, "58%"],
                         color: "{_T2}",
                         fontSize: 13,
                         fontWeight: "700",
                         fontFamily: "Inter, Segoe UI, sans-serif"
                     }},
-                    data: [{{ value: value, name: "Meta IF: ≤ " + meta + "%" }}]
+                    data: [{{ value: value, name: "Meta IF: ≤ {_fmt(META_IF, 1)}%" }}]
                 }}]
             }};
             
@@ -1574,13 +1586,14 @@ def render_tab_tablero(
                     extraCssText: "box-shadow: 0 4px 16px rgba(46,125,70,0.12);"
                 }},
                 legend: {{
-                    data: ["Pozos ON", "Pozos OFF", "I.F. ALS <1500 (%)", "I.F. Total <1500 (%)"],
+                    data: ["Pozos ON", "Pozos OFF", "IF ALS", "IF Total"],
                     bottom: 0,
-                    itemHeight: 7,
-                    itemGap: 12,
+                    itemHeight: 8,
+                    itemWidth: 14,
+                    itemGap: 16,
                     textStyle: {{ color: "{_T2}", fontSize: 11.5, fontFamily: "Inter, Segoe UI, sans-serif" }}
                 }},
-                grid: {{ top: "8%", left: "3%", right: "8%", bottom: "18%", containLabel: true }},
+                grid: {{ top: "16%", left: "3%", right: "9%", bottom: "18%", containLabel: true }},
                 xAxis: {{
                     type: "category",
                     data: {json.dumps(if_cats)},
@@ -1593,7 +1606,8 @@ def render_tab_tablero(
                         type: "value",
                         name: "Pozos",
                         nameTextStyle: {{ color: "{_T2}", fontSize: 10.5 }},
-                        axisLabel: {{ color: "{_T2}", fontSize: 11 }},
+                        axisLabel: {{ color: "{_T2}", fontSize: 11,
+                            formatter: function(v) {{ return v.toLocaleString("es-CO"); }} }},
                         splitLine: {{ lineStyle: {{ color: "rgba(46,125,70,0.06)", type: "dashed" }} }}
                     }},
                     {{
@@ -1638,7 +1652,7 @@ def render_tab_tablero(
                         }}
                     }},
                     {{
-                        name: "I.F. ALS <1500 (%)",
+                        name: "IF ALS",
                         type: "line",
                         yAxisIndex: 1,
                         data: {json.dumps(if_vals)},
@@ -1647,7 +1661,7 @@ def render_tab_tablero(
                         symbolSize: 6,
                         tooltip: {{
                             valueFormatter: function(val) {{
-                                return val != null ? val.toFixed(2) + "%" : "-";
+                                return val != null ? val.toFixed(2).replace(".", ",") + "%" : "-";
                             }}
                         }},
                         lineStyle: {{ color: "{_R}", width: 2.4 }},
@@ -1667,16 +1681,19 @@ def render_tab_tablero(
                             lineStyle: {{ color: "{_G}", type: "dashed", width: 1.5, opacity: 0.7 }},
                             data: [{{ yAxis: meta, name: "Meta" }}],
                             label: {{
-                                formatter: "Meta " + meta + "%",
+                                formatter: "Meta {_fmt(META_IF, 1)}%",
                                 color: "{_G}",
-                                fontSize: 11,
+                                fontSize: 10,
                                 fontWeight: "700",
-                                position: "end"
+                                position: "insideEndTop",
+                                backgroundColor: "rgba(255,255,255,0.85)",
+                                padding: [2, 4],
+                                borderRadius: 3
                             }}
                         }}
                     }},
                     {{
-                        name: "I.F. Total <1500 (%)",
+                        name: "IF Total",
                         type: "line",
                         yAxisIndex: 1,
                         data: {json.dumps(if_tot_vals)},
@@ -1685,7 +1702,7 @@ def render_tab_tablero(
                         symbolSize: 6,
                         tooltip: {{
                             valueFormatter: function(val) {{
-                                return val != null ? val.toFixed(2) + "%" : "-";
+                                return val != null ? val.toFixed(2).replace(".", ",") + "%" : "-";
                             }}
                         }},
                         lineStyle: {{ color: "{_N}", width: 2.4, type: "dashed" }},
@@ -1724,14 +1741,26 @@ def render_tab_tablero(
     with col_r:
 
         # Cumplimiento de meta para las barras de MTBF y Run Life
-        _mtbf_pct = min(mtbf_val / meta_mtbf_calc * 100, 100) if meta_mtbf_calc else 0
-        _rl_pct   = min(rl_val   / meta_rl_calc   * 100, 100) if meta_rl_calc   else 0
+        # El porcentaje mostrado es el real; sólo el ancho de la barra se recorta
+        _mtbf_pct = (mtbf_val / meta_mtbf_calc * 100) if meta_mtbf_calc else 0
+        _rl_pct   = (rl_val   / meta_rl_calc   * 100) if meta_rl_calc   else 0
         _mtbf_col = _G if mtbf_val >= meta_mtbf_calc else _R
         _rl_col   = _G if rl_val   >= meta_rl_calc   else _R
         # La meta se ancla al 82% del ancho para dejar ver el excedente
         _ESC = 82.0
         _mtbf_w = min(mtbf_val / meta_mtbf_calc * _ESC, 100) if meta_mtbf_calc else 0
         _rl_w   = min(rl_val   / meta_rl_calc   * _ESC, 100) if meta_rl_calc   else 0
+
+        def _rango_de(dias):
+            """Rango de la distribución en el que cae una meta dada en días."""
+            anios = dias / 365.25
+            if anios < 2: return rl_bins[0]
+            if anios < 4: return rl_bins[1]
+            if anios < 6: return rl_bins[2]
+            return rl_bins[3]
+
+        _pie_metas = (f"Meta RL ({_fmt(meta_rl_calc)} d) cae en «{_rango_de(meta_rl_calc)}» · "
+                      f"Meta MTBF ({_fmt(meta_mtbf_calc)} d) en «{_rango_de(meta_mtbf_calc)}»")
 
         # Etiquetas del gráfico de distribución: % y BOPD dentro de cada barra
         _tot_pozos_perf = max(sum(pozos_perf_data), 1)
@@ -1754,11 +1783,12 @@ def render_tab_tablero(
             background: transparent;
             font-family: {_FS};
             overflow: hidden;
+            padding: 7px;
         }}
         .tbl-panel {{
             {_CARD}
             padding: 18px;
-            height: 520px;
+            height: 506px;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
@@ -1854,28 +1884,28 @@ def render_tab_tablero(
         <div class="metas-row">
             <div class="meta-col">
                 <div class="meta-title">MTBF</div>
-                <div class="meta-val">{mtbf_val:,.0f}<span class="u">días</span></div>
+                <div class="meta-val">{_fmt(mtbf_val)}<span class="u">días</span></div>
                 <div class="meta-track">
                     <div class="meta-fill" style="width:{_mtbf_w:.1f}%;background:{_mtbf_col};"></div>
                     <div class="meta-mark" style="left:{_ESC}%;"></div>
                 </div>
-                <div class="meta-cap">Meta MTBF: <b>{meta_mtbf_calc:,.0f}</b> · {_mtbf_pct:.0f}% de cumplimiento</div>
+                <div class="meta-cap">Meta MTBF: <b>{_fmt(meta_mtbf_calc)}</b> · {_mtbf_pct:.0f}% de cumplimiento</div>
             </div>
             <div class="meta-col">
                 <div class="meta-title">Run Life</div>
-                <div class="meta-val">{rl_val:,.0f}<span class="u">días</span></div>
+                <div class="meta-val">{_fmt(rl_val)}<span class="u">días</span></div>
                 <div class="meta-track">
                     <div class="meta-fill" style="width:{_rl_w:.1f}%;background:{_rl_col};"></div>
                     <div class="meta-mark" style="left:{_ESC}%;"></div>
                 </div>
-                <div class="meta-cap">Meta RL: <b>{meta_rl_calc:,.0f}</b> · {_rl_pct:.0f}% de cumplimiento</div>
+                <div class="meta-cap">Meta RL: <b>{_fmt(meta_rl_calc)}</b> · {_rl_pct:.0f}% de cumplimiento</div>
             </div>
         </div>
 
         <div class="sec-divider"></div>
         <div class="tbl-sec-title">Distribución por Run Life</div>
         <div id="chart_rl" class="chart-container"></div>
-        <div class="foot-note">Pozos activos · dentro de cada barra: % del total y BOPD acumulados</div>
+        <div class="foot-note">Dentro de cada barra: % del total y BOPD · {_pie_metas}</div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
@@ -1903,7 +1933,7 @@ def render_tab_tablero(
                                bopd.toLocaleString('es-CO') + ' BOPD';
                     }}
                 }},
-                grid: {{ top: "16%", left: "4%", right: "4%", bottom: "6%", containLabel: true }},
+                grid: {{ top: "22%", left: "4%", right: "4%", bottom: "4%", containLabel: true }},
                 xAxis: {{
                     type: "category",
                     data: {json.dumps(rl_bins)},
@@ -1922,7 +1952,9 @@ def render_tab_tablero(
                     name: "POZOS",
                     nameTextStyle: {{ color: "{_T2}", fontSize: 10.5 }},
                     axisLabel: {{ color: "{_T2}", fontSize: 10.5 }},
-                    splitLine: {{ lineStyle: {{ color: "rgba(46,125,70,0.06)", type: "dashed" }} }}
+                    splitLine: {{ lineStyle: {{ color: "rgba(46,125,70,0.06)", type: "dashed" }} }},
+                    maxValueSpan: null,
+                    scale: false
                 }},
                 series: [
                     {{
@@ -1938,22 +1970,6 @@ def render_tab_tablero(
                             fontWeight: "700",
                             color: "{_T}"
                         }},
-                        markLine: {{
-                            silent: true,
-                            symbol: "none",
-                            label: {{
-                                show: true,
-                                position: "start",
-                                fontSize: 10,
-                                fontWeight: "bold",
-                                color: "{_N}"
-                            }},
-                            lineStyle: {{ color: "{_N}", type: "dashed", width: 1.5 }},
-                            data: [
-                                {{ xAxis: 2, label: {{ formatter: "META RL" }} }},
-                                {{ xAxis: 3, label: {{ formatter: "META MTBF" }} }}
-                            ]
-                        }}
                     }},
                     {{
                         name: "detalle",
@@ -1965,9 +1981,8 @@ def render_tab_tablero(
                         data: {json.dumps(pozos_perf_data)},
                         label: {{
                             show: true,
-                            position: "insideTop",
-                            distance: 12,
-                            lineHeight: 17,
+                            position: "inside",
+                            lineHeight: 16,
                             fontFamily: "Inter, Segoe UI, sans-serif",
                             fontSize: 12.5,
                             fontWeight: "bold",
@@ -1993,8 +2008,8 @@ def render_tab_tablero(
     # ─────────────────────────────────────────────────────────────────────────
     # FILA 2: BALANCE DE POZOS · FALLAS POR ANTIGÜEDAD · FALLAS DEL MES
     # ─────────────────────────────────────────────────────────────────────────
-    st.markdown("<div style='height:26px;'></div>", unsafe_allow_html=True)
-    col_b1, col_b2, col_b3 = st.columns([1.15, 1.15, 1.0], gap="large")
+    st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
+    col_b1, col_b2, col_b3 = st.columns([1, 1, 1], gap="medium")
 
     # ── 1. Balance de pozos ON (waterfall) ───────────────────────────────────
     with col_b1:
@@ -2024,7 +2039,7 @@ def render_tab_tablero(
 
         _wf_colors = [_G2 if k == 'total' else (_G if k == 'pos' else _R)
                       for _, _, k in _wf_pasos]
-        _wf_labels = [(f"{v:+,}" if k != 'total' else f"{v:,}")
+        _wf_labels = [(("+" if v > 0 else "-") + _fmt(abs(v)) if k != 'total' else _fmt(v))
                       for _, v, k in _wf_pasos]
         _wf_cats   = [l for l, _, _ in _wf_pasos]
         _wf_data   = [{"value": d,
@@ -2047,11 +2062,12 @@ def render_tab_tablero(
             background: transparent;
             font-family: {_FS};
             overflow: hidden;
+            padding: 7px;
         }}
         .tbl-panel {{
             {_CARD}
             padding: 16px;
-            height: 320px;
+            height: 316px;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
@@ -2161,23 +2177,31 @@ def render_tab_tablero(
 </body>
 </html>
 """
-        components.html(wf_html, height=320, scrolling=False)
+        components.html(wf_html, height=330, scrolling=False)
 
     # ── 2. Fallas del último año por etapa de Run Life ───────────────────────
     with col_b2:
         _tot_antig = sum(sum(v) for v in series_antig.values())
+        # Un segmento por debajo del 7% de la pila más alta no tiene sitio para
+        # su etiqueta: se oculta para que no se encime con la de al lado.
+        _pila_max = max((sum(series_antig[t][i] for t in TIPOS_FALLA)
+                         for i in range(len(RL_ETAPAS))), default=0)
+        _umbral = _pila_max * 0.07
         _series_antig_js = [
             {
                 "name": t,
                 "type": "bar",
                 "stack": "fallas",
-                "barMaxWidth": 46,
-                "data": series_antig[t],
+                "barMaxWidth": 52,
+                "data": [
+                    {"value": v, "label": {"show": bool(v > 0 and v >= _umbral)}}
+                    for v in series_antig[t]
+                ],
                 "itemStyle": {"color": TIPO_COLOR[t], "borderRadius": [2, 2, 0, 0]},
                 "label": {
                     "show": True,
                     "color": "#ffffff" if t != 'Pend Pulling' else _T,
-                    "fontSize": 9,
+                    "fontSize": 12,
                     "fontWeight": "bold",
                     "formatter": "{c}",
                 },
@@ -2199,11 +2223,12 @@ def render_tab_tablero(
             background: transparent;
             font-family: {_FS};
             overflow: hidden;
+            padding: 7px;
         }}
         .tbl-panel {{
             {_CARD}
             padding: 16px;
-            height: 320px;
+            height: 316px;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
@@ -2247,7 +2272,7 @@ def render_tab_tablero(
         <div class="tbl-sec-title">
             Fallas por etapa · último año
             <span class="tbl-live-dot"></span>
-            <span class="tbl-count">{_tot_antig:,}</span>
+            <span class="tbl-count">{_fmt(_tot_antig)}</span>
         </div>
         <div id="chart_fa" class="chart-container"></div>
     </div>
@@ -2311,20 +2336,21 @@ def render_tab_tablero(
 </body>
 </html>
 """
-        components.html(fa_html, height=320, scrolling=False)
+        components.html(fa_html, height=330, scrolling=False)
 
     # ── 3. Tabla de fallas del mes en curso ──────────────────────────────────
     with col_b3:
         _filas = ""
         for _i, (_et, _eje) in enumerate(zip(RL_ETAPAS, RL_ETAPA_EJE)):
             _celdas = "".join(
-                f'<td class="{"hit" if mat_mes[_et][t] > 0 else ""}">{mat_mes[_et][t]}</td>'
+                f'<td><span class="v {"hit" if mat_mes[_et][t] > 0 else ""}">'
+                f'{mat_mes[_et][t]}</span></td>'
                 for t in TIPOS_FALLA
             )
             _filas += (f'<tr class="{"alt" if _i % 2 == 0 else ""}">'
                        f'<td class="et">{_et}<span>{_eje}</span></td>{_celdas}</tr>')
 
-        _tot_row = "".join(f'<td class="{"hit" if tot_mes[t] > 0 else ""}">{tot_mes[t]}</td>'
+        _tot_row = "".join(f'<td><span class="v">{tot_mes[t]}</span></td>'
                            for t in TIPOS_FALLA)
         _tot_mes_all = sum(tot_mes.values())
         _resumen_mes = " / ".join(str(tot_mes[t]) for t in TIPOS_FALLA)
@@ -2358,8 +2384,8 @@ def render_tab_tablero(
     # ─────────────────────────────────────────────────────────────────────────
     # FILA 3: TENDENCIA DE PRODUCCIÓN & CURVAS DE SUPERVIVENCIA
     # ─────────────────────────────────────────────────────────────────────────
-    st.markdown("<div style='height:26px;'></div>", unsafe_allow_html=True)
-    col_bl, col_br = st.columns([2.25, 1.25], gap="large")
+    st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
+    col_bl, col_br = st.columns([2, 1], gap="medium")
 
     # 1. Calcular curvas de supervivencia (Kaplan-Meier) por tipo de ALS
     curves_data = {}
@@ -2481,11 +2507,12 @@ def render_tab_tablero(
             background: transparent;
             font-family: {_FS};
             overflow: hidden;
+            padding: 7px;
         }}
         .tbl-panel {{
             {_CARD}
             padding: 16px;
-            height: 320px;
+            height: 316px;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
@@ -2553,7 +2580,7 @@ def render_tab_tablero(
                     bottom: 0,
                     icon: "circle"
                 }},
-                grid: {{ top: "12%", left: "6%", right: "6%", bottom: "15%", containLabel: true }},
+                grid: {{ top: "14%", left: "5%", right: "8%", bottom: "16%", containLabel: true }},
                 xAxis: {{
                     type: "value",
                     name: "DÍAS",
@@ -2581,7 +2608,7 @@ def render_tab_tablero(
 </body>
 </html>
 """
-        components.html(bl_html, height=320, scrolling=False)
+        components.html(bl_html, height=330, scrolling=False)
 
     # 4. Renderizar Panel Izquierdo: Tendencia de Producción Mensual (BOPD, BWPD, BFPD & Pozos ON)
     with col_bl:
@@ -2599,11 +2626,12 @@ def render_tab_tablero(
             background: transparent;
             font-family: {_FS};
             overflow: hidden;
+            padding: 7px;
         }}
         .tbl-panel {{
             {_CARD}
             padding: 16px;
-            height: 320px;
+            height: 316px;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
@@ -2751,7 +2779,7 @@ def render_tab_tablero(
 </body>
 </html>
 """
-        components.html(br_html, height=320, scrolling=False)
+        components.html(br_html, height=330, scrolling=False)
 
     # ── CÁLCULO DE MÉTRICAS DE PRODUCCIÓN PARA EL TICKER ─────────────────────────
     total_bopd = 0.0
@@ -2799,12 +2827,12 @@ def render_tab_tablero(
         pass
 
     # ── TICKER HORIZONTAL DE DATOS (TELEPROMPTER / MARQUEE STYLE) ────────────────
-    st.markdown('<div style="margin-top: 30px;"></div>', unsafe_allow_html=True)
+    st.markdown('<div style="margin-top: 10px;"></div>', unsafe_allow_html=True)
     
     # Construcción dinámica de items para el ticker
     ticker_items = []
-    ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">ALS EN FONDO:</span><span class="ticker-val">{als_fondo:,} POZOS</span></span>')
-    ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">ACTIVOS OPERATIVOS:</span><span class="ticker-val">{als_operativos:,} POZOS ({(als_operativos/max(1,als_fondo)*100):.1f}%)</span></span>')
+    ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">ALS EN FONDO:</span><span class="ticker-val">{_fmt(als_fondo)} POZOS</span></span>')
+    ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">ACTIVOS OPERATIVOS:</span><span class="ticker-val">{_fmt(als_operativos)} POZOS ({(als_operativos/max(1,als_fondo)*100):.1f}%)</span></span>')
     ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">DISPONIBILIDAD:</span><span class="ticker-val">{disp_oper:.1f}%</span></span>')
     ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">UTILIZACIÓN:</span><span class="ticker-val">{uso_oper:.1f}%</span></span>')
     ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">PROD. CRUDO TOTAL:</span><span class="ticker-val warning">{total_bopd:,.0f} BOPD</span></span>')
@@ -2817,7 +2845,7 @@ def render_tab_tablero(
     if total_gas > 0:
         ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">PROD. GAS TOTAL:</span><span class="ticker-val">{total_gas:,.0f} MSCFD</span></span>')
         
-    ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">ALS FALLADOS:</span><span class="ticker-val danger">{als_fallados:,} POZOS ({(als_fallados/max(1,als_fondo)*100):.1f}%)</span></span>')
+    ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">ALS FALLADOS:</span><span class="ticker-val danger">{_fmt(als_fallados)} POZOS ({(als_fallados/max(1,als_fondo)*100):.1f}%)</span></span>')
     ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">FALLAS PERIODO:</span><span class="ticker-val danger">{fallas_totales} EVENTOS</span></span>')
     ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">MTBF EFECTIVO:</span><span class="ticker-val warning">{mtbf_val:.1f} DÍAS</span></span>')
     ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">RUN LIFE PROMEDIO:</span><span class="ticker-val">{rl_val:.1f} DÍAS</span></span>')

@@ -18,19 +18,20 @@ def _apply_styles_internal():
     """Lógica central de inyección de estilos Parex (Tema Claro)."""
     st.markdown("""
     <style>
-        /* DataTables HUD Theme Integration */
+        /* Google Fonts Parex Pairing: Inter (UI/Labels) + Source Serif 4 (Numerals/Executive) */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700;8..60,900&display=swap');
         @import url('https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css');
         @import url('https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css');
 
         [data-testid="stAppViewContainer"] { 
             padding: 0 !important; 
             margin: 0 !important; 
-            background-color: #f5f7f6 !important;
+            background-color: #F7F8F5 !important;
         }
         [data-testid="stMainBlockContainer"] { 
             padding: 0rem 1rem !important; 
             max-width: 100% !important;
-            background-color: #f5f7f6 !important;
+            background-color: #F7F8F5 !important;
         }
 
         header[data-testid="stHeader"] {
@@ -535,62 +536,110 @@ def _apply_styles_internal():
             color: #137659 !important;
         }
 
-        /* ── NATIVE TABS (top position, accessible) ── */
+        /* ── FLOATING BOTTOM NAV (refined: accessible, persistent, mobile-safe) ── */
         div[data-testid="stTabs"] {
-            display: block !important;
+            display: flex !important;
+            flex-direction: column !important;
         }
 
         div[data-testid="stTabs"] [role="tablist"] {
-            position: relative !important;
-            bottom: auto !important;
-            left: auto !important;
-            transform: none !important;
-            z-index: auto !important;
-            background: transparent !important;
-            backdrop-filter: none !important;
-            padding: 0.5rem 0 !important;
-            border-radius: 0 !important;
-            border: none !important;
-            box-shadow: none !important;
-            width: 100% !important;
-            min-width: auto !important;
+            position: fixed !important;
+            bottom: env(safe-area-inset-bottom, 16px) !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            z-index: 1000 !important;
+            background: rgba(255, 255, 255, 0.98) !important;
+            backdrop-filter: blur(20px) saturate(180%) !important;
+            padding: 8px 20px !important;
+            border-radius: 9999px !important;
+            border: 1.5px solid rgba(19, 118, 89, 0.2) !important;
+            box-shadow: 
+                0 8px 32px rgba(0,0,0,0.08), 
+                0 2px 8px rgba(19,118,89,0.08),
+                0 0 0 1px rgba(255,255,255,0.5) inset !important;
+            width: auto !important;
+            max-width: calc(100vw - 32px) !important;
             display: flex !important;
-            justify-content: flex-start !important;
+            justify-content: center !important;
             gap: 4px !important;
-            order: 0 !important;
-            border-bottom: 2px solid rgba(19, 118, 89, 0.15) !important;
-            margin-bottom: 1rem !important;
+            order: 2 !important;
+            overflow-x: auto !important;
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+        }
+        
+        div[data-testid="stTabs"] [role="tablist"]::-webkit-scrollbar {
+            display: none !important;
         }
 
+        /* Asegurar que el contenido de los tabs NO se mueva y tenga padding bottom */
+        div[data-testid="stTabContent"] {
+            order: 1 !important;
+            background: transparent !important;
+            border: none !important;
+            padding-top: 0px !important;
+            padding-bottom: 100px !important;
+            width: 100% !important;
+        }
+
+        /* Quitar la línea inferior por defecto de los tabs */
+        div[data-testid="stTabs"] [role="tablist"] {
+            border: none !important;
+        }
+
+        /* Estilo de cada botón de tab */
         div[data-testid="stTabs"] button[data-baseweb="tab"] {
             background: transparent !important;
             border: none !important;
-            padding: 8px 16px !important;
+            padding: 10px 18px !important;
             color: #5b5c55 !important;
             font-family: 'Inter', sans-serif !important;
-            font-size: 0.75rem !important;
+            font-size: 0.7rem !important;
             font-weight: 600 !important;
             letter-spacing: 0.5px !important;
             text-transform: uppercase !important;
             transition: all 0.2s ease !important;
-            border-radius: 8px 8px 0 0 !important;
+            border-radius: 9999px !important;
             height: auto !important;
+            min-height: 44px !important;
             white-space: nowrap !important;
-            border-bottom: 3px solid transparent !important;
+            flex-shrink: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 6px !important;
         }
         
         div[data-testid="stTabs"] button[data-baseweb="tab"]:hover {
             color: #137659 !important;
-            background: rgba(19, 118, 89, 0.05) !important;
+            background: rgba(19, 118, 89, 0.08) !important;
         }
         
+        /* Tab seleccionado (Estado Activo) - con semántica visual clara */
         div[data-testid="stTabs"] button[aria-selected="true"] {
-            color: #137659 !important;
-            background: rgba(19, 118, 89, 0.08) !important;
-            border-bottom: 3px solid #137659 !important;
-            box-shadow: none !important;
+            color: #ffffff !important;
+            background: linear-gradient(135deg, #137659 0%, #0a4d34 100%) !important;
+            box-shadow: 
+                0 4px 16px rgba(19, 118, 89, 0.35),
+                0 0 0 2px rgba(255,255,255,0.2) inset !important;
+            border: none !important;
         }
 
+        /* Indicador visual sutil para tab activo */
+        div[data-testid="stTabs"] button[aria-selected="true"]::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 8px;
+            height: 8px;
+            background: #137659;
+            border-radius: 50%;
+            opacity: 0.8;
+        }
+
+        /* Esconder la barra nativa debajo del tab seleccionado */
         div[data-testid="stTabs"] [data-baseweb="tab-highlight"],
         div[data-baseweb="tab-border"],
         [data-testid="stTabHighlight"] {
@@ -604,6 +653,9 @@ def _apply_styles_internal():
                 animation-iteration-count: 1 !important;
                 transition-duration: 0.01ms !important;
             }
+            div[data-testid="stTabs"] [role="tablist"] {
+                backdrop-filter: none !important;
+            }
         }
 
         /* ── FOCUS VISIBLE FOR KEYBOARD NAVIGATION ── */
@@ -616,6 +668,38 @@ def _apply_styles_internal():
             outline: 3px solid #137659 !important;
             outline-offset: 2px !important;
             box-shadow: 0 0 0 4px rgba(19, 118, 89, 0.2) !important;
+        }
+
+        /* Mobile: ensure safe area and touch targets */
+        @media (max-width: 768px) {
+            div[data-testid="stTabs"] [role="tablist"] {
+                left: env(safe-area-inset-left, 8px) !important;
+                right: env(safe-area-inset-right, 8px) !important;
+                transform: none !important;
+                bottom: env(safe-area-inset-bottom, 8px) !important;
+                border-radius: 16px !important;
+                padding: 6px 12px !important;
+                gap: 2px !important;
+                justify-content: space-between !important;
+            }
+            div[data-testid="stTabs"] button[data-baseweb="tab"] {
+                padding: 8px 12px !important;
+                font-size: 0.62rem !important;
+                min-width: 0 !important;
+                flex: 1 !important;
+            }
+        }
+
+        /* High contrast mode support */
+        @media (prefers-contrast: high) {
+            div[data-testid="stTabs"] [role="tablist"] {
+                border: 2px solid #137659 !important;
+                background: #ffffff !important;
+            }
+            div[data-testid="stTabs"] button[aria-selected="true"] {
+                background: #137659 !important;
+                border: 2px solid #000000 !important;
+            }
         }
 
         /* ── PLOTLY LEGENDAS Y TEXTOS SVG ── */
@@ -720,39 +804,86 @@ def render_hud_table(df, table_id="hud_table"):
     
     components.html(f"""
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap');
         @import url('https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css');
         @import url('https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css');
         
-        body {{ background: transparent; color: #1f221e; font-family: 'Montserrat', sans-serif; }}
-        .dataTables_wrapper {{ color: #1f221e !important; }}
-        .dataTables_filter input {{ background: #ffffff; border: 1px solid #137659; color: #1f221e; border-radius: 5px; padding: 5px; }}
+        body {{ background: transparent; color: #262626; font-family: 'Inter', 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; }}
+        .dataTables_wrapper {{ color: #262626 !important; font-family: 'Inter', sans-serif !important; }}
+        .dataTables_filter input {{ 
+            background: #ffffff; 
+            border: 1px solid #DCE2D8; 
+            color: #262626; 
+            border-radius: 8px; 
+            padding: 5px 10px; 
+            font-size: 11px;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }}
+        .dataTables_filter input:focus {{
+            border-color: #2E7D46 !important;
+            box-shadow: 0 0 0 2px rgba(46,125,70,0.15) !important;
+        }}
+        .dataTables_filter label {{
+            color: #707070;
+            font-size: 11px;
+            font-family: 'Inter', sans-serif;
+        }}
         
-        /* Botón */
+        /* Botón Copiar */
         button.dt-button {{
-            background: rgba(19, 118, 89, 0.08) !important;
-            border: 1px solid rgba(19, 118, 89, 0.4) !important;
-            color: #137659 !important;
-            font-family: 'Montserrat' !important;
+            background: rgba(46, 125, 70, 0.08) !important;
+            border: 1px solid rgba(46, 125, 70, 0.3) !important;
+            color: #1F4620 !important;
+            font-family: 'Inter', sans-serif !important;
+            font-weight: 700 !important;
             font-size: 10px !important;
-            padding: 5px 15px !important;
+            padding: 5px 14px !important;
             border-radius: 20px !important;
             text-transform: uppercase !important;
+            letter-spacing: 0.5px !important;
             cursor: pointer;
-            transition: 0.3s;
+            transition: all 0.2s ease;
         }}
         button.dt-button:hover {{
-            background: #137659 !important;
+            background: #2E7D46 !important;
             color: #ffffff !important;
-            box-shadow: 0 0 10px rgba(19, 118, 89, 0.2);
+            box-shadow: 0 2px 8px rgba(46, 125, 70, 0.25) !important;
         }}
 
-        table.dataTable thead th {{ background: rgba(19, 118, 89, 0.1); color: #137659; font-family: 'Montserrat'; font-size: 11px; }}
-        table.dataTable tbody td {{ border-bottom: 1px solid rgba(19, 118, 89, 0.08); padding: 8px; font-size: 12px; color: #1f221e; }}
-        .dataTables_info, .dataTables_paginate {{ color: #5b5c55 !important; font-size: 11px; }}
+        table.dataTable thead th {{ 
+            background: rgba(46, 125, 70, 0.08); 
+            color: #1F4620; 
+            font-family: 'Inter', sans-serif; 
+            font-size: 10.5px; 
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            padding: 9px 10px;
+            border-bottom: 1px solid #DCE2D8 !important;
+        }}
+        table.dataTable tbody td {{ 
+            border-bottom: 1px solid rgba(220, 226, 216, 0.6); 
+            padding: 8px 10px; 
+            font-size: 11px; 
+            color: #262626; 
+            font-family: 'Inter', sans-serif;
+        }}
+        .dataTables_info, .dataTables_paginate {{ 
+            color: #707070 !important; 
+            font-size: 10.5px; 
+            font-family: 'Inter', sans-serif;
+        }}
+        .paginate_button.current {{
+            background: #2E7D46 !important;
+            color: #ffffff !important;
+            border-radius: 6px !important;
+            border: none !important;
+        }}
     </style>
     
-    <div style="background: #ffffff; padding:10px; border:1px solid rgba(19, 118, 89, 0.2); border-radius:10px; box-shadow: 0 4px 6px rgba(0,0,0,0.03);">
+    <div style="background:linear-gradient(180deg,#ffffff 0%,#FCFDFA 100%); padding:12px; border:1px solid #DCE2D8; border-radius:13px; box-shadow:0 1px 2px rgba(31,70,32,0.05), 0 4px 12px rgba(126,143,124,0.13), inset 0 1px 0 rgba(255,255,255,0.9); box-sizing:border-box;">
         {html_table}
     </div>
 

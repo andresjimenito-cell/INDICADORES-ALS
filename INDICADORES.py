@@ -15,7 +15,6 @@ import streamlit as st
 try:
     st.set_page_config(
         page_title="INDICADORES ALS | PAREX RESOURCES (FRONTERA)",
-        page_icon="🛡️",
         layout="wide",
         initial_sidebar_state="expanded",
     )
@@ -370,11 +369,11 @@ if st.session_state.get('reporte_runes') is not None:
     # ── NAVEGACIÓN (TABS ESTILIZADOS COMO BOTTOM BAR) ─────────────────────
     # Los estilos en styles.py se encargan de mover estos tabs a la parte inferior.
     tab_tablero, tab_campanas, tab_perf, tab_fallas, tab_indices = st.tabs([
-        "🗂 TABLERO",
-        "🏕 CAMPAÑAS",
-        "⚡ PERFORMANCE",
-        "⚠ FALLAS",
-        "📊 ÍNDICES",
+        "TABLERO",
+        "CAMPAÑAS",
+        "PERFORMANCE",
+        "FALLAS",
+        "ÍNDICES",
     ])
 
     with tab_tablero:
@@ -451,7 +450,7 @@ else:
         )
     st.markdown("""
 <div class="als-empty-state">
-    <div class="als-empty-icon">🛡️</div>
+    <div class="als-empty-icon">ALS</div>
     <div class="als-empty-title">SISTEMA LISTO</div>
     <div class="als-empty-sub">
         Carga los archivos de datos para iniciar el análisis de indicadores

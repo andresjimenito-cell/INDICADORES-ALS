@@ -11,96 +11,99 @@ def get_colors(theme_base: str | None = None):
     """Devuelve el diccionario de colores corporativos de Parex Resources (Tema Claro) con tokens semánticos."""
     return {
         "brand": {
-            "primary": "#137659",       # Verde principal Parex
-            "secondary": "#c09c2e",     # Dorado principal Parex
-            "accent": "#095139",        # Verde oscuro Parex
+            "primary": "#2E7D46",       # Verde principal Parex
+            "primary_dark": "#1F4620",  # Verde oscuro Parex
+            "primary_light": "#EEF3EA", # Verde muy claro
+            "secondary": "#C98A2C",     # Dorado principal Parex
+            "secondary_light": "#FDF6E9",
+            "accent": "#1F4620",        # Verde oscuro Parex
+            "petrol": "#223A5E",        # Azul petróleo
         },
         "surface": {
-            "background": "#f5f7f6",    # Fondo claro
+            "background": "#F7F8F5",    # Fondo claro sutil
             "container_bg": "#ffffff",  # Tarjetas blancas
-            "border": "rgba(19, 118, 89, 0.15)",
-            "glow": "rgba(192, 156, 46, 0.2)",
+            "border": "#DCE2D8",
+            "glow": "rgba(201, 138, 44, 0.2)",
         },
         "text": {
-            "primary": "#1f221e",       # Texto principal
-            "muted": "#5b5c55",         # Texto silenciado
+            "primary": "#262626",       # Texto principal oscuro
+            "muted": "#707070",         # Texto secundario suave
             "on_brand": "#ffffff",      # Texto sobre brand colors
         },
         "semantic": {
-            "success": "#137659",       # Verde = bueno, operativo, meta cumplida
-            "warning": "#c09c2e",       # Dorado = atención, degradado, near-meta
-            "danger": "#c62828",        # Rojo = falla, crítica, fuera de meta
-            "info": "#0284c7",          # Azul = información, neutro, ALS
+            "success": "#2E7D46",       # Verde = bueno, operativo, meta cumplida
+            "warning": "#C98A2C",       # Dorado = atención, degradado, near-meta
+            "danger": "#C0392B",        # Rojo = falla, crítica, fuera de meta
+            "info": "#223A5E",          # Azul petróleo = info
         },
         "chart": {
             "series": [
-                "#137659",  # Verde principal
-                "#c09c2e",  # Dorado
-                "#095139",  # Verde oscuro
-                "#8b7411",  # Dorado oscuro
-                "#167658",  # Verde claro
-                "#5b5c55",  # Gris oliva
-                "#0284c7",  # Azul info
-                "#c62828",  # Rojo danger
+                "#2E7D46",  # Verde principal
+                "#C98A2C",  # Dorado
+                "#1F4620",  # Verde oscuro
+                "#223A5E",  # Azul petróleo
+                "#C0392B",  # Rojo falla
+                "#5C6B73",  # Gris pizarra
+                "#707070",  # Gris neutro
+                "#4CA46A",  # Verde claro
             ]
         }
     }
 
 
 def get_plotly_layout(xaxis_color: str | None = None, yaxis_color: str | None = None, theme_base: str | None = None):
-    """Devuelve un layout claro de Plotly alineado con Parex Resources."""
+    """Devuelve un layout claro de Plotly alineado con Parex Resources y tab_tablero."""
     colors = get_colors()
     brand = colors["brand"]
     text = colors["text"]
-    chart = colors["chart"]
     xa = xaxis_color or text["primary"]
     ya = yaxis_color or text["primary"]
 
     layout = {
         "template": "plotly_white",
         "paper_bgcolor": "rgba(0,0,0,0)",
-        "plot_bgcolor": "rgba(234, 244, 239, 0.4)", # Fondo verde claro traslúcido
-        "font": {"family": "Montserrat, Arial, sans-serif", "color": text["primary"], "size": 12},
+        "plot_bgcolor": "rgba(0,0,0,0)",
+        "font": {"family": "Inter, 'Segoe UI', Arial, sans-serif", "color": text["primary"], "size": 11},
         "title": {
-            "font": {"family": "Montserrat, Arial, sans-serif", "size": 18, "color": brand["primary"]},
-            "pad": {"t": 20, "b": 20},
-            "x": 0.05,
+            "font": {"family": "'Source Serif 4', Georgia, serif", "size": 16, "color": brand["primary_dark"]},
+            "pad": {"t": 15, "b": 15},
+            "x": 0.02,
             "xanchor": "left"
         },
         "xaxis": {
             "color": xa,
-            "gridcolor": "rgba(19, 118, 89, 0.08)",
-            "linecolor": "rgba(19, 118, 89, 0.2)",
+            "gridcolor": "rgba(46, 125, 70, 0.07)",
+            "linecolor": "rgba(46, 125, 70, 0.2)",
             "zeroline": False,
-            "tickfont": {"size": 10},
+            "tickfont": {"size": 9, "family": "Inter, sans-serif"},
             "showgrid": True,
             "automargin": True
         },
         "yaxis": {
             "color": ya,
-            "gridcolor": "rgba(19, 118, 89, 0.08)",
-            "linecolor": "rgba(19, 118, 89, 0.2)",
+            "gridcolor": "rgba(46, 125, 70, 0.07)",
+            "linecolor": "rgba(46, 125, 70, 0.2)",
             "zeroline": False,
-            "tickfont": {"size": 10},
+            "tickfont": {"size": 9, "family": "Inter, sans-serif"},
             "showgrid": True,
             "automargin": True
         },
         "legend": {
             "bgcolor": "rgba(255, 255, 255, 0.95)",
-            "bordercolor": "rgba(19, 118, 89, 0.2)",
+            "bordercolor": "rgba(46, 125, 70, 0.2)",
             "borderwidth": 1,
-            "font": {"size": 11, "color": text["primary"]},
+            "font": {"size": 10, "color": text["primary"], "family": "Inter, sans-serif"},
             "orientation": "h",
             "yanchor": "bottom",
-            "y": -0.3,
+            "y": -0.25,
             "xanchor": "center",
             "x": 0.5
         },
-        "margin": {"t": 80, "b": 100, "l": 60, "r": 40},
+        "margin": {"t": 40, "b": 60, "l": 45, "r": 25},
         "hovermode": "closest",
         "hoverlabel": {
             "bgcolor": "#ffffff",
-            "font": {"family": "Montserrat, Arial, sans-serif", "size": 13, "color": "#1f221e"},
+            "font": {"family": "Inter, Arial, sans-serif", "size": 11, "color": "#262626"},
             "bordercolor": brand["primary"]
         },
         "colorway": chart["series"]
