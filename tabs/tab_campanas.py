@@ -157,7 +157,14 @@ def render_tab_campanas(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, se
     df_bd_raw = st.session_state.get('df_bd_calculated')
     
     df_bd_untr = df_bd_raw.copy() if df_bd_raw is not None else df_bd_filtered.copy()
-    EXCLUIDOS = set()
+    EXCLUIDOS = {
+        'CANAGUARO', 'ENTRERIOS', 'ENTRE RIOS', 'ENTRE RÍOS', 'ENTRE_RIOS',
+        'MAPACHE', 'PERICO', 'PERICO (88)', 'MAPACHE PERICO', 'MAPACHE - PERICO',
+        'MAPACHE/PERICO', 'MAPACHE-PERICO',
+        'CORCEL NE', 'CORCEL_NE', 'CORCEL-NE', 'CORCEL N3', 'CORCEL_N3', 'CORCEL-N3',
+        'RIO META', 'RIO_META', 'RÍO META', 'RÍO_META',
+        'EL DIFICIL', 'EL DIFICIL NE', 'DIFICIL', 'EL DIFÍCIL', 'EL DIFÍCIL NE'
+    }
     for col_filter in ('ACTIVO', 'BLOQUE', 'CAMPO'):
         if col_filter in df_bd_untr.columns and EXCLUIDOS:
             df_bd_untr = df_bd_untr[~df_bd_untr[col_filter].astype(str).str.upper().str.strip().isin(EXCLUIDOS)]

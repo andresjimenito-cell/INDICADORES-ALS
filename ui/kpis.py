@@ -8,21 +8,27 @@ except ImportError:
 
 import datetime 
 import pandas as pd 
-from ui.theme import get_colors
+from ui.theme import get_colors, get_semantic_color
 import core.mtbf as mtbf_mod
 
 import ui.tema as tema
 
 _colors = get_colors()
-# Usar Magenta Neon como color principal para KPIs
+# Usar colores semánticos para KPIs
 COLOR_PRINCIPAL = getattr(tema, 'COLOR_PRINCIPAL', '#137659')
-_bg_raw = _colors.get('background', None)
+_bg_raw = _colors.get('surface', {}).get('background', '#f5f7f6')
 if isinstance(_bg_raw, str) and _bg_raw.strip().lower() in ('#ffffff', 'white'):
     COLOR_FONDO_OSCURO = None
 else:
     COLOR_FONDO_OSCURO = '#f5f7f6'
 COLOR_FONDO_CONTENEDOR = '#ffffff'
 COLOR_SOMBRA = 'transparent'
+
+# Colores semánticos
+COLOR_SUCCESS = get_semantic_color("success")
+COLOR_WARNING = get_semantic_color("warning")
+COLOR_DANGER  = get_semantic_color("danger")
+COLOR_INFO    = get_semantic_color("info")
 
 # Colores adicionales específicos locales
 COLOR_TEXTO_DATOS = '#475569'
@@ -52,7 +58,14 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
 
     if df_bd_raw is not None:
         df_bd = df_bd_raw.copy()
-        EXCLUIDOS = set()
+        EXCLUIDOS = {
+            'CANAGUARO', 'ENTRERIOS', 'ENTRE RIOS', 'ENTRE RÍOS', 'ENTRE_RIOS',
+            'MAPACHE', 'PERICO', 'PERICO (88)', 'MAPACHE PERICO', 'MAPACHE - PERICO',
+            'MAPACHE/PERICO', 'MAPACHE-PERICO',
+            'CORCEL NE', 'CORCEL_NE', 'CORCEL-NE', 'CORCEL N3', 'CORCEL_N3', 'CORCEL-N3',
+            'RIO META', 'RIO_META', 'RÍO META', 'RÍO_META',
+            'EL DIFICIL', 'EL DIFICIL NE', 'DIFICIL', 'EL DIFÍCIL', 'EL DIFÍCIL NE'
+        }
         for col_filter in ('ACTIVO', 'BLOQUE', 'CAMPO'):
             if col_filter in df_bd.columns and EXCLUIDOS:
                 df_bd = df_bd[~df_bd[col_filter].astype(str).str.upper().str.strip().isin(EXCLUIDOS)]
@@ -246,28 +259,88 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
             </div>
         """
 
+    # === 4 HERO KPIs con semántica traffic-light ===
+    # 1. IF vs Meta: danger/warning/success según % vs meta (7.5%)
+    if_pct = None
+    try:
+        if_on_num = float(if_on.replace('%', '')) if '%' in if_on else float(if_on) if if_on != 'N/D' else None
+        if if_on_num is not None:
+            if_pct = if_on_num
+    except Exception:
+        pass
+    
+    if if_pct is not None:
+        if if_pct > 10:  # Crítico
+            if_status_color = COLOR_DANGER
+            if_status_icon = "🔴"
+            if_status_label = "CRÍTICO"
+        elif if_pct > 7.5:  # Advertencia
+            if_status_color = COLOR_WARNING
+            if_status_icon = "🟡"
+            if_status_label = "ALERTA"
+        else:  # OK
+            if_status_color = COLOR_SUCCESS
+            if_status_icon = "🟢"
+            if_status_label = "OK"
+    else:
+        if_status_color = COLOR_INFO
+        if_status_icon = "⚪"
+        if_status_label = "N/D"
+
+    # 2. MTBF vs Meta: success/warning/danger (meta 2190 días)
+    mtbf_status_color = COLOR_SUCCESS
+    mtbf_status_icon = "🟢"
+    mtbf_status_label = "OK"
+    try:
+        mtbf_val = float(mtbf_total_str) if mtbf_total_str != "N/D" else None
+        if mtbf_val is not None:
+            if mtbf_val < 1000:
+                mtbf_status_color = COLOR_DANGER
+                mtbf_status_icon = "🔴"
+                mtbf_status_label = "CRÍTICO"
+            elif mtbf_val < 1800:
+                mtbf_status_color = COLOR_WARNING
+                mtbf_status_icon = "🟡"
+                mtbf_status_label = "ALERTA"
+    except Exception:
+        pass
+
+    # 3. Pozos ON/OFF: info/success
+    pozos_on_pct = 0
+    if operativos_todos > 0:
+        pozos_on_pct = (pozos_on_todos / operativos_todos) * 100
+    
+    # 4. Alertas: count of wells with IF > meta or MTBF < threshold
+    alertas_count = 0
+    try:
+        if if_pct is not None and if_pct > 7.5:
+            alertas_count += 1
+        if mtbf_val is not None and mtbf_val < 1800:
+            alertas_count += 1
+        # Add fallados as alert if > 0
+        if fallado_todos > 0:
+            alertas_count += 1
+    except Exception:
+        pass
+
     cards_data = [
-        {"title": "Corridas", "icon": "↻", "val": run_label, "color": "#137659"},
-        {"title": "Operativos", "icon": "◈", "val": operativos_label, "color": "#095139"},
-        {"title": "Activos ON", "icon": "⚡", "val": on_label, "color": "#c09c2e"},
-        {"title": "Apagados OFF", "icon": "🔌", "val": off_label, "color": "#5b5c55"},
-        {"title": "Fallados", "icon": "◉", "val": fallado_label, "color": "#d32f2f"},
-        {"title": "Índice Falla", "icon": "⚠️", "val": if_label, "color": "#d32f2f"},
-        {"title": "MTBF", "icon": "⏱️", "val": mtbf_label, "color": "#137659"},
-        {"title": "Run Life", "icon": "⏳", "val": rl_label, "color": "#c09c2e"},
-        {"title": "RL Efectivo", "icon": "✅", "val": rle_label, "color": "#095139"},
+        {"title": "Índice Falla vs Meta", "icon": if_status_icon, "val": f"IF: {if_on}", "color": if_status_color, "subtitle": if_status_label},
+        {"title": "MTBF vs Meta (2190d)", "icon": mtbf_status_icon, "val": f"MTBF: {mtbf_total_str} d", "color": mtbf_status_color, "subtitle": mtbf_status_label},
+        {"title": "Pozos Activos", "icon": "⚡", "val": f"ON: {pozos_on_todos} / OFF: {pozos_off_todos}", "color": COLOR_INFO, "subtitle": f"{pozos_on_pct:.0f}% operando"},
+        {"title": "Alertas Críticas", "icon": "🚨" if alertas_count > 0 else "✅", "val": f"{alertas_count} pozos requieren atención", "color": COLOR_DANGER if alertas_count > 0 else COLOR_SUCCESS, "subtitle": "Revisar Tablero/Fallas"},
     ]
 
     cards_html = ""
     for c in cards_data:
         cards_html += f"""
-        <div class="kpi-card-premium" style="border-top: 3px solid {c['color']}; align-items: center; text-align: center;">
-            <div class="kpi-icon-container" style="background: {c['color']}15; color: {c['color']}; margin: 0 auto 10px auto;">
+        <div class="kpi-card-premium" style="border-left: 4px solid {c['color']}; align-items: center; text-align: center;">
+            <div class="kpi-icon-container" style="background: {c['color']}15; color: {c['color']}; margin: 0 auto 8px auto;">
                 {c['icon']}
             </div>
             <div class="kpi-content" style="align-items: center; text-align: center;">
                 <div class="kpi-title" style="text-align: center; width: 100%;">{c['title']}</div>
-                {format_card_val(c['val'], c['color'])}
+                <div style="margin-top: 4px; font-size: 1.25rem; font-weight: 800; color: #1f221e; line-height: 1.2;">{c['val']}</div>
+                <div class="kpi-subtitle" style="margin-top: 6px; font-size: 0.65rem; font-weight: 700; color: {c['color']}; text-transform: uppercase; letter-spacing: 0.5px;">{c['subtitle']}</div>
             </div>
         </div>
         """
@@ -296,8 +369,8 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
 
         .hud-grid {{
             display: grid;
-            grid-template-columns: repeat(9, 1fr);
-            gap: 10px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
             width: 100%;
         }}
 
@@ -305,14 +378,14 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
             background: linear-gradient(135deg, #f8fdfb 0%, #ffffff 100%);
             border: 1.5px solid rgba(19, 118, 89, 0.13);
             border-radius: 16px;
-            padding: 10px 8px;
+            padding: 14px 10px;
             display: flex;
             flex-direction: column;
             align-items: center;
             text-align: center;
             gap: 4px;
             min-width: 0;
-            height: 155px;
+            height: 140px;
             transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
             box-shadow: 0 2px 8px rgba(19, 118, 89, 0.04), 0 8px 32px rgba(19, 118, 89, 0.06);
             position: relative;
@@ -327,13 +400,13 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
         }}
 
         .kpi-icon-container {{
-            width: 36px;
-            height: 36px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.15rem;
+            font-size: 1.4rem;
             flex-shrink: 0;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
         }}
@@ -348,7 +421,7 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
 
         .kpi-title {{
             font-family: 'Inter', sans-serif !important;
-            font-size: 0.62rem;
+            font-size: 0.65rem;
             font-weight: 800;
             color: #455a72;
             text-transform: uppercase;
@@ -356,7 +429,12 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            margin-bottom: 2px;
+            margin-bottom: 4px;
+            width: 100%;
+        }}
+        
+        .kpi-subtitle {{
+            width: 100%;
         }}
 
     </style>
@@ -368,7 +446,7 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
 </body>
 </html>
 """
-    components.html(html_content, height=180, scrolling=False)
+    components.html(html_content, height=170, scrolling=False)
 
 
 def build_kpis_graph(df_bd, df_forma9=None, reporte_run_life=None, indice_resumen_df=None, selected_als='TODOS', fecha_evaluacion=None):

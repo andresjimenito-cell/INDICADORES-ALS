@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
@@ -26,80 +27,88 @@ styled_title = styled_title
 @st.cache_data(show_spinner=False)
 def calcular_mtbf(df_bd, fecha_evaluacion, col_life='RUN LIFE @ FALLA', col_indicador='INDICADOR_MTBF'):
     """
-    Calcula el MTBF usando el método solicitado: filtrado, orden, columnas auxiliares y fórmula especial.
-    Permite especificar la columna de tiempo de vida (col_life) para soportar MTBF Efectivo.
+    Calcula el MTBF usando el método actuarial (SPE / ISO 14224):
+    100% vectorizado en NumPy para máxima velocidad de ejecución.
     """
-    df = df_bd.copy()
+    if df_bd is None or df_bd.empty:
+        return 0.0, pd.DataFrame()
 
-    # Excluir pozos/equipos entregados ('ENTREGAD') y Flujo Natural ('FN') de MTBF
-    mask_entregado = pd.Series(False, index=df.index)
-    for col in df.columns:
-        mask_entregado |= df[col].astype(str).str.upper().str.contains('ENTREGAD', na=False)
-    df = df[~mask_entregado].copy()
+    # 1. Asegurar que las columnas de vida existan
+    if col_life not in df_bd.columns:
+        if col_life == 'RUN LIFE @ FALLA' and 'RUN LIFE FALLA' in df_bd.columns:
+            col_life = 'RUN LIFE FALLA'
+        elif 'RUN LIFE' in df_bd.columns and col_life == 'RUN LIFE @ FALLA':
+            col_life = 'RUN LIFE'
+        else:
+            return 0.0, pd.DataFrame()
 
+    # Pre-seleccionar columnas necesarias para evitar clonar DataFrames gigantes
+    cols_needed = [col_life, 'FECHA_RUN']
+    for c in ['FECHA_FALLA', 'FECHA_PULL', col_indicador, 'ALS', 'SISTEMA ALS', 'SISTEMA_ALS', 'METODO', 'METODO DE LEVANTAMIENTO', 'POZO', 'CAMPO', 'BLOQUE', 'PROVEEDOR', 'ESTADO', 'COMENTARIOS']:
+        if c in df_bd.columns and c not in cols_needed:
+            cols_needed.append(c)
+
+    df = df_bd[cols_needed].copy()
+
+    # 2. Exclusión rápida de ENTREGADOS en columnas de texto
+    text_cols = [c for c in ['FECHA_PULL', 'FECHA_FALLA', 'ESTADO', 'COMENTARIOS', 'POZO'] if c in df.columns]
+    if text_cols:
+        mask_entregado = df[text_cols].astype(str).apply(lambda s: s.str.upper().str.contains('ENTREGAD', na=False)).any(axis=1)
+        df = df[~mask_entregado]
+
+    # Exclusión rápida de Flujo Natural ('FN')
     for col_als in ('ALS', 'SISTEMA ALS', 'SISTEMA_ALS', 'METODO', 'METODO DE LEVANTAMIENTO'):
         if col_als in df.columns:
             es_fn = df[col_als].astype(str).str.strip().str.upper().isin(
                 ['FN', 'FLUJO NATURAL', 'FLUJO_NATURAL', 'F.N.', 'FLUJO NAT']
             )
-            df = df[~es_fn].copy()
+            df = df[~es_fn]
 
-    # Asegurar que las columnas existen
-    if col_life not in df.columns:
-        if col_life == 'RUN LIFE @ FALLA' and 'RUN LIFE FALLA' in df.columns:
-            col_life = 'RUN LIFE FALLA'
-        elif 'RUN LIFE' in df.columns and col_life == 'RUN LIFE @ FALLA':
-            col_life = 'RUN LIFE'
-        else:
-            return 0, pd.DataFrame()
+    # 3. Filtrado temporal
+    f_run = pd.to_datetime(df['FECHA_RUN'], errors='coerce')
+    f_eval = pd.to_datetime(fecha_evaluacion)
+    df = df[f_run <= f_eval]
+    
+    f_falla = pd.to_datetime(df['FECHA_FALLA'], errors='coerce') if 'FECHA_FALLA' in df.columns else pd.Series(index=df.index, dtype='datetime64[ns]')
+    f_pull = pd.to_datetime(df['FECHA_PULL'], errors='coerce') if 'FECHA_PULL' in df.columns else pd.Series(index=df.index, dtype='datetime64[ns]')
+    
+    # Filtrar solo registros terminados (falla o pull)
+    df = df[f_falla.notna() | f_pull.notna()]
 
-    df['FECHA_RUN'] = pd.to_datetime(df['FECHA_RUN'], errors='coerce')
-    df['FECHA_FALLA'] = pd.to_datetime(df['FECHA_FALLA'], errors='coerce')
-    df['FECHA_PULL'] = pd.to_datetime(df.get('FECHA_PULL'), errors='coerce')
-    
-    # Filtrar solo por fecha de evaluación
-    df = df[df['FECHA_RUN'] <= pd.to_datetime(fecha_evaluacion)]
-    
-    # Filtrar solo registros que hayan terminado (tienen fecha de falla o fecha de pull)
-    df = df[df['FECHA_FALLA'].notna() | df['FECHA_PULL'].notna()]
-    
-    # Filtrar solo registros con tiempo de vida válido
-    df = df[df[col_life].notna()]
-    df = df.sort_values(col_life).reset_index(drop=True)
+    # 4. Validar tiempo de vida
+    df[col_life] = pd.to_numeric(df[col_life], errors='coerce')
+    df = df[df[col_life].notna() & (df[col_life] >= 0)]
     
     n = len(df)
     if n == 0:
-        return 0, pd.DataFrame()
+        return 0.0, pd.DataFrame()
         
-    # ITEM: enumerar 1,2,3...
-    df['ITEM'] = range(1, n+1)
+    df = df.sort_values(col_life).reset_index(drop=True)
     
-    # R(ti/Ti-1): si col_indicador==1 usar fórmula, si no, poner 1
+    # 5. CÁLCULO ACTUARIAL 100% VECTORIZADO EN NUMPY
+    items = np.arange(1, n + 1)
+    df['ITEM'] = items
+    
     if col_indicador in df.columns:
-        df['R(ti/Ti-1)'] = df.apply(lambda row: (n + 1 - row['ITEM']) / (n + 2 - row['ITEM']) if row[col_indicador] == 1 else 1, axis=1)
+        ind_vals = pd.to_numeric(df[col_indicador], errors='coerce').fillna(0).values
+        r_step = np.where(ind_vals == 1, (n + 1 - items) / (n + 2 - items), 1.0)
     else:
-        df['R(ti/Ti-1)'] = 1
+        r_step = np.ones(n, dtype=float)
         
-    # R(Ti): acumulativo multiplicativo
-    r_ti = []
-    current_rti = 1.0
-    for val in df['R(ti/Ti-1)']:
-        current_rti *= val
-        r_ti.append(current_rti)
+    df['R(ti/Ti-1)'] = r_step
+    
+    # R(Ti) = Producto acumulativo
+    r_ti = np.cumprod(r_step)
     df['R(Ti)'] = r_ti
     
-    # R(Ti)*dt
-    dt = df[col_life].values
-    rti_dt = []
-    for i, r in enumerate(df['R(Ti)']):
-        if i == 0:
-            rti_dt.append(r * (dt[i] - 0))
-        else:
-            rti_dt.append(r * (dt[i] - dt[i-1]))
+    # R(Ti)*dt vectorizado
+    dt_vals = df[col_life].values.astype(float)
+    dt_diff = np.diff(dt_vals, prepend=0.0)
+    rti_dt = r_ti * dt_diff
     df['R(Ti)*dt'] = rti_dt
     
-    mtbf = sum(df['R(Ti)*dt'])
-    return mtbf, df[['ITEM', col_life, 'R(ti/Ti-1)', 'R(Ti)', 'R(Ti)*dt']]
+    mtbf_total = float(np.sum(rti_dt))
+    return mtbf_total, df[['ITEM', col_life, 'R(ti/Ti-1)', 'R(Ti)', 'R(Ti)*dt']]
 
 def mostrar_mtbf(mtbf_global, mtbf_por_pozo, mtbf_efectivo=None, df_bd=None, fecha_evaluacion=None):
     # Layout de KPIs principales usando clases HUD

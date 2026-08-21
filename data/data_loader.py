@@ -290,7 +290,11 @@ def cargar_y_limpiar_datos(forma9_file, bd_file):
     activo_col       = next((col for col in df_bd.columns if 'ACTIVO'          in col), None)
     severidad_col    = next((col for col in df_bd.columns if 'SEVERIDAD'       in col.upper()), None)
 
-    df_bd.rename(columns={
+    modelo_col       = next((col for col in df_bd.columns if ('MODELO' in col or 'MODEL' in col) and ('BOMB' in col or 'BOMAB' in col or 'BOM' in col)), None)
+    if not modelo_col:
+        modelo_col   = next((col for col in df_bd.columns if 'MODELO' in col or 'MODEL' in col), None)
+
+    rename_map = {
         run_col_bd:      'RUN',
         fecha_run_col:   'FECHA_RUN',
         fecha_falla_col: 'FECHA_FALLA',
@@ -302,7 +306,23 @@ def cargar_y_limpiar_datos(forma9_file, bd_file):
         als_col:         'ALS',
         activo_col:      'ACTIVO',
         severidad_col:   'SEVERIDAD',
-    }, inplace=True)
+    }
+    if modelo_col:
+        rename_map[modelo_col] = 'MODELO DE BOMBA'
+
+    df_bd.rename(columns=rename_map, inplace=True)
+
+    if 'MODELO DE BOMBA' in df_bd.columns:
+        def _clean_mod_str(val):
+            if pd.isna(val) or str(val).strip().upper() in ('', 'NAN', 'NONE', 'NULL', 'NAT'):
+                return ''
+            s = re.sub(r'[\r\n"]+', ' ', str(val)).strip()
+            for sep in [' - INTAKE', ' - INATKE', ' - MOTOR', ' CUERPOS DE BOMBA', ' - 56 ETAPAS']:
+                if sep in s.upper():
+                    idx = s.upper().find(sep)
+                    s = s[:idx].strip()
+            return s
+        df_bd['MODELO DE BOMBA'] = df_bd['MODELO DE BOMBA'].apply(_clean_mod_str)
 
     # Filtrar pozos/equipos entregados ('ENTREGAD' en cualquier columna) para que no entren a ninguna métrica (ALS fondo, MTBF, etc.)
     mask_entregado = pd.Series(False, index=df_bd.index)
@@ -338,8 +358,15 @@ def cargar_y_limpiar_datos(forma9_file, bd_file):
 
     df_bd.dropna(subset=['FECHA_RUN', 'POZO'], inplace=True)
 
-    # Excluir EL DIFICIL
-    EXCLUIDOS = {'EL DIFICIL', 'EL DIFICIL NE', 'DIFICIL'}
+    # Excluir pozos/bloques/campos entregados y no tenidos en cuenta
+    EXCLUIDOS = {
+        'CANAGUARO', 'ENTRERIOS', 'ENTRE RIOS', 'ENTRE RÍOS', 'ENTRE_RIOS',
+        'MAPACHE', 'PERICO', 'PERICO (88)', 'MAPACHE PERICO', 'MAPACHE - PERICO',
+        'MAPACHE/PERICO', 'MAPACHE-PERICO',
+        'CORCEL NE', 'CORCEL_NE', 'CORCEL-NE', 'CORCEL N3', 'CORCEL_N3', 'CORCEL-N3',
+        'RIO META', 'RIO_META', 'RÍO META', 'RÍO_META',
+        'EL DIFICIL', 'EL DIFICIL NE', 'DIFICIL', 'EL DIFÍCIL', 'EL DIFÍCIL NE'
+    }
     for col_filter in ('ACTIVO', 'BLOQUE', 'CAMPO'):
         if col_filter in df_bd.columns and EXCLUIDOS:
             df_bd = df_bd[~df_bd[col_filter].astype(str).str.upper().str.strip().isin(EXCLUIDOS)].copy()

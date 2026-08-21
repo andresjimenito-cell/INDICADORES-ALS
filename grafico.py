@@ -27,11 +27,17 @@ def inject_plotly_dynamic_styles():
         fill: #ffffff !important;
     }
 
-    /* 3. TEXTO DE LEYENDA - Limpio y legible */
-    .plotly .legendtext {
-        fill: #ffffff !important;
+    /* 3. TEXTO DE LEYENDA - Limpio y legible en tema corporativo Parex */
+    .plotly .legendtext,
+    .plotly g.traces text,
+    .plotly text.legendtext,
+    g.legend g.traces text {
+        fill: #1f221e !important;
+        color: #1f221e !important;
         font-weight: 600 !important;
-        font-size: 10px !important;
+        font-size: 11px !important;
+        font-family: 'Inter', sans-serif !important;
+        opacity: 1 !important;
     }
 
     /* 4. GRID LINES - Sutiles */
@@ -74,29 +80,29 @@ def generar_resumen_mensual(df_bd, df_forma9, fecha_evaluacion):
     df_f9 = df_forma9.copy()
 
     # Excluir pozos/equipos entregados ('ENTREGAD') y Flujo Natural ('FN') de las gráficas
-    mask_entregado_bd = pd.Series(False, index=df_bd.index)
-    for col in df_bd.columns:
-        mask_entregado_bd |= df_bd[col].astype(str).str.upper().str.contains('ENTREGAD', na=False)
-    df_bd = df_bd[~mask_entregado_bd].copy()
+    text_cols_bd = [c for c in ['FECHA_PULL', 'FECHA_FALLA', 'ESTADO', 'COMENTARIOS', 'POZO'] if c in df_bd.columns]
+    if text_cols_bd:
+        mask_entregado_bd = df_bd[text_cols_bd].astype(str).apply(lambda s: s.str.upper().str.contains('ENTREGAD', na=False)).any(axis=1)
+        df_bd = df_bd[~mask_entregado_bd]
 
     for col_als in ('ALS', 'SISTEMA ALS', 'SISTEMA_ALS', 'METODO', 'METODO DE LEVANTAMIENTO'):
         if col_als in df_bd.columns:
             es_fn_bd = df_bd[col_als].astype(str).str.strip().str.upper().isin(
                 ['FN', 'FLUJO NATURAL', 'FLUJO_NATURAL', 'F.N.', 'FLUJO NAT']
             )
-            df_bd = df_bd[~es_fn_bd].copy()
+            df_bd = df_bd[~es_fn_bd]
 
-    mask_entregado_f9 = pd.Series(False, index=df_f9.index)
-    for col in df_f9.columns:
-        mask_entregado_f9 |= df_f9[col].astype(str).str.upper().str.contains('ENTREGAD', na=False)
-    df_f9 = df_f9[~mask_entregado_f9].copy()
+    text_cols_f9 = [c for c in ['FECHA_FORMA9', 'ESTADO', 'COMENTARIOS', 'POZO'] if c in df_f9.columns]
+    if text_cols_f9:
+        mask_entregado_f9 = df_f9[text_cols_f9].astype(str).apply(lambda s: s.str.upper().str.contains('ENTREGAD', na=False)).any(axis=1)
+        df_f9 = df_f9[~mask_entregado_f9]
 
     for col_als in ('ALS', 'SISTEMA ALS', 'SISTEMA_ALS', 'METODO', 'METODO DE LEVANTAMIENTO'):
         if col_als in df_f9.columns:
             es_fn_f9 = df_f9[col_als].astype(str).str.strip().str.upper().isin(
                 ['FN', 'FLUJO NATURAL', 'FLUJO_NATURAL', 'F.N.', 'FLUJO NAT']
             )
-            df_f9 = df_f9[~es_fn_f9].copy()
+            df_f9 = df_f9[~es_fn_f9]
     
     # Normalización de fechas
     df_bd['FECHA_RUN'] = pd.to_datetime(df_bd.get('FECHA_RUN', pd.NaT), errors='coerce').dt.normalize()
@@ -329,39 +335,32 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
             df_monthly[col] = df_monthly[col].clip(lower=0.0, upper=10.0)
             df_monthly[col].fillna(0, inplace=True)
 
-    # --- PALETA CROMÁTICA ADAPTABLE ---
-    # Inyectar estilos dinámicos de Plotly
+    # --- PALETA CROMÁTICA CORPORATIVA PAREX ---
     inject_plotly_dynamic_styles()
     
-    # Colores HUD más vibrantes
-    CYAN_NEON = '#00D9FF'      # Celeste vibrante
-    GREEN_ELECTRIC = '#B200CC' # Verde neón
-    MAGENTA_ALERTA = '#ff0055' # Magenta alerta
-    AMARILLO_NEON = '#FFAB40' # Amarillo/Naranja neón
-    GRID_COLOR = 'rgba(128,128,128,0.15)' # Gris sutil para ambos temas
-    FONT_TECH = 'Consolas, "Courier New", monospace'
-
-    # Asignación de colores
-    COLOR_POZOS_ON = CYAN_NEON
-    COLOR_POZOS_OFF = '#141943'
-    COLOR_RUNLIFE = GREEN_ELECTRIC
-    COLOR_RUNLIFE_GEN = '#a6ff00'
-    COLOR_RLE = "#FFF700"
-    COLOR_RLE_FALLA = '#00CCFF'
-    COLOR_TMEF = '#E6E6E6'
-    COLOR_IF_ON = MAGENTA_ALERTA
-    COLOR_IF_ALS = AMARILLO_NEON
+    # Colores corporativos Parex Resources (Tema Claro Oficial)
+    COLOR_POZOS_ON = '#137659'      # Verde principal Parex
+    COLOR_POZOS_OFF = '#5b5c55'     # Gris corporativo silenciado
+    COLOR_RUNLIFE = '#137659'       # Verde principal Parex
+    COLOR_RUNLIFE_GEN = '#095139'   # Verde oscuro Parex
+    COLOR_RLE = '#c09c2e'           # Dorado Parex
+    COLOR_RLE_FALLA = '#0284c7'     # Azul zafiro
+    COLOR_TMEF = '#8c6e18'          # Dorado oscuro
+    COLOR_IF_ON = '#c62828'         # Rojo falla
+    COLOR_IF_ALS = '#d97706'        # Ámbar / Naranja falla ALS
+    COLOR_IF_1500 = '#7c3aed'       # Púrpura <1500d
+    COLOR_IF_ALS_1500 = '#ec4899'   # Rosa intenso ALS <1500d
 
     fig = go.Figure()
 
-    # --- TRAZAS (ESTILO HUD ESPAÑOL) ---
+    # --- TRAZAS ---
 
     # 1. Barras (Pozos ON/OFF)
     fig.add_trace(go.Bar(
         x=df_monthly['Mes'], 
         y=df_monthly['Pozos_ON'], 
         name='POZOS ACTIVOS', 
-        marker=dict(color=COLOR_POZOS_ON, line=dict(color=COLOR_POZOS_ON, width=1), opacity=1),
+        marker=dict(color=COLOR_POZOS_ON, line=dict(color='#095139', width=1), opacity=1),
         offsetgroup=0.5,
         hovertemplate='<b>[ESTADO: ACTIVOS]</b><br>CANTIDAD: %{y}<extra></extra>'
     ))
@@ -369,7 +368,7 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
         x=df_monthly['Mes'], 
         y=df_monthly['Pozos_OFF'], 
         name='POZOS INACTIVOS', 
-        marker=dict(color=COLOR_POZOS_OFF, line=dict(width=1), opacity=1),
+        marker=dict(color=COLOR_POZOS_OFF, line=dict(width=1), opacity=0.45),
         offsetgroup=0.5, 
         hovertemplate='<b>[ESTADO: INACTIVOS]</b><br>CANTIDAD: %{y}<extra></extra>'
     )) 
@@ -380,10 +379,10 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
         y=df_monthly['RunLife_Promedio'], 
         name='TIEMPO DE VIDA', 
         mode='lines+markers',
-        marker=dict(symbol='circle', size=8, color=COLOR_RUNLIFE), 
+        marker=dict(symbol='circle', size=7, color=COLOR_RUNLIFE), 
         line=dict(width=3, color=COLOR_RUNLIFE),
         yaxis='y1',
-        hovertemplate='<b>[TIEMPO DE VIDA ]</b><br>DÍAS: %{y:.2f}<extra></extra>'
+        hovertemplate='<b>[TIEMPO DE VIDA]</b><br>DÍAS: %{y:.2f}<extra></extra>'
     ))
 
     if 'RunLife_General' in df_monthly.columns:
@@ -392,8 +391,8 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
             y=df_monthly['RunLife_General'], 
             name='TIEMPO DE VIDA TOTAL', 
             mode='lines+markers',
-            marker=dict(symbol='circle-open', size=8, color=COLOR_RUNLIFE_GEN), 
-            line=dict(width=3, color=COLOR_RUNLIFE_GEN),
+            marker=dict(symbol='circle-open', size=7, color=COLOR_RUNLIFE_GEN), 
+            line=dict(width=2.5, dash='dash', color=COLOR_RUNLIFE_GEN),
             yaxis='y1',
             hovertemplate='<b>[TIEMPO DE VIDA TOTAL]</b><br>DÍAS: %{y:.2f}<extra></extra>'
         ))
@@ -404,8 +403,8 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
             y=df_monthly['RunLife_Efectivo'], 
             name='TIEMPO DE VIDA EFECTIVO TOTAL', 
             mode='lines+markers',
-            marker=dict(symbol='circle', size=8, color=COLOR_RLE), 
-            line=dict(width=3, dash='dot', color=COLOR_RLE),
+            marker=dict(symbol='circle', size=7, color=COLOR_RLE), 
+            line=dict(width=2.5, dash='dot', color=COLOR_RLE),
             yaxis='y1',
             hovertemplate='<b>[TIEMPO DE VIDA EFECTIVO TOTAL]</b><br>DÍAS: %{y:.2f}<extra></extra>'
         ))
@@ -416,8 +415,8 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
             y=df_monthly['RunLife_Efectivo_Fallados'], 
             name='TIEMPO DE VIDA EFECTIVO', 
             mode='lines+markers',
-            marker=dict(symbol='circle-open', size=8, color="#00549A"), 
-            line=dict(width=3, dash='dot', color="#8FA73B"),
+            marker=dict(symbol='circle-open', size=7, color=COLOR_RLE_FALLA), 
+            line=dict(width=2.5, dash='dot', color=COLOR_RLE_FALLA),
             yaxis='y1',
             hovertemplate='<b>[TIEMPO DE VIDA EFECTIVO]</b><br>DÍAS: %{y:.2f}<extra></extra>'
         ))
@@ -428,7 +427,7 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
         y=df_monthly['TMEF_Promedio'], 
         name='TMEF PROM', 
         mode='lines+markers',
-        marker=dict(symbol='circle', size=7, color=COLOR_TMEF), 
+        marker=dict(symbol='circle', size=6, color=COLOR_TMEF), 
         line=dict(width=2, dash='dot', color=COLOR_TMEF),
         yaxis='y1',
         visible='legendonly',
@@ -441,7 +440,7 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
         name='ÍNDICE FALLA (ON)', 
         mode='lines+markers', 
         marker=dict(symbol='diamond', size=8, color=COLOR_IF_ON), 
-        line=dict(width=4, color=COLOR_IF_ON),
+        line=dict(width=3.5, color=COLOR_IF_ON),
         yaxis='y2',
         hovertemplate='<b>[IF_ON]</b><br>ÍNDICE: %{y:.2%}<extra></extra>'
     ))
@@ -451,7 +450,7 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
         name='ÍNDICE FALLA ALS (ON)', 
         mode='lines+markers', 
         marker=dict(symbol='diamond-open', size=8, color=COLOR_IF_ALS), 
-        line=dict(width=4, color=COLOR_IF_ALS),
+        line=dict(width=3, color=COLOR_IF_ALS),
         yaxis='y2',
         hovertemplate='<b>[IF_ALS_ON]</b><br>ÍNDICE: %{y:.2%}<extra></extra>'
     ))
@@ -462,8 +461,8 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
             y=df_monthly['Indice_Falla_ON_1500'], 
             name='ÍNDICE FALLA RLE < 1500', 
             mode='lines+markers', 
-            marker=dict(symbol='triangle-up', size=8, color='#ff00ff'), 
-            line=dict(width=3, color='#ff00ff', dash='dash'),
+            marker=dict(symbol='triangle-up', size=7, color=COLOR_IF_1500), 
+            line=dict(width=2.5, color=COLOR_IF_1500, dash='dash'),
             yaxis='y2',
             hovertemplate='<b>[IF_ON_1500]</b><br>ÍNDICE: %{y:.2%}<extra></extra>'
         ))
@@ -473,13 +472,13 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
             y=df_monthly['Indice_Falla_ON_ALS_1500'], 
             name='ÍNDICE FALLA ALS RLE < 1500', 
             mode='lines+markers', 
-            marker=dict(symbol='triangle-up-open', size=8, color='#ff66ff'), 
-            line=dict(width=3, color='#ff66ff', dash='dash'),
+            marker=dict(symbol='triangle-up-open', size=7, color=COLOR_IF_ALS_1500), 
+            line=dict(width=2.5, color=COLOR_IF_ALS_1500, dash='dash'),
             yaxis='y2',
             hovertemplate='<b>[IF_ALS_ON_1500]</b><br>ÍNDICE: %{y:.2%}<extra></extra>'
         ))
 
-    # --- LAYOUT (HUD SIMÉTRICO) ---
+    # --- LAYOUT ---
 
     max_indice = max(
         float(np.nanmax(df_monthly['Indice_Falla_ON'].replace([np.inf, -np.inf], np.nan).fillna(0))) if 'Indice_Falla_ON' in df_monthly.columns else 0,
@@ -516,23 +515,24 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
             y=1.05,
             xanchor='center',
             x=0.5,
-            bgcolor='rgba(10, 14, 39, 0.8)',
-            bordercolor='#00f2ff',
-            borderwidth=1
+            bgcolor='rgba(255, 255, 255, 0.95)',
+            bordercolor='rgba(19, 118, 89, 0.25)',
+            borderwidth=1,
+            font=dict(color='#1f221e', size=10, family='Inter, sans-serif')
         ),
         xaxis=dict(
             title=None,
             tickformat='%Y-%m',
             range=[x_start, x_end],
-            gridcolor='rgba(255,255,255,0.05)',
-            linecolor='#135bec',
-            tickfont=dict(size=9)
+            gridcolor='rgba(19, 118, 89, 0.08)',
+            linecolor='rgba(19, 118, 89, 0.25)',
+            tickfont=dict(size=9, color='#1f221e', family='Inter, sans-serif')
         ),
         yaxis=dict(
             title=None,
-            gridcolor='rgba(255,255,255,0.05)',
-            linecolor='#135bec',
-            tickfont=dict(size=9)
+            gridcolor='rgba(19, 118, 89, 0.08)',
+            linecolor='rgba(19, 118, 89, 0.25)',
+            tickfont=dict(size=9, color='#1f221e', family='Inter, sans-serif')
         ),
         yaxis2=dict(
             title=None,
@@ -541,17 +541,14 @@ def generar_grafico_resumen(df_bd, df_forma9, fecha_evaluacion, titulo="Gráfico
             range=[0, upper_y2],
             tickformat='.0%',
             showgrid=False,
-            linecolor='#00f2ff',
-            tickfont=dict(size=9, color='#00f2ff')
+            linecolor='rgba(192, 156, 46, 0.35)',
+            tickfont=dict(size=9, color='#8c6e18', family='Inter, sans-serif')
         ),
         margin=dict(t=40, b=30, l=35, r=35),
         height=280
     ))
 
     fig.update_layout(**layout)
-    # Decoración HUD
-    fig.add_shape(type='line', x0=0, y0=1.02, x1=1, y1=1.02, xref='paper', yref='paper', line=dict(color='#00f2ff', width=2))
-
     return fig, df_monthly
 
 

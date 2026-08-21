@@ -23,7 +23,14 @@ def _unique_options(df_calc: pd.DataFrame, col: str) -> list:
         return ['TODOS']
     try:
         opts = sorted(df_calc[col].dropna().astype(str).unique().tolist())
-        EXCLUIDOS = set()
+        EXCLUIDOS = {
+            'CANAGUARO', 'ENTRERIOS', 'ENTRE RIOS', 'ENTRE RÍOS', 'ENTRE_RIOS',
+            'MAPACHE', 'PERICO', 'PERICO (88)', 'MAPACHE PERICO', 'MAPACHE - PERICO',
+            'MAPACHE/PERICO', 'MAPACHE-PERICO',
+            'CORCEL NE', 'CORCEL_NE', 'CORCEL-NE', 'CORCEL N3', 'CORCEL_N3', 'CORCEL-N3',
+            'RIO META', 'RIO_META', 'RÍO META', 'RÍO_META',
+            'EL DIFICIL', 'EL DIFICIL NE', 'DIFICIL', 'EL DIFÍCIL', 'EL DIFÍCIL NE'
+        }
         opts = [o for o in opts if o.strip().upper() not in EXCLUIDOS]
         return ['TODOS'] + opts
     except Exception:
@@ -147,7 +154,7 @@ section[data-testid="stSidebar"] div[data-testid="stPopover"] > button {
 # ---------------------------------------------------------------------------
 
 def _header_html(logo_tag: str) -> str:
-    return f'<div style="background:linear-gradient(180deg, rgba(19, 118, 89, 0.04) 0%, transparent 100%); border-bottom:1px solid rgba(19, 118, 89, 0.08); padding:18px 16px 14px 16px; text-align:center; position:relative;"><div style="position:absolute; top:0; left:16px; right:16px; height:1px; background:linear-gradient(90deg, transparent, #137659, transparent); opacity:0.4;"></div>{logo_tag}<div style="font-family:\'Montserrat\', sans-serif !important; font-weight:800; font-size:0.9rem; letter-spacing:3px; margin-top:8px; background:linear-gradient(135deg, #137659 0%, #c09c2e 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; text-transform:uppercase;">PAREX RESOURCES (FRONTERA)</div><div style="font-family:\'Montserrat\', sans-serif !important; font-size:0.45rem; color:#5b5c55; letter-spacing:2px; text-transform:uppercase; margin-top:3px;">ALS · PANEL DE CONTROL</div></div>'
+    return f'<div style="background:rgba(19, 118, 89, 0.04); border-bottom:1px solid rgba(19, 118, 89, 0.08); padding:18px 16px 14px 16px; text-align:center; position:relative;"><div style="position:absolute; top:0; left:16px; right:16px; height:1px; background:#137659; opacity:0.2;"></div>{logo_tag}<div style="font-family:\'Montserrat\', sans-serif !important; font-weight:800; font-size:0.9rem; letter-spacing:3px; margin-top:8px; color:#137659; text-transform:uppercase;">PAREX RESOURCES (FRONTERA)</div><div style="font-family:\'Montserrat\', sans-serif !important; font-size:0.45rem; color:#5b5c55; letter-spacing:2px; text-transform:uppercase; margin-top:3px;">ALS · PANEL DE CONTROL</div></div>'
 
 
 def _section_header(text: str, color: str = "#137659") -> str:

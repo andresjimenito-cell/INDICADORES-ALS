@@ -81,16 +81,14 @@ st.markdown(f"""
   animation: slideIn 0.8s ease-out;
  }}
  
- .logo-text {{
+.logo-text {{
   font-family: 'Arial', sans-serif;
   font-size: 2.5rem;
   font-weight: 900;
-  background: linear-gradient(135deg, {COLOR_PRIMARIO}, {COLOR_ACENTO});
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: {COLOR_PRIMARIO};
   letter-spacing: 4px;
-    text-shadow: 0 0 6px {COLOR_SOMBRA};
- }}
+  text-shadow: 0 0 6px {COLOR_SOMBRA};
+}}
  
  .logo-subtitle {{
   font-family: 'Arial', sans-serif;
@@ -155,16 +153,14 @@ st.markdown(f"""
         animation: glow 10s ease-in-out infinite;
  }}
  
- .dashboard-title {{
+.dashboard-title {{
   font-family: 'Arial', sans-serif;
   font-size: 2rem;
   font-weight: 900;
-  background: linear-gradient(120deg, {COLOR_PRIMARIO}, {COLOR_ACENTO});
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: {COLOR_PRIMARIO};
   letter-spacing: 4px;
   margin: 0;
- }}
+}}
  
  .dashboard-subtitle {{
   font-family: 'Arial', sans-serif;

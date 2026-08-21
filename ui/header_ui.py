@@ -94,10 +94,7 @@ _HEADER_CSS = """
     font-weight: 800;
     font-size: 0.95rem;
     letter-spacing: 0.5px;
-    background: linear-gradient(135deg, #137659 0%, #1db87b 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: #137659;
     line-height: 1.1;
     margin: 0;
 }

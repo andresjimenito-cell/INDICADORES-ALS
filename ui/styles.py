@@ -198,7 +198,7 @@ def _apply_styles_internal():
             color: #455a72 !important;
             font-weight: 800 !important;
             text-transform: uppercase !important;
-            letter-spacing: 1px !important;
+            letter-spacing: 0.3px !important;
             margin-top: 4px;
             margin-bottom: 4px;
         }
@@ -535,81 +535,101 @@ def _apply_styles_internal():
             color: #137659 !important;
         }
 
-        /* ── FLOATING NAVIGATION (TABLIST) — overridden by INDICADORES.py ── */
+        /* ── NATIVE TABS (top position, accessible) ── */
         div[data-testid="stTabs"] {
-            display: flex !important;
-            flex-direction: column !important;
+            display: block !important;
         }
 
         div[data-testid="stTabs"] [role="tablist"] {
-            position: fixed !important;
-            bottom: 16px !important;
-            left: 50% !important;
-            transform: translateX(-50%) !important;
-            z-index: 999999 !important;
-            background: rgba(255, 255, 255, 0.96) !important;
-            backdrop-filter: blur(20px) saturate(180%) !important;
-            padding: 5px 16px !important;
-            border-radius: 50px !important;
-            border: 1.5px solid rgba(19, 118, 89, 0.2) !important;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(19,118,89,0.08) !important;
-            width: auto !important;
-            min-width: 480px !important;
-            display: flex !important;
-            justify-content: center !important;
-            gap: 2px !important;
-            order: 2 !important;
-        }
-
-        /* Asegurar que el contenido de los tabs NO se mueva con la barra y esté arriba */
-        div[data-testid="stTabContent"] {
-            order: 1 !important;
+            position: relative !important;
+            bottom: auto !important;
+            left: auto !important;
+            transform: none !important;
+            z-index: auto !important;
             background: transparent !important;
+            backdrop-filter: none !important;
+            padding: 0.5rem 0 !important;
+            border-radius: 0 !important;
             border: none !important;
-            padding-top: 0px !important;
+            box-shadow: none !important;
             width: 100% !important;
+            min-width: auto !important;
+            display: flex !important;
+            justify-content: flex-start !important;
+            gap: 4px !important;
+            order: 0 !important;
+            border-bottom: 2px solid rgba(19, 118, 89, 0.15) !important;
+            margin-bottom: 1rem !important;
         }
 
-        /* Quitar la línea inferior por defecto de los tabs */
-        div[data-testid="stTabs"] [role="tablist"] {
-            border: none !important;
-        }
-
-        /* Estilo de cada botón de tab */
         div[data-testid="stTabs"] button[data-baseweb="tab"] {
             background: transparent !important;
             border: none !important;
-            padding: 6px 14px !important;
+            padding: 8px 16px !important;
             color: #5b5c55 !important;
             font-family: 'Inter', sans-serif !important;
-            font-size: 0.66rem !important;
-            font-weight: 700 !important;
-            letter-spacing: 1.0px !important;
+            font-size: 0.75rem !important;
+            font-weight: 600 !important;
+            letter-spacing: 0.5px !important;
             text-transform: uppercase !important;
-            transition: all 0.25s ease !important;
-            border-radius: 30px !important;
+            transition: all 0.2s ease !important;
+            border-radius: 8px 8px 0 0 !important;
             height: auto !important;
             white-space: nowrap !important;
+            border-bottom: 3px solid transparent !important;
         }
         
         div[data-testid="stTabs"] button[data-baseweb="tab"]:hover {
             color: #137659 !important;
-            background: rgba(19, 118, 89, 0.07) !important;
+            background: rgba(19, 118, 89, 0.05) !important;
         }
         
-        /* Tab seleccionado (Estado Activo) */
         div[data-testid="stTabs"] button[aria-selected="true"] {
-            color: #ffffff !important;
-            background: linear-gradient(135deg, #137659 0%, #0a4d34 100%) !important;
-            box-shadow: 0 4px 12px rgba(19, 118, 89, 0.35) !important;
-            border: none !important;
+            color: #137659 !important;
+            background: rgba(19, 118, 89, 0.08) !important;
+            border-bottom: 3px solid #137659 !important;
+            box-shadow: none !important;
         }
 
-        /* Esconder la barra debajo del tab seleccionado */
         div[data-testid="stTabs"] [data-baseweb="tab-highlight"],
         div[data-baseweb="tab-border"],
         [data-testid="stTabHighlight"] {
             display: none !important;
+        }
+
+        /* ── REDUCED MOTION / ACCESSIBILITY ── */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* ── FOCUS VISIBLE FOR KEYBOARD NAVIGATION ── */
+        button:focus-visible,
+        a:focus-visible,
+        [data-baseweb="tab"]:focus-visible,
+        .stButton > button:focus-visible,
+        .stDownloadButton > button:focus-visible,
+        .stSelectbox div[data-baseweb="select"]:focus-visible {
+            outline: 3px solid #137659 !important;
+            outline-offset: 2px !important;
+            box-shadow: 0 0 0 4px rgba(19, 118, 89, 0.2) !important;
+        }
+
+        /* ── PLOTLY LEGENDAS Y TEXTOS SVG ── */
+        .plotly .legendtext,
+        .plotly g.traces text,
+        .plotly text.legendtext,
+        .js-plotly-plot g.legend text,
+        g.legend g.traces text {
+            fill: #1f221e !important;
+            color: #1f221e !important;
+            font-family: 'Inter', sans-serif !important;
+            font-size: 11px !important;
+            font-weight: 600 !important;
+            opacity: 1 !important;
         }
 
         /* Popover buttons — compact toolbar style */
@@ -634,15 +654,15 @@ def _apply_styles_internal():
             background: rgba(19, 118, 89, 0.04) !important;
         }
 
-        /* ── ILUMINACIÓN VERDE Y EFECTOS GLOW COMPACTO ── */
+        /* ── SUBTLE ELEVATION (no glow) ── */
         .stExpander, div[data-testid="stForm"], .kpi-card, .upload-container, .als-header-bar {
-            box-shadow: 0 0 12px rgba(19, 118, 89, 0.12) !important;
-            border: 1.5px solid rgba(19, 118, 89, 0.25) !important;
-            transition: all 0.3s ease !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06) !important;
+            border: 1px solid rgba(19, 118, 89, 0.15) !important;
+            transition: box-shadow 0.2s ease, border-color 0.2s ease !important;
         }
         .stExpander:hover, div[data-testid="stForm"]:hover, .kpi-card:hover, .upload-container:hover, .als-header-bar:hover {
-            box-shadow: 0 0 20px rgba(19, 118, 89, 0.28) !important;
-            border-color: #137659 !important;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 12px 32px rgba(0, 0, 0, 0.1) !important;
+            border-color: rgba(19, 118, 89, 0.25) !important;
         }
         
         /* --- FORCE LIGHT THEME FOR STREAMLIT SPINNERS, WARNINGS AND INFO BOXES --- */

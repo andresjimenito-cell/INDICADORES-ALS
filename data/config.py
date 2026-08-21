@@ -17,39 +17,42 @@ from theme import (
     get_plotly_layout as theme_get_plotly_layout,
     styled_title as theme_styled_title,
     plotly_styled_title as theme_plotly_styled_title,
+    get_semantic_color,
+    get_brand_color,
+    get_surface_color,
+    get_text_color,
 )
 
 # ---------------------------------------------------------------------------
-# 1. COLORES PRINCIPALES (desde tema.py)
-# ---------------------------------------------------------------------------
-COLOR_MAGENTA_NEON = tema.COLOR_MAGENTA_NEON
-COLOR_AZUL_CIBER   = tema.COLOR_AZUL_CIBER
-COLOR_GLOW_SUAVE   = tema.COLOR_GLOW_SUAVE
-COLOR_FUENTE       = tema.COLOR_FUENTE
-COLOR_PRINCIPAL    = COLOR_MAGENTA_NEON   # alias semántico
-
-# ---------------------------------------------------------------------------
-# 2. COLORES DE FONDO (desde theme y tema)
+# 1. COLORES PRINCIPALES (desde theme.py - nuevo sistema semántico)
 # ---------------------------------------------------------------------------
 _colors = get_colors()
-_bg_raw = _colors.get('background', None)
+COLOR_PRINCIPAL    = get_brand_color("primary")      # #137659 - Brand primary (semantic: success)
+COLOR_SECUNDARIO   = get_brand_color("secondary")    # #c09c2e - Brand secondary (semantic: warning)
+COLOR_ACENTO       = get_brand_color("accent")       # #095139 - Brand accent
+COLOR_FUENTE       = get_text_color("primary")       # #1f221e - Texto principal
 
-if isinstance(_bg_raw, str) and _bg_raw.strip().lower() in ('#ffffff', 'white'):
-    COLOR_FONDO_OSCURO = None
-else:
-    COLOR_FONDO_OSCURO = tema.COLOR_FONDO_OSCURO
+# Semantic colors
+COLOR_SUCCESS      = get_semantic_color("success")   # #137659 - Verde = bueno, meta cumplida
+COLOR_WARNING      = get_semantic_color("warning")   # #c09c2e - Dorado = atención, near-meta
+COLOR_DANGER       = get_semantic_color("danger")    # #c62828 - Rojo = falla, crítica
+COLOR_INFO         = get_semantic_color("info")      # #0284c7 - Azul = información, ALS
 
-COLOR_FONDO_CONTENEDOR = tema.COLOR_FONDO_CONTENEDOR
-COLOR_SOMBRA           = tema.COLOR_SOMBRA
+# ---------------------------------------------------------------------------
+# 2. COLORES DE FONDO (desde theme.py)
+# ---------------------------------------------------------------------------
+COLOR_FONDO_OSCURO     = get_surface_color("background")    # #f5f7f6
+COLOR_FONDO_CONTENEDOR = get_surface_color("container_bg")  # #ffffff
+COLOR_BORDE            = get_surface_color("border")        # rgba(19, 118, 89, 0.15)
+COLOR_GLOW             = get_surface_color("glow")          # rgba(192, 156, 46, 0.2)
 
 # ---------------------------------------------------------------------------
 # 3. COLORES DE ACENTO Y GRILLA
 # ---------------------------------------------------------------------------
 COLOR_ACENTO_1 = COLOR_PRINCIPAL
-COLOR_ACENTO_2 = _colors.get('muted', '#888888')
+COLOR_ACENTO_2 = get_text_color("muted")    # #5b5c55
 COLOR_ACENTO_3 = COLOR_ACENTO_2
-COLOR_GRID     = tema.COLOR_GRID
-COLOR_BORDE    = tema.COLOR_BORDE
+COLOR_GRID     = "rgba(19, 118, 89, 0.08)"
 
 # ---------------------------------------------------------------------------
 # 4. PALETA / SECUENCIA DE COLORES PARA GRÁFICOS
@@ -57,14 +60,14 @@ COLOR_BORDE    = tema.COLOR_BORDE
 get_color_sequence = tema.get_color_sequence
 
 # ---------------------------------------------------------------------------
-# 5. COLORES DEL SIDEBAR / NEON
+# 5. COLORES DEL SIDEBAR / NEON (legacy - mantener compatibilidad)
 # ---------------------------------------------------------------------------
-NEON_PRIMARY   = tema.COLOR_AZUL_CIBER
-NEON_SECONDARY = tema.COLOR_MAGENTA_NEON
-GLOW_COLOR     = tema.COLOR_GLOW_BLUE
-TEXT_DEFAULT   = tema.COLOR_TEXTO_DEFAULT
-BG_DARK        = tema.COLOR_SIDEBAR_BG_START
-BG_CARD        = tema.COLOR_SIDEBAR_CARD_BG
+NEON_PRIMARY   = COLOR_INFO
+NEON_SECONDARY = COLOR_PRINCIPAL
+GLOW_COLOR     = COLOR_GLOW
+TEXT_DEFAULT   = COLOR_FUENTE
+BG_DARK        = COLOR_FONDO_OSCURO
+BG_CARD        = COLOR_FONDO_CONTENEDOR
 
 # ---------------------------------------------------------------------------
 # 6. RUTAS DE CACHÉ LOCAL
@@ -76,19 +79,56 @@ CACHE_FILE = CACHE_DIR / "last_run_data.pkl"
 # 7. FUNCIONES DE TEMA
 # ---------------------------------------------------------------------------
 
-def get_theme(mode: str = 'dark') -> dict:
+BLOQUES_Y_CAMPOS_EXCLUIDOS = {
+    'CANAGUARO',
+    'ENTRERIOS',
+    'ENTRE RIOS',
+    'ENTRE RÍOS',
+    'ENTRE_RIOS',
+    'MAPACHE',
+    'PERICO',
+    'PERICO (88)',
+    'MAPACHE PERICO',
+    'MAPACHE - PERICO',
+    'MAPACHE/PERICO',
+    'MAPACHE-PERICO',
+    'CORCEL NE',
+    'CORCEL_NE',
+    'CORCEL-NE',
+    'CORCEL N3',
+    'CORCEL_N3',
+    'CORCEL-N3',
+    'RIO META',
+    'RIO_META',
+    'RÍO META',
+    'RÍO_META',
+    'EL DIFICIL',
+    'EL DIFICIL NE',
+    'DIFICIL',
+    'EL DIFÍCIL',
+    'EL DIFÍCIL NE'
+}
+
+def get_theme(mode: str = 'light') -> dict:
     """Devuelve un dict con los colores principales del tema activo."""
     return {
-        'COLOR_PRINCIPAL':        COLOR_PRINCIPAL,
-        'COLOR_FUENTE':           COLOR_FUENTE,
-        'COLOR_FONDO_OSCURO':     COLOR_FONDO_OSCURO,
-        'COLOR_FONDO_CONTENEDOR': COLOR_FONDO_CONTENEDOR,
-        'COLOR_SOMBRA':           COLOR_SOMBRA,
-        'get_color_sequence':     get_color_sequence,
+        'COLOR_PRINCIPAL':         COLOR_PRINCIPAL,
+        'COLOR_SECUNDARIO':        COLOR_SECUNDARIO,
+        'COLOR_ACENTO':            COLOR_ACENTO,
+        'COLOR_FUENTE':            COLOR_FUENTE,
+        'COLOR_SUCCESS':           COLOR_SUCCESS,
+        'COLOR_WARNING':           COLOR_WARNING,
+        'COLOR_DANGER':            COLOR_DANGER,
+        'COLOR_INFO':              COLOR_INFO,
+        'COLOR_FONDO_OSCURO':      COLOR_FONDO_OSCURO,
+        'COLOR_FONDO_CONTENEDOR':  COLOR_FONDO_CONTENEDOR,
+        'COLOR_BORDE':             COLOR_BORDE,
+        'COLOR_GLOW':              COLOR_GLOW,
+        'get_color_sequence':      get_color_sequence,
     }
 
 
-def get_plotly_layout(xaxis_color: str = None, yaxis_color: str = None) -> dict:
+def get_plotly_layout(xaxis_color: str | None = None, yaxis_color: str | None = None) -> dict:
     """
     Delega al layout de `theme.py` y usa valores seguros como fallback.
     """
@@ -108,10 +148,12 @@ def get_plotly_layout(xaxis_color: str = None, yaxis_color: str = None) -> dict:
         }
 
 
-def styled_title(text: str, subtitle: str = None) -> str:
+def styled_title(text: str, subtitle: str | None = None) -> str:
     """Genera un título HTML estilizado con el color principal del tema."""
     try:
-        return theme_styled_title(text, subtitle)
+        if subtitle is not None:
+            return theme_styled_title(text, subtitle)
+        return theme_styled_title(text)
     except Exception:
         if subtitle:
             return (

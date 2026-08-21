@@ -36,15 +36,15 @@ def calcular_indice_falla_anual(df_bd, df_forma9, fecha_evaluacion, fecha_inicio
     df_forma9 = df_forma9.copy()
 
     # Excluir pozos/equipos entregados ('ENTREGAD') de los índices de falla
-    mask_entregado_bd = pd.Series(False, index=df_bd.index)
-    for col in df_bd.columns:
-        mask_entregado_bd |= df_bd[col].astype(str).str.upper().str.contains('ENTREGAD', na=False)
-    df_bd = df_bd[~mask_entregado_bd].copy()
+    text_cols_bd = [c for c in ['FECHA_PULL', 'FECHA_FALLA', 'ESTADO', 'COMENTARIOS', 'POZO'] if c in df_bd.columns]
+    if text_cols_bd:
+        mask_entregado_bd = df_bd[text_cols_bd].astype(str).apply(lambda s: s.str.upper().str.contains('ENTREGAD', na=False)).any(axis=1)
+        df_bd = df_bd[~mask_entregado_bd]
 
-    mask_entregado_f9 = pd.Series(False, index=df_forma9.index)
-    for col in df_forma9.columns:
-        mask_entregado_f9 |= df_forma9[col].astype(str).str.upper().str.contains('ENTREGAD', na=False)
-    df_forma9 = df_forma9[~mask_entregado_f9].copy()
+    text_cols_f9 = [c for c in ['FECHA_FORMA9', 'ESTADO', 'COMENTARIOS', 'POZO'] if c in df_forma9.columns]
+    if text_cols_f9:
+        mask_entregado_f9 = df_forma9[text_cols_f9].astype(str).apply(lambda s: s.str.upper().str.contains('ENTREGAD', na=False)).any(axis=1)
+        df_forma9 = df_forma9[~mask_entregado_f9]
 
     # Excluir pozos de Flujo Natural ('FN', 'FLUJO NATURAL', etc.) de los índices de falla
     for col_als in ('ALS', 'SISTEMA ALS', 'SISTEMA_ALS', 'METODO', 'METODO DE LEVANTAMIENTO'):
@@ -52,12 +52,12 @@ def calcular_indice_falla_anual(df_bd, df_forma9, fecha_evaluacion, fecha_inicio
             es_fn_bd = df_bd[col_als].astype(str).str.strip().str.upper().isin(
                 ['FN', 'FLUJO NATURAL', 'FLUJO_NATURAL', 'F.N.', 'FLUJO NAT']
             )
-            df_bd = df_bd[~es_fn_bd].copy()
+            df_bd = df_bd[~es_fn_bd]
         if col_als in df_forma9.columns:
             es_fn_f9 = df_forma9[col_als].astype(str).str.strip().str.upper().isin(
                 ['FN', 'FLUJO NATURAL', 'FLUJO_NATURAL', 'F.N.', 'FLUJO NAT']
             )
-            df_forma9 = df_forma9[~es_fn_f9].copy()
+            df_forma9 = df_forma9[~es_fn_f9]
 
     df_bd['FECHA_RUN'] = pd.to_datetime(df_bd['FECHA_RUN'], errors='coerce')
     df_bd['FECHA_FALLA'] = pd.to_datetime(df_bd['FECHA_FALLA'], errors='coerce')

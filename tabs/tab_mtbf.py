@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
+import plotly.graph_objects as go_fig
 from config import COLOR_PRINCIPAL
 from mtbf import calcular_mtbf
 from calculations import calcular_run_life_efectivo, generar_historico_run_life
@@ -256,7 +257,14 @@ def render_tab_mtbf(df_bd_filtered, df_forma9_filtered, fecha_evaluacion,
     with col_activo:
         if 'ACTIVO' in df_bd_filtered.columns and not df_bd_filtered.empty:
             try:
-                EXCLUIDOS = set()
+                EXCLUIDOS = {
+                    'CANAGUARO', 'ENTRERIOS', 'ENTRE RIOS', 'ENTRE RÍOS', 'ENTRE_RIOS',
+                    'MAPACHE', 'PERICO', 'PERICO (88)', 'MAPACHE PERICO', 'MAPACHE - PERICO',
+                    'MAPACHE/PERICO', 'MAPACHE-PERICO',
+                    'CORCEL NE', 'CORCEL_NE', 'CORCEL-NE', 'CORCEL N3', 'CORCEL_N3', 'CORCEL-N3',
+                    'RIO META', 'RIO_META', 'RÍO META', 'RÍO_META',
+                    'EL DIFICIL', 'EL DIFICIL NE', 'DIFICIL', 'EL DIFÍCIL', 'EL DIFÍCIL NE'
+                }
                 activos_list = [a for a in df_bd_filtered['ACTIVO'].dropna().unique()
                                 if str(a).upper().strip() not in EXCLUIDOS and str(a).strip() != '']
                 rows_act = []
@@ -362,3 +370,4 @@ def render_tab_mtbf(df_bd_filtered, df_forma9_filtered, fecha_evaluacion,
         render_hud_table(step_df.head(60))
     else:
         st.info("No hay detalles de cálculo disponibles.")
+

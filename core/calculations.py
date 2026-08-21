@@ -83,30 +83,30 @@ def perform_initial_calculations(df_forma9, df_bd, fecha_evaluacion):
 
     # Excluir entregados y Flujo Natural de df_bd y df_forma9
     if df_bd is not None and not df_bd.empty:
-        mask_entregado_bd = pd.Series(False, index=df_bd.index)
-        for col in df_bd.columns:
-            mask_entregado_bd |= df_bd[col].astype(str).str.upper().str.contains('ENTREGAD', na=False)
-        df_bd = df_bd[~mask_entregado_bd].copy()
+        text_cols_bd = [c for c in ['FECHA_PULL', 'FECHA_FALLA', 'ESTADO', 'COMENTARIOS', 'POZO'] if c in df_bd.columns]
+        if text_cols_bd:
+            mask_entregado_bd = df_bd[text_cols_bd].astype(str).apply(lambda s: s.str.upper().str.contains('ENTREGAD', na=False)).any(axis=1)
+            df_bd = df_bd[~mask_entregado_bd]
 
         for col_als in ('ALS', 'SISTEMA ALS', 'SISTEMA_ALS', 'METODO', 'METODO DE LEVANTAMIENTO'):
             if col_als in df_bd.columns:
                 es_fn_bd = df_bd[col_als].astype(str).str.strip().str.upper().isin(
                     ['FN', 'FLUJO NATURAL', 'FLUJO_NATURAL', 'F.N.', 'FLUJO NAT']
                 )
-                df_bd = df_bd[~es_fn_bd].copy()
+                df_bd = df_bd[~es_fn_bd]
 
     if df_forma9 is not None and not df_forma9.empty:
-        mask_entregado_f9 = pd.Series(False, index=df_forma9.index)
-        for col in df_forma9.columns:
-            mask_entregado_f9 |= df_forma9[col].astype(str).str.upper().str.contains('ENTREGAD', na=False)
-        df_forma9 = df_forma9[~mask_entregado_f9].copy()
+        text_cols_f9 = [c for c in ['FECHA_FORMA9', 'ESTADO', 'COMENTARIOS', 'POZO'] if c in df_forma9.columns]
+        if text_cols_f9:
+            mask_entregado_f9 = df_forma9[text_cols_f9].astype(str).apply(lambda s: s.str.upper().str.contains('ENTREGAD', na=False)).any(axis=1)
+            df_forma9 = df_forma9[~mask_entregado_f9]
 
         for col_als in ('ALS', 'SISTEMA ALS', 'SISTEMA_ALS', 'METODO', 'METODO DE LEVANTAMIENTO'):
             if col_als in df_forma9.columns:
                 es_fn_f9 = df_forma9[col_als].astype(str).str.strip().str.upper().isin(
                     ['FN', 'FLUJO NATURAL', 'FLUJO_NATURAL', 'F.N.', 'FLUJO NAT']
                 )
-                df_forma9 = df_forma9[~es_fn_f9].copy()
+                df_forma9 = df_forma9[~es_fn_f9]
 
     df_bd['RUN LIFE'] = np.where(
         df_bd['FECHA_FALLA'].notna(),

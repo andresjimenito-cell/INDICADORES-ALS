@@ -37,7 +37,7 @@ for subfolder in ['core', 'data', 'ui', 'tabs']:
 _modules = [
     'header_ui', 'sidebar_ui', 'upload_ui', 'data_loader', 'styles', 
     'calculations', 'kpis', 'descargar',
-    'tabs.tab_resumen', 'tabs.tab_performance', 'tabs.tab_mtbf', 
+    'tabs.tab_performance', 'tabs.tab_mtbf', 
     'tabs.tab_fallas', 'tabs.tab_indices', 'tabs.tab_tablero', 'tabs.tab_campanas'
 ]
 for _m in _modules:
@@ -56,7 +56,6 @@ from ui.sidebar_ui import render_sidebar
 from ui.upload_ui import render_upload_section
 from data.data_loader import load_cached_data
 
-from tabs.tab_resumen import render_tab_resumen
 from tabs.tab_performance import render_tab_performance
 from tabs.tab_mtbf import render_tab_mtbf
 from tabs.tab_fallas import render_tab_fallas
@@ -151,6 +150,20 @@ div[data-testid="stTabs"] {
     flex-direction: column !important;
 }
 
+/* ── PLOTLY LEGENDAS Y TEXTOS SVG ── */
+.plotly .legendtext,
+.plotly g.traces text,
+.plotly text.legendtext,
+.js-plotly-plot g.legend text,
+g.legend g.traces text {
+    fill: #1f221e !important;
+    color: #1f221e !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    opacity: 1 !important;
+}
+
 /* ── Toast notificaciones ── */
 div[data-testid="stToast"] {
     font-family: 'Inter', sans-serif !important;
@@ -240,14 +253,22 @@ if st.session_state.get('reporte_runes') is None:
         st.session_state['reporte_fallas']        = cached_data['reporte_fallas']
         st.toast("✅ Caché restaurado correctamente.", icon="✅")
 
-# ── Purga estricta en session_state para eliminar pozos ENTREGADOS, FN (Flujo Natural) y EL DIFICIL ──
-EXCL_GLOBAL = {'EL DIFICIL', 'EL DIFICIL NE', 'DIFICIL'}
-if st.session_state.get('df_bd_calculated') is not None:
+# ── Purga estricta en session_state para eliminar pozos ENTREGADOS, FN (Flujo Natural) y bloques excluidos ──
+EXCL_GLOBAL = {
+    'CANAGUARO', 'ENTRERIOS', 'ENTRE RIOS', 'ENTRE RÍOS', 'ENTRE_RIOS',
+    'MAPACHE', 'PERICO', 'PERICO (88)', 'MAPACHE PERICO', 'MAPACHE - PERICO',
+    'MAPACHE/PERICO', 'MAPACHE-PERICO',
+    'CORCEL NE', 'CORCEL_NE', 'CORCEL-NE', 'CORCEL N3', 'CORCEL_N3', 'CORCEL-N3',
+    'RIO META', 'RIO_META', 'RÍO META', 'RÍO_META',
+    'EL DIFICIL', 'EL DIFICIL NE', 'DIFICIL', 'EL DIFÍCIL', 'EL DIFÍCIL NE', 'TODOS'
+}
+
+if st.session_state.get('df_bd_calculated') is not None and not st.session_state.get('_purged_session_data', False):
     df_temp_bd = st.session_state['df_bd_calculated'].copy()
-    mask_entregado_bd = pd.Series(False, index=df_temp_bd.index)
-    for col in df_temp_bd.columns:
-        mask_entregado_bd |= df_temp_bd[col].astype(str).str.upper().str.contains('ENTREGAD', na=False)
-    df_temp_bd = df_temp_bd[~mask_entregado_bd].copy()
+    text_cols_bd = [c for c in ['FECHA_PULL', 'FECHA_FALLA', 'ESTADO', 'COMENTARIOS', 'POZO'] if c in df_temp_bd.columns]
+    if text_cols_bd:
+        mask_entregado_bd = df_temp_bd[text_cols_bd].astype(str).apply(lambda s: s.str.upper().str.contains('ENTREGAD', na=False)).any(axis=1)
+        df_temp_bd = df_temp_bd[~mask_entregado_bd].copy()
 
     for col_als in ('ALS', 'SISTEMA ALS', 'SISTEMA_ALS', 'METODO', 'METODO DE LEVANTAMIENTO'):
         if col_als in df_temp_bd.columns:
@@ -261,24 +282,25 @@ if st.session_state.get('df_bd_calculated') is not None:
             df_temp_bd = df_temp_bd[~df_temp_bd[col_filter].astype(str).str.upper().str.strip().isin(EXCL_GLOBAL)].copy()
     st.session_state['df_bd_calculated'] = df_temp_bd
 
-if st.session_state.get('df_forma9_calculated') is not None:
-    df_temp_f9 = st.session_state['df_forma9_calculated'].copy()
-    mask_entregado_f9 = pd.Series(False, index=df_temp_f9.index)
-    for col in df_temp_f9.columns:
-        mask_entregado_f9 |= df_temp_f9[col].astype(str).str.upper().str.contains('ENTREGAD', na=False)
-    df_temp_f9 = df_temp_f9[~mask_entregado_f9].copy()
+    if st.session_state.get('df_forma9_calculated') is not None:
+        df_temp_f9 = st.session_state['df_forma9_calculated'].copy()
+        text_cols_f9 = [c for c in ['FECHA_FORMA9', 'ESTADO', 'COMENTARIOS', 'POZO'] if c in df_temp_f9.columns]
+        if text_cols_f9:
+            mask_entregado_f9 = df_temp_f9[text_cols_f9].astype(str).apply(lambda s: s.str.upper().str.contains('ENTREGAD', na=False)).any(axis=1)
+            df_temp_f9 = df_temp_f9[~mask_entregado_f9].copy()
 
-    for col_als in ('ALS', 'SISTEMA ALS', 'SISTEMA_ALS', 'METODO', 'METODO DE LEVANTAMIENTO'):
-        if col_als in df_temp_f9.columns:
-            es_fn_f9 = df_temp_f9[col_als].astype(str).str.strip().str.upper().isin(
-                ['FN', 'FLUJO NATURAL', 'FLUJO_NATURAL', 'F.N.', 'FLUJO NAT']
-            )
-            df_temp_f9 = df_temp_f9[~es_fn_f9].copy()
+        for col_als in ('ALS', 'SISTEMA ALS', 'SISTEMA_ALS', 'METODO', 'METODO DE LEVANTAMIENTO'):
+            if col_als in df_temp_f9.columns:
+                es_fn_f9 = df_temp_f9[col_als].astype(str).str.strip().str.upper().isin(
+                    ['FN', 'FLUJO NATURAL', 'FLUJO_NATURAL', 'F.N.', 'FLUJO NAT']
+                )
+                df_temp_f9 = df_temp_f9[~es_fn_f9].copy()
 
-    for col_filter in ('ACTIVO', 'BLOQUE', 'CAMPO'):
-        if col_filter in df_temp_f9.columns:
-            df_temp_f9 = df_temp_f9[~df_temp_f9[col_filter].astype(str).str.upper().str.strip().isin(EXCL_GLOBAL)].copy()
-    st.session_state['df_forma9_calculated'] = df_temp_f9
+        for col_filter in ('ACTIVO', 'BLOQUE', 'CAMPO'):
+            if col_filter in df_temp_f9.columns:
+                df_temp_f9 = df_temp_f9[~df_temp_f9[col_filter].astype(str).str.upper().str.strip().isin(EXCL_GLOBAL)].copy()
+        st.session_state['df_forma9_calculated'] = df_temp_f9
+    st.session_state['_purged_session_data'] = True
 
 filters = render_sidebar()
 
@@ -291,37 +313,11 @@ if st.session_state.get('reporte_runes') is not None:
 
     # ── Obtener datos calculados ───────────────────────────────────────────
     df_bd_calc    = st.session_state['df_bd_calculated'].copy()
-    
-    # No excluir ningún bloque ni campo
-    EXCLUIDOS = set()
-    for col_filter in ('ACTIVO', 'BLOQUE', 'CAMPO'):
-        if col_filter in df_bd_calc.columns and EXCLUIDOS:
-            df_bd_calc = df_bd_calc[~df_bd_calc[col_filter].astype(str).str.upper().str.strip().isin(EXCLUIDOS)]
-
     df_forma9_calc = st.session_state['df_forma9_calculated'].copy()
     fecha_eval    = st.session_state['fecha_evaluacion_state']
     fecha_ini     = st.session_state.get('fecha_inicio_state')
     if fecha_ini is None:
         fecha_ini = pd.to_datetime(fecha_eval) - pd.DateOffset(years=1)
-
-    # ── Filtrar pozos/equipos entregados ('ENTREGAD' en cualquier columna) ───
-    mask_entregado = pd.Series(False, index=df_bd_calc.index)
-    for col in df_bd_calc.columns:
-        mask_entregado |= df_bd_calc[col].astype(str).str.upper().str.contains('ENTREGAD', na=False)
-    df_bd_calc = df_bd_calc[~mask_entregado].copy()
-
-    # ── Filtrar pozos de Flujo Natural ('FN', 'FLUJO NATURAL', etc.) ────────
-    for col_als in ('ALS', 'SISTEMA ALS', 'SISTEMA_ALS', 'METODO', 'METODO DE LEVANTAMIENTO'):
-        if col_als in df_bd_calc.columns:
-            es_fn_bd = df_bd_calc[col_als].astype(str).str.strip().str.upper().isin(
-                ['FN', 'FLUJO NATURAL', 'FLUJO_NATURAL', 'F.N.', 'FLUJO NAT']
-            )
-            df_bd_calc = df_bd_calc[~es_fn_bd].copy()
-        if col_als in df_forma9_calc.columns:
-            es_fn_f9 = df_forma9_calc[col_als].astype(str).str.strip().str.upper().isin(
-                ['FN', 'FLUJO NATURAL', 'FLUJO_NATURAL', 'F.N.', 'FLUJO NAT']
-            )
-            df_forma9_calc = df_forma9_calc[~es_fn_f9].copy()
 
     # ── Filtrar BD por rango de fechas ─────────────────────────────────────
     df_bd_calc['FECHA_RUN'] = pd.to_datetime(df_bd_calc['FECHA_RUN'])
@@ -373,9 +369,8 @@ if st.session_state.get('reporte_runes') is not None:
 
     # ── NAVEGACIÓN (TABS ESTILIZADOS COMO BOTTOM BAR) ─────────────────────
     # Los estilos en styles.py se encargan de mover estos tabs a la parte inferior.
-    tab_tablero, tab_resumen, tab_campanas, tab_perf, tab_fallas, tab_indices = st.tabs([
+    tab_tablero, tab_campanas, tab_perf, tab_fallas, tab_indices = st.tabs([
         "🗂 TABLERO",
-        "◈ RESUMEN",
         "🏕 CAMPAÑAS",
         "⚡ PERFORMANCE",
         "⚠ FALLAS",
@@ -384,15 +379,6 @@ if st.session_state.get('reporte_runes') is not None:
 
     with tab_tablero:
         render_tab_tablero(
-            df_bd_calc,
-            df_forma9_filtered,
-            reporte_runes,
-            fecha_eval,
-            filters['selected_activo'],
-        )
-
-    with tab_resumen:
-        render_tab_resumen(
             df_bd_calc,
             df_forma9_filtered,
             reporte_runes,
