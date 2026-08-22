@@ -89,8 +89,8 @@ def _kaplan_meier(df_bd):
         unique_t, counts = np.unique(t_sorted, return_counts=True)
         surv = 1.0
         n_at_risk = len(t_sorted)
-        x_vals = [0]
-        y_vals = [100.0]
+        x_vals: list[float] = [0.0]
+        y_vals: list[float] = [100.0]
 
         for ut in unique_t:
             mask_t = (t_sorted == ut)

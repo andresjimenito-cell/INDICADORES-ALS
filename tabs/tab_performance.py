@@ -67,7 +67,7 @@ def bucket_runlife(days):
 
 def render_tab_performance(df_bd_filtered, df_forma9_filtered, fecha_evaluacion):
     """Renderiza el módulo izquierdo de PERFORMANCE con simetría total a MTBF."""
-    fecha_eval = pd.to_datetime(fecha_evaluacion)
+    fecha_eval = pd.Timestamp(fecha_evaluacion)
 
     # ── 1. PROCESAMIENTO DE PRODUCCIÓN Y POZOS ON ───────────────────────────
     try:
@@ -103,8 +103,10 @@ def render_tab_performance(df_bd_filtered, df_forma9_filtered, fecha_evaluacion)
 
         bd = df_bd_filtered.copy() if df_bd_filtered is not None else pd.DataFrame()
         if not bd.empty:
-            bd['FECHA_RUN'] = pd.to_datetime(bd.get('FECHA_RUN'), errors='coerce')
-            bd['FECHA_FALLA'] = pd.to_datetime(bd.get('FECHA_FALLA'), errors='coerce')
+            if 'FECHA_RUN' in bd.columns:
+                bd['FECHA_RUN'] = pd.to_datetime(bd['FECHA_RUN'], errors='coerce')
+            if 'FECHA_FALLA' in bd.columns:
+                bd['FECHA_FALLA'] = pd.to_datetime(bd['FECHA_FALLA'], errors='coerce')
 
         results = []
         for _, row in df_sum.iterrows():
@@ -362,6 +364,7 @@ def render_tab_performance(df_bd_filtered, df_forma9_filtered, fecha_evaluacion)
     rl_brackets = ['< 2 años', '2–4 años', '4–6 años', '> 6 años']
     df_bracket = df_perf.groupby('RANGO').agg({'POZO': 'count', 'BOPD': 'sum'}).reindex(rl_brackets).fillna(0)
     bracket_colors = [_G, _G2, _Y, _R]
+    bopd_map = df_bracket['BOPD'].to_dict()
 
     bopd_bracket_opts = {
         "backgroundColor": "transparent",
@@ -382,7 +385,7 @@ def render_tab_performance(df_bd_filtered, df_forma9_filtered, fecha_evaluacion)
                   "splitLine": {"lineStyle": {"color": "rgba(46,125,70,0.06)"}}},
         "series": [{
             "type": "bar",
-            "data": [{"value": round(float(df_bracket.loc[l, 'BOPD']), 1),
+            "data": [{"value": round(float(bopd_map.get(l, 0.0)), 1),
                       "itemStyle": {"color": bracket_colors[i], "borderRadius": [5, 5, 0, 0]}}
                      for i, l in enumerate(rl_brackets)],
             "barWidth": "50%",

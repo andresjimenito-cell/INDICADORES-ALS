@@ -1,7 +1,14 @@
 import pandas as pd
 import numpy as np
 import streamlit as st
-from ui.theme import get_colors, get_plotly_layout
+try:
+    from ui.theme import get_colors, get_plotly_layout
+except Exception:
+    try:
+        from theme import get_colors, get_plotly_layout
+    except Exception:
+        get_colors = lambda: {'primary': '#2E7D46', 'background': '#ffffff'}
+        get_plotly_layout = lambda: {}
 from datetime import timedelta
 
 _colors = get_colors()

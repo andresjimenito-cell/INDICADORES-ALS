@@ -786,7 +786,7 @@ TIPOS_FALLA = ['ALS', 'No ALS', 'Pend Pulling']
 TIPO_COLOR = {'ALS': _G, 'No ALS': _N, 'Pend Pulling': '#9FB6C9'}
 
 
-def _pozos_on(df_f9, fecha):
+def _pozos_on(df_f9, fecha, pozos_validos=None):
     """Conjunto de pozos que reportaron días trabajados y producción de fluido > 0 en el mes de `fecha`."""
     if df_f9 is None or df_f9.empty or 'FECHA_FORMA9' not in df_f9.columns:
         return set()
@@ -803,10 +803,13 @@ def _pozos_on(df_f9, fecha):
             mask_fluid = mask_fluid | (pd.to_numeric(f9[fc], errors='coerce').fillna(0) > 0)
         mask = mask & mask_fluid
 
-    return set(f9[mask]['POZO'].astype(str).str.strip().unique())
+    p_set = set(f9[mask]['POZO'].astype(str).str.strip().unique())
+    if pozos_validos is not None:
+        p_set = p_set & set(pozos_validos)
+    return p_set
 
 
-def _balance_pozos(df_bd_raw, df_f9, fecha_ini, fecha_fin):
+def _balance_pozos(df_bd_raw, df_f9, fecha_ini, fecha_fin, pozos_validos=None):
     """
     Balance de pozos ON entre dos cortes mensuales.
 
@@ -822,8 +825,8 @@ def _balance_pozos(df_bd_raw, df_f9, fecha_ini, fecha_fin):
     del periodo, aunque la corrida haya empezado después de fecha_fin.
     """
     # Pozos ON al inicio y fin del periodo (desde Forma 9)
-    on_ini = _pozos_on(df_f9, fecha_ini)
-    on_fin = _pozos_on(df_f9, fecha_fin)
+    on_ini = _pozos_on(df_f9, fecha_ini, pozos_validos=pozos_validos)
+    on_fin = _pozos_on(df_f9, fecha_fin, pozos_validos=pozos_validos)
 
     entrantes = on_fin - on_ini
     salientes = on_ini - on_fin
@@ -1007,33 +1010,14 @@ def render_tab_tablero(
     df_f9 = df_forma9_untr.copy()
     df_f9 = df_f9[(df_f9['FECHA_FORMA9'].dt.month == mes_eval) & (df_f9['FECHA_FORMA9'].dt.year == anio_eval)]
 
-    activos = inactivos = 0
-    if not df_f9.empty and 'FECHA_FORMA9' in df_f9.columns:
-        df_f9['_F9'] = pd.to_datetime(df_f9['FECHA_FORMA9'], errors='coerce').dt.normalize()
-        dias_col  = 'DIAS TRABAJADOS' if 'DIAS TRABAJADOS' in df_f9.columns else None
-        mask_on   = (df_f9['_F9'].dt.month == mes_eval) & (df_f9['_F9'].dt.year == anio_eval)
-        if dias_col:
-            mask_on = mask_on & (pd.to_numeric(df_f9[dias_col], errors='coerce').fillna(0) > 0)
-        
-        fluid_cols = [c for c in df_f9.columns if any(k in str(c).upper() for k in ['BOPD', 'BFPD', 'BWPD', 'PETROLEO', 'FLUIDO', 'AGUA'])]
-        if fluid_cols:
-            mask_fluid = pd.Series(False, index=df_f9.index)
-            for fc in fluid_cols:
-                mask_fluid = mask_fluid | (pd.to_numeric(df_f9[fc], errors='coerce').fillna(0) > 0)
-            mask_on = mask_on & mask_fluid
-
-        pozos_on  = set(df_f9[mask_on]['POZO'].astype(str).str.strip().unique())
-        
-        activos   = len(pozos_on)
-        inactivos = max(0, als_operativos - activos)
-    else:
-        pozos_on  = set()
-        activos   = als_operativos
-        inactivos = 0
+    pozos_validos = set(df_resumen['POZO'].astype(str).str.strip().unique()) if 'POZO' in df_resumen.columns else None
+    pozos_on = _pozos_on(df_forma9_untr, fecha_eval_dt, pozos_validos=pozos_validos)
+    activos   = len(pozos_on)
+    inactivos = max(0, als_operativos - activos)
 
     # ── Composición por tipo de ALS ──────────────────────────────────────────
     # Cada sistema se descompone en encendidos (reportan días trabajados en el
-    # mes), apagados (operativos pero sin producción) y fallados en fondo.
+    # mes con fluido > 0), apagados (operativos pero sin producción) y fallados en fondo.
     als_breakdown = {}
     if 'ALS' in df_fondo.columns and 'POZO' in df_fondo.columns:
         for t in ALS_TIPOS:
@@ -1059,90 +1043,68 @@ def render_tab_tablero(
     disp_oper    = activos   / total_pozos * 100
     uso_oper     = als_operativos / max(als_fondo, 1) * 100
 
-    # ── Serie IF mensual ─
+    # ── Serie IF mensual (Últimos 12 meses + Rolling 12M unificado) ──────────
     if_cats, if_vals, if_tot_vals, on_vals, off_vals = [], [], [], [], []
-    if_actual = 0.0
+    _MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+    from dateutil.relativedelta import relativedelta
 
-    try:
-        from indice_falla import calcular_indice_falla_anual
-        _, df_mensual_if = calcular_indice_falla_anual(
-            df.copy(), df_forma9_untr.copy(), fecha_evaluacion, st.session_state.get('fecha_inicio_state')
-        )
+    # Calculamos 24 meses hacia atrás para que la ventana móvil (Rolling 12M)
+    # de cada uno de los 12 meses graficados sea 100% precisa y continua.
+    hist_start = fecha_eval_dt - relativedelta(months=23)
+    months_hist = [hist_start + relativedelta(months=i) for i in range(24)]
 
-        _MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
-        df_yr = df_mensual_if.tail(12).copy()
+    raw_m_data = []
+    for m_dt in months_hist:
+        y, m = m_dt.year, m_dt.month
+        last_day = calendar.monthrange(y, m)[1]
+        end_m_ts = pd.Timestamp(year=y, month=m, day=last_day).normalize()
 
-        for _, row in df_yr.iterrows():
-            m_str = row['Mes']
-            m_idx = int(m_str[5:7]) - 1
-            label = f"{_MESES[m_idx]}-{m_str[2:4]}"
-            if_cats.append(label)
-            on_m   = int(row.get('Pozos ON', 0))
-            if_roll = float(row.get('Indice_Falla_Rolling_ALS_ON_1500', row.get('Indice_Falla_Rolling_ALS_Total', 0.0))) * 100.0
-            if_vals.append(if_roll)
-            
-            if_tot_roll = float(row.get('Indice_Falla_Rolling_ON_1500', row.get('Indice_Falla_Rolling_Total', 0.0))) * 100.0
-            if_tot_vals.append(if_tot_roll)
-            
-            on_vals.append(on_m)
-            off_m  = max(int(row.get('Pozos Operativos', on_m)) - on_m, 0)
-            off_vals.append(off_m)
+        # Pozos ON universales (días trabajados > 0 y fluido > 0)
+        p_on_set = _pozos_on(df_forma9_untr, m_dt, pozos_validos=pozos_validos)
+        on_cnt = len(p_on_set)
 
-        last_row = df_mensual_if.tail(1)
-        if not last_row.empty:
-            if_actual = float(last_row['Indice_Falla_Rolling_ALS_ON_1500'].iloc[0]) * 100.0
-        elif if_vals:
-            if_actual = if_vals[-1]
+        # Pozos Operativos en fondo
+        op_cnt = int(df[
+            (df['_RUN'] <= end_m_ts) &
+            (df['_FALL'].isna() | (df['_FALL'] > end_m_ts)) &
+            (df['_PULL'].isna() | (df['_PULL'] > end_m_ts))
+        ]['POZO'].nunique()) if 'POZO' in df.columns else on_cnt
 
-    except Exception as _e_if:
-        _MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
-        from dateutil.relativedelta import relativedelta
-        start_m = fecha_eval_dt - relativedelta(months=11)
-        for i in range(12):
-            curr_date = start_m + relativedelta(months=i)
-            m = curr_date.month
-            y = curr_date.year
-            last_day = calendar.monthrange(y, m)[1]
-            end_m_ts = pd.Timestamp(year=y, month=m, day=last_day).normalize()
-            fallas_m = int(df[
-                (df['_FALL'].dt.month == m) & (df['_FALL'].dt.year == y)
-            ].shape[0])
-            fallas_als_m = int(df[
-                (df['_FALL'].dt.month == m) & (df['_FALL'].dt.year == y) & (df['INDICADOR_MTBF'] == 1)
-            ].shape[0]) if 'INDICADOR_MTBF' in df.columns else fallas_m
-            
-            on_m = 0
-            if not df_forma9_untr.empty and 'FECHA_FORMA9' in df_forma9_untr.columns:
-                df_f9c = df_forma9_untr.copy()
-                df_f9c['_F9'] = pd.to_datetime(df_f9c['FECHA_FORMA9'], errors='coerce').dt.normalize()
-                dias_c = 'DIAS TRABAJADOS' if 'DIAS TRABAJADOS' in df_f9c.columns else None
-                mm = (df_f9c['_F9'].dt.month == m) & (df_f9c['_F9'].dt.year == y)
-                if dias_c:
-                    mm = mm & (pd.to_numeric(df_f9c[dias_c], errors='coerce').fillna(0) > 0)
-                fluid_cols_c = [c for c in df_f9c.columns if any(k in str(c).upper() for k in ['BOPD', 'BFPD', 'BWPD', 'PETROLEO', 'FLUIDO', 'AGUA'])]
-                if fluid_cols_c:
-                    mask_f_c = pd.Series(False, index=df_f9c.index)
-                    for fc in fluid_cols_c:
-                        mask_f_c = mask_f_c | (pd.to_numeric(df_f9c[fc], errors='coerce').fillna(0) > 0)
-                    mm = mm & mask_f_c
-                on_m = int(df_f9c[mm]['POZO'].nunique())
-            op_m = int(df[
-                (df['_RUN'] <= end_m_ts) &
-                (df['_FALL'].isna() | (df['_FALL'] > end_m_ts)) &
-                (df['_PULL'].isna() | (df['_PULL'] > end_m_ts))
-            ]['POZO'].nunique()) if 'POZO' in df.columns else 0
-            if_cats.append(f"{_MESES[m - 1]}-{str(y)[2:4]}")
-            
-            if_m = (fallas_als_m / max(op_m, 1)) * 100.0
-            if_vals.append(if_m)
-            
-            if_tot_m = (fallas_m / max(op_m, 1)) * 100.0
-            if_tot_vals.append(if_tot_m)
-            
-            on_vals.append(on_m)
-            off_vals.append(max(op_m - on_m, 0))
-        if_actual = if_vals[-1] if if_vals else 0.0
+        fallas_als = int(df[
+            (df['_FALL'].dt.month == m) & (df['_FALL'].dt.year == y) & (df['INDICADOR_MTBF'] == 1)
+        ].shape[0]) if 'INDICADOR_MTBF' in df.columns else int(df[
+            (df['_FALL'].dt.month == m) & (df['_FALL'].dt.year == y)
+        ].shape[0])
 
+        fallas_tot = int(df[
+            (df['_FALL'].dt.month == m) & (df['_FALL'].dt.year == y)
+        ].shape[0])
+
+        raw_m_data.append({
+            'year': y, 'month': m, 'date': m_dt,
+            'pozos_on': on_cnt, 'pozos_op': op_cnt,
+            'fallas_als': fallas_als, 'fallas_tot': fallas_tot
+        })
+
+    df_if_hist = pd.DataFrame(raw_m_data)
+    df_if_hist['rolling_fallas_als'] = df_if_hist['fallas_als'].rolling(12, min_periods=1).sum()
+    df_if_hist['rolling_fallas_tot'] = df_if_hist['fallas_tot'].rolling(12, min_periods=1).sum()
+    df_if_hist['rolling_pozos_on']   = df_if_hist['pozos_on'].rolling(12, min_periods=1).mean()
+    df_if_hist['if_rolling_als']     = (df_if_hist['rolling_fallas_als'] / df_if_hist['rolling_pozos_on'].replace(0, np.nan) * 100.0).fillna(0.0)
+    df_if_hist['if_rolling_tot']     = (df_if_hist['rolling_fallas_tot'] / df_if_hist['rolling_pozos_on'].replace(0, np.nan) * 100.0).fillna(0.0)
+
+    # Filtrar a los 12 meses visualizados
+    df_if_12m = df_if_hist.tail(12).copy()
+    for _, r in df_if_12m.iterrows():
+        m_idx = int(r['month']) - 1
+        label = f"{_MESES[m_idx]}-{str(r['year'])[2:4]}"
+        if_cats.append(label)
+        if_vals.append(float(r['if_rolling_als']))
+        if_tot_vals.append(float(r['if_rolling_tot']))
+        on_vals.append(int(r['pozos_on']))
+        off_vals.append(max(int(r['pozos_op']) - int(r['pozos_on']), 0))
+
+    if_actual = if_vals[-1] if if_vals else 0.0
     if_max = max(max(if_vals + if_tot_vals) * 1.3, META_IF * 2, 20) if (if_vals and if_tot_vals) else 20
 
     # ── MTBF ─────────────────────────────────────────────────────────────────
