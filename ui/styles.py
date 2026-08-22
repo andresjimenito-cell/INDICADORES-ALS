@@ -567,14 +567,20 @@ def _apply_styles_internal():
             color: #137659 !important;
         }
 
-/* ── FLOATING BOTTOM NAV (clean, professional with Parex green) ── */
+/* ── FLOATING BOTTOM NAV (clean, professional with Parex green, sidebar-aware) ── */
         div[data-testid="stTabs"] {
             display: flex !important;
             flex-direction: column !important;
         }
 
+        /* Main content container - establish positioning context */
+        [data-testid="stMainBlockContainer"] {
+            position: relative !important;
+            padding-bottom: 72px !important; /* space for sticky nav */
+        }
+
         div[data-testid="stTabs"] [role="tablist"] {
-            position: fixed !important;
+            position: sticky !important;
             bottom: 0 !important;
             left: 0 !important;
             right: 0 !important;
@@ -583,7 +589,7 @@ def _apply_styles_internal():
             background: linear-gradient(180deg, rgba(19, 118, 89, 0.03) 0%, #ffffff 100%) !important;
             border-top: 2px solid #137659 !important;
             box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.06), 0 -1px 0 rgba(19, 118, 89, 0.1) !important;
-            padding: 6px env(safe-area-inset-right, 16px) 6px env(safe-area-inset-left, 16px) !important;
+            padding: 6px 16px !important;
             border-radius: 0 !important;
             display: flex !important;
             justify-content: space-around !important;
@@ -599,13 +605,12 @@ def _apply_styles_internal():
             display: none !important;
         }
 
-        /* Asegurar que el contenido de los tabs NO se mueva y tenga padding bottom */
+        /* Tab content - no extra padding needed since container handles it */
         div[data-testid="stTabContent"] {
             order: 1 !important;
             background: transparent !important;
             border: none !important;
             padding-top: 0px !important;
-            padding-bottom: 72px !important;
             width: 100% !important;
         }
 
