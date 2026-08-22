@@ -1,10 +1,20 @@
-import numpy as np
+﻿import numpy as np
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 import plotly.express as px
 import json
 from ui.theme import get_colors, get_plotly_layout, styled_title, plotly_styled_title
+
+class _NpEncoder(json.JSONEncoder):
+    """Convierte tipos numpy a Python nativos para json.dumps."""
+    def default(self, obj):
+        if isinstance(obj, np.integer): return int(obj)
+        if isinstance(obj, np.floating): return None if np.isnan(obj) else float(obj)
+        if isinstance(obj, np.ndarray): return obj.tolist()
+        return super().default(obj)
+
+_jdumps = lambda obj: _jdumps(obj, cls=_NpEncoder)
 
 _colors_raw = get_colors()
 try:
@@ -30,8 +40,8 @@ styled_title = styled_title
 @st.cache_data(show_spinner=False)
 def calcular_mtbf(df_bd, fecha_evaluacion, col_life='RUN LIFE @ FALLA', col_indicador='INDICADOR_MTBF'):
     """
-    Calcula el MTBF usando el método actuarial (SPE / ISO 14224):
-    100% vectorizado en NumPy para máxima velocidad de ejecución.
+    Calcula el MTBF usando el mÃ©todo actuarial (SPE / ISO 14224):
+    100% vectorizado en NumPy para mÃ¡xima velocidad de ejecuciÃ³n.
     """
     if df_bd is None or df_bd.empty:
         return 0.0, pd.DataFrame()
@@ -53,13 +63,13 @@ def calcular_mtbf(df_bd, fecha_evaluacion, col_life='RUN LIFE @ FALLA', col_indi
 
     df = df_bd[cols_needed].copy()
 
-    # 2. Exclusión rápida de ENTREGADOS en columnas de texto
+    # 2. ExclusiÃ³n rÃ¡pida de ENTREGADOS en columnas de texto
     text_cols = [c for c in ['FECHA_PULL', 'FECHA_FALLA', 'ESTADO', 'COMENTARIOS', 'POZO'] if c in df.columns]
     if text_cols:
         mask_entregado = df[text_cols].astype(str).apply(lambda s: s.str.upper().str.contains('ENTREGAD', na=False)).any(axis=1)
         df = df[~mask_entregado]
 
-    # Exclusión rápida de Flujo Natural ('FN')
+    # ExclusiÃ³n rÃ¡pida de Flujo Natural ('FN')
     for col_als in ('ALS', 'SISTEMA ALS', 'SISTEMA_ALS', 'METODO', 'METODO DE LEVANTAMIENTO'):
         if col_als in df.columns:
             es_fn = df[col_als].astype(str).str.strip().str.upper().isin(
@@ -88,7 +98,7 @@ def calcular_mtbf(df_bd, fecha_evaluacion, col_life='RUN LIFE @ FALLA', col_indi
         
     df = df.sort_values(col_life).reset_index(drop=True)
     
-    # 5. CÁLCULO ACTUARIAL 100% VECTORIZADO EN NUMPY
+    # 5. CÃLCULO ACTUARIAL 100% VECTORIZADO EN NUMPY
     items = np.arange(1, n + 1)
     df['ITEM'] = items
     
@@ -117,12 +127,12 @@ def mostrar_mtbf(mtbf_global, mtbf_por_pozo, mtbf_efectivo=None, df_bd=None, fec
     # Layout de KPIs principales usando clases HUD
     k1, k2 = st.columns(2)
     with k1:
-        st.markdown(f'<div class="kpi-card"><div class="kpi-icon">●</div><div class="kpi-label">TMEF GLOBAL</div><div class="kpi-value">{mtbf_global:.0f}</div><div class="kpi-trend-positive">Dias Run Life</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="kpi-card"><div class="kpi-icon">â—</div><div class="kpi-label">TMEF GLOBAL</div><div class="kpi-value">{mtbf_global:.0f}</div><div class="kpi-trend-positive">Dias Run Life</div></div>', unsafe_allow_html=True)
     with k2:
         if mtbf_efectivo is not None:
-            st.markdown(f'<div class="kpi-card"><div class="kpi-icon">●</div><div class="kpi-label">TMEF EFECTIVO</div><div class="kpi-value" style="color:#00ff9d;">{mtbf_efectivo:.0f}</div><div class="kpi-trend-positive">Dias Trabajados</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="kpi-card"><div class="kpi-icon">â—</div><div class="kpi-label">TMEF EFECTIVO</div><div class="kpi-value" style="color:#00ff9d;">{mtbf_efectivo:.0f}</div><div class="kpi-trend-positive">Dias Trabajados</div></div>', unsafe_allow_html=True)
         else:
-            st.markdown(f'<div class="kpi-card"><div class="kpi-icon">●</div><div class="kpi-label">PRECISION</div><div class="kpi-value">98%</div><div class="kpi-trend-positive">Analisis Estadistico</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="kpi-card"><div class="kpi-icon">â—</div><div class="kpi-label">PRECISION</div><div class="kpi-value">98%</div><div class="kpi-trend-positive">Analisis Estadistico</div></div>', unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -185,14 +195,14 @@ def mostrar_mtbf(mtbf_global, mtbf_por_pozo, mtbf_efectivo=None, df_bd=None, fec
                 <script>
                     (function() {{
                         var myChart = echarts.init(document.getElementById('echarts-mtbf-val'), null);
-                        myChart.setOption({json.dumps(echarts_options_val)});
+                        myChart.setOption({_jdumps(echarts_options_val)});
                         window.addEventListener('resize', function() {{ myChart.resize(); }});
                     }})();
                 </script>
                 """
                 components.html(html_val, height=340)
         else:
-            st.info("No hay datos suficientes para generar el gráfico de valores TMEF.")
+            st.info("No hay datos suficientes para generar el grÃ¡fico de valores TMEF.")
 
 def historico_mtbf(df_bd, fecha_evaluacion):
     """
@@ -222,7 +232,7 @@ def historico_mtbf(df_bd, fecha_evaluacion):
             historico.append(promedio)
     if historico:
         df_hist = pd.concat(historico, ignore_index=True)
-        # Asegurar que la columna tenga un nombre consistente para el gráfico
+        # Asegurar que la columna tenga un nombre consistente para el grÃ¡fico
         if grupo_col in df_hist.columns:
             df_hist.rename(columns={grupo_col: 'CATEGORIA'}, inplace=True)
         df_hist = df_hist[['Mes', 'CATEGORIA', 'MTBF_MES']]
@@ -231,12 +241,12 @@ def historico_mtbf(df_bd, fecha_evaluacion):
     else:
         return pd.DataFrame(columns=['Mes', 'CATEGORIA', 'TMEF Promedio'])
 
-def render_premium_echarts_mtbf(df_hist, titulo="TMEF HISTÓRICO POR CAMPO"):
+def render_premium_echarts_mtbf(df_hist, titulo="TMEF HISTÃ“RICO POR CAMPO"):
     import json
     import streamlit.components.v1 as components
     
     if df_hist.empty:
-        return st.info("No hay datos históricos de TMEF para mostrar.")
+        return st.info("No hay datos histÃ³ricos de TMEF para mostrar.")
     
     # Preparar datos
     months = sorted([str(m) for m in df_hist['Mes'].dt.strftime('%Y-%m').unique()])
@@ -279,7 +289,7 @@ def render_premium_echarts_mtbf(df_hist, titulo="TMEF HISTÓRICO POR CAMPO"):
         "legend": {"data": categorias, "bottom": 0, "textStyle": {"color": "#475569", "fontSize": 10}},
         "grid": {"left": "3%", "right": "4%", "bottom": "15%", "top": "15%", "containLabel": True},
         "xAxis": [{"type": "category", "data": months, "axisLabel": {"color": "#475569", "fontSize": 10}}],
-        "yAxis": [{"type": "value", "name": "Días", "axisLabel": {"color": "#475569"}, "splitLine": {"lineStyle": {"color": "rgba(19, 118, 89, 0.05)"}}}],
+        "yAxis": [{"type": "value", "name": "DÃ­as", "axisLabel": {"color": "#475569"}, "splitLine": {"lineStyle": {"color": "rgba(19, 118, 89, 0.05)"}}}],
         "color": color_seq,
         "series": series
     }
@@ -290,7 +300,7 @@ def render_premium_echarts_mtbf(df_hist, titulo="TMEF HISTÓRICO POR CAMPO"):
     <script>
         (function() {{
             var myChart = echarts.init(document.getElementById('echarts-mtbf'), null);
-            myChart.setOption({json.dumps(echarts_options)});
+            myChart.setOption({_jdumps(echarts_options)});
             window.addEventListener('resize', function() {{ myChart.resize(); }});
         }})();
     </script>

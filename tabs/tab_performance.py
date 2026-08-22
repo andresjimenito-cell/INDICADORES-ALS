@@ -45,9 +45,18 @@ def _halo(c):
     return f"0 0 0 4px {c}1A, 0 4px 12px {c}33"
 
 
+class _NpEncoder(json.JSONEncoder):
+    """Convierte tipos numpy a Python nativos para JSON."""
+    def default(self, obj):
+        if isinstance(obj, np.integer): return int(obj)
+        if isinstance(obj, np.floating): return None if np.isnan(obj) else float(obj)
+        if isinstance(obj, np.ndarray): return obj.tolist()
+        return super().default(obj)
+
+
 def _echarts(opts: dict, h: int, cid: str) -> str:
-    # Sanitizar json para evitar NaN no válidos
-    opts_json = json.dumps(opts).replace('NaN', '0.0').replace('null', '0')
+    # Sanitizar json: numpy → python, NaN → null → 0
+    opts_json = json.dumps(opts, cls=_NpEncoder).replace('NaN', '0.0').replace('null', '0')
     return (
         f'<div id="{cid}" style="width:100%;height:{h}px;"></div>'
         f'<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>'

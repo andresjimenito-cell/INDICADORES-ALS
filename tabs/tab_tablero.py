@@ -1,11 +1,11 @@
-"""
-tabs/tab_tablero.py  —  v4.2 Ultra Refined Minimalist Dashboard
+﻿"""
+tabs/tab_tablero.py  â€”  v4.2 Ultra Refined Minimalist Dashboard
 ==============================================================
-Tablero Ejecutivo de Alto Impacto con estética industrial Parex.
-Presenta 3 columnas simétricas de 480px de altura:
+Tablero Ejecutivo de Alto Impacto con estÃ©tica industrial Parex.
+Presenta 3 columnas simÃ©tricas de 480px de altura:
 1. Resumen de Operaciones: Tarjeta premium con KPIs en fondo, pills ALS, estados operativos, activos, inactivos y barras de progreso.
-2. Índice de Falla (IF < 1500 RLE): Velocímetro minimalista de precisión + Historial mensual de pozos y tasa IF (con degradados y sombras de área).
-3. Desempeño y Vida Útil: Velocímetros limpios de MTBF y RunLife + Distribución de longevidad de pozos activos (con degradados y etiquetas flotantes).
+2. Ãndice de Falla (IF < 1500 RLE): VelocÃ­metro minimalista de precisiÃ³n + Historial mensual de pozos y tasa IF (con degradados y sombras de Ã¡rea).
+3. DesempeÃ±o y Vida Ãštil: VelocÃ­metros limpios de MTBF y RunLife + DistribuciÃ³n de longevidad de pozos activos (con degradados y etiquetas flotantes).
 """
 
 import json, calendar
@@ -18,7 +18,17 @@ import streamlit.components.v1 as components
 import mtbf as mtbf_mod
 from calculations import clasificar_runlife
 
-# ── Paleta Corporativa Parex ─────────────────────────────────────────────────
+class _NpEncoder(json.JSONEncoder):
+    """Convierte tipos numpy a Python nativos para json.dumps."""
+    def default(self, obj):
+        if isinstance(obj, np.integer): return int(obj)
+        if isinstance(obj, np.floating): return None if np.isnan(obj) else float(obj)
+        if isinstance(obj, np.ndarray): return obj.tolist()
+        return super().default(obj)
+
+_jdumps = lambda obj: _jdumps(obj, cls=_NpEncoder)
+
+# â”€â”€ Paleta Corporativa Parex â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 _G   = "#2E7D46"        # Verde principal
 _G2  = "#1F4620"        # Verde oscuro
 _G3  = "#EEF3EA"        # Verde muy claro (fondo)
@@ -29,20 +39,20 @@ _Y2  = "#FDF6E9"        # Dorado fondo
 _T   = "#262626"        # Texto oscuro
 _T2  = "#707070"        # Texto suave
 _W   = "#ffffff"
-_N   = "#223A5E"        # Azul petróleo (serie secundaria / metas)
+_N   = "#223A5E"        # Azul petrÃ³leo (serie secundaria / metas)
 _BR  = "#DCE2D8"        # Borde hairline de tarjeta
 _BG  = "#F7F8F5"        # Fondo tenue
 
-# Tipografía ejecutiva: sans para etiquetas, serif para cifras
+# TipografÃ­a ejecutiva: sans para etiquetas, serif para cifras
 _FS  = "'Inter', 'Segoe UI', Calibri, Arial, sans-serif"
 _FN  = "'Source Serif 4', Cambria, Georgia, 'Times New Roman', serif"
 _FONTS_URL = ("https://fonts.googleapis.com/css2?"
               "family=Inter:wght@400;500;600;700;800&"
               "family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap")
 
-# ── Sistema de elevación ─────────────────────────────────────────────────────
-# Tres capas por tarjeta: sombra de contacto (nítida y corta), sombra ambiental
-# (amplia y difusa) y una luz de borde superior que simula iluminación cenital.
+# â”€â”€ Sistema de elevaciÃ³n â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# Tres capas por tarjeta: sombra de contacto (nÃ­tida y corta), sombra ambiental
+# (amplia y difusa) y una luz de borde superior que simula iluminaciÃ³n cenital.
 _SH1 = ("0 1px 2px rgba(31,70,32,0.05), 0 4px 12px rgba(126,143,124,0.13), "
         "inset 0 1px 0 rgba(255,255,255,0.9)")
 _SH2 = ("0 2px 5px rgba(31,70,32,0.07), 0 14px 32px rgba(126,143,124,0.22), "
@@ -61,7 +71,7 @@ def _fmt(n, dec=0):
 
 
 def _glow(color, alpha=0.10):
-    """Resplandor de esquina en el color semántico de la tarjeta."""
+    """Resplandor de esquina en el color semÃ¡ntico de la tarjeta."""
     r, g, b = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
     return (f"radial-gradient(135% 150% at 0% 0%, rgba({r},{g},{b},{alpha}) 0%, "
             f"rgba({r},{g},{b},0) 58%)")
@@ -83,9 +93,9 @@ def _css():
 <style>
 @import url('{_FONTS_URL}');
 
-/* ══════════════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    ENCABEZADO EJECUTIVO
-   ══════════════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .tbl-hero {{
     position: relative;
     display: flex;
@@ -215,9 +225,9 @@ def _css():
     gap: 6px;
 }}
 
-/* ══════════════════════════════════════════════════════════════════
-   COLUMNA IZQUIERDA — TARJETAS DE KPI
-   ══════════════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   COLUMNA IZQUIERDA â€” TARJETAS DE KPI
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .tbl-panel-lateral {{
     margin: 7px;
     height: 506px;
@@ -227,7 +237,7 @@ def _css():
     gap: 12px;
 }}
 
-/* Tarjeta genérica */
+/* Tarjeta genÃ©rica */
 .tbl-card-base {{
     {_CARD}
     box-sizing: border-box;
@@ -255,7 +265,7 @@ def _css():
     transform: translateY(-2px);
 }}
 
-/* ── Encabezado icono + rótulo (patrón común) ── */
+/* â”€â”€ Encabezado icono + rÃ³tulo (patrÃ³n comÃºn) â”€â”€ */
 .tbl-head-row {{
     display: flex;
     align-items: center;
@@ -304,7 +314,7 @@ def _css():
 .tbl-lbl.lg {{ font-size: 13px; }}
 .tbl-lbl.md {{ font-size: 11.5px; }}
 
-/* ── Cifras ── */
+/* â”€â”€ Cifras â”€â”€ */
 .tbl-num {{
     font-family: {_FN};
     font-weight: 700;
@@ -323,7 +333,7 @@ def _css():
 .tbl-num.green {{ color: {_G}; }}
 .tbl-num.gold  {{ color: {_Y}; }}
 
-/* ── Tarjeta ALS EN FONDO ── */
+/* â”€â”€ Tarjeta ALS EN FONDO â”€â”€ */
 .tbl-kpi-fondo-card {{
     {_CARD}
     background: {_glow(_G, 0.13)}, linear-gradient(180deg, {_G3} 0%, #ffffff 62%);
@@ -346,7 +356,7 @@ def _css():
     max-width: 40%;
 }}
 
-/* ── Barras por sistema ALS ── */
+/* â”€â”€ Barras por sistema ALS â”€â”€ */
 .tbl-als-panel {{
     display: flex;
     flex-direction: column;
@@ -394,7 +404,7 @@ def _css():
     white-space: nowrap;
 }}
 
-/* El hueco fija la línea base; la pila crece desde abajo */
+/* El hueco fija la lÃ­nea base; la pila crece desde abajo */
 .tbl-mini-bar-slot {{
     flex: 1;
     width: 100%;
@@ -431,7 +441,7 @@ def _css():
     line-height: 1.1;
 }}
 
-/* Leyenda de la composición */
+/* Leyenda de la composiciÃ³n */
 .tbl-als-leg {{
     display: flex;
     justify-content: center;
@@ -457,7 +467,7 @@ def _css():
 .tbl-als-leg i.off  {{ background: #93A29A; }}
 .tbl-als-leg i.fall {{ background: {_R}; }}
 
-/* ── Fila media: fallados | disponibles + activos/inactivos ── */
+/* â”€â”€ Fila media: fallados | disponibles + activos/inactivos â”€â”€ */
 .tbl-grid-bottom {{
     display: flex;
     gap: 12px;
@@ -500,7 +510,7 @@ def _css():
     text-align: left;
 }}
 
-/* El último bloque no debe rozar el borde inferior de la tarjeta */
+/* El Ãºltimo bloque no debe rozar el borde inferior de la tarjeta */
 .tbl-fallados-atrib:last-child {{ padding-bottom: 2px; }}
 
 .tbl-fallados-atrib-lbl {{
@@ -571,7 +581,7 @@ def _css():
 
 .tbl-card-sub .tbl-num {{ text-align: right; }}
 
-/* ── Fila de medidores: disponibilidad y uso ── */
+/* â”€â”€ Fila de medidores: disponibilidad y uso â”€â”€ */
 .tbl-row-meters {{
     display: flex;
     gap: 12px;
@@ -636,9 +646,9 @@ def _css():
 .tbl-meter-fill.y {{ background: {_Y}; }}
 .tbl-meter-fill.r {{ background: {_R}; }}
 
-/* ══════════════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    TABLA DE FALLAS DEL MES
-   ══════════════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .tbl-fallas-panel {{
     {_CARD}
     margin: 7px;
@@ -764,7 +774,7 @@ def _css():
     margin-top: 4px;
 }}
 
-/* ── Entrada suave de las cifras ── */
+/* â”€â”€ Entrada suave de las cifras â”€â”€ */
 @keyframes tblFadeUp {{
     from {{ opacity: 0; transform: translateY(4px); }}
     to   {{ opacity: 1; transform: translateY(0); }}
@@ -777,17 +787,17 @@ def _css():
 """, unsafe_allow_html=True)
 
 
-# ── Taxonomía compartida de fallas ───────────────────────────────────────────
-# Etapas de Run Life: se reutiliza el criterio canónico de core/calculations.py
-# (Infantil <=30d, Prematura <=90d, En Garantía <=1100d, Sin Garantía >1100d)
-RL_ETAPAS = ['Infantil', 'Prematura', 'En Garantía', 'Sin Garantía']
-RL_ETAPA_EJE = ['&lt; 30 d', '30 – 90 d', '90 – 1100 d', '&gt; 1100 d']
+# â”€â”€ TaxonomÃ­a compartida de fallas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# Etapas de Run Life: se reutiliza el criterio canÃ³nico de core/calculations.py
+# (Infantil <=30d, Prematura <=90d, En GarantÃ­a <=1100d, Sin GarantÃ­a >1100d)
+RL_ETAPAS = ['Infantil', 'Prematura', 'En GarantÃ­a', 'Sin GarantÃ­a']
+RL_ETAPA_EJE = ['&lt; 30 d', '30 â€“ 90 d', '90 â€“ 1100 d', '&gt; 1100 d']
 TIPOS_FALLA = ['ALS', 'No ALS', 'Pend Pulling']
 TIPO_COLOR = {'ALS': _G, 'No ALS': _N, 'Pend Pulling': '#9FB6C9'}
 
 
 def _pozos_on(df_f9, fecha, pozos_validos=None):
-    """Conjunto de pozos que reportaron días trabajados y producción de fluido > 0 en el mes de `fecha`."""
+    """Conjunto de pozos que reportaron dÃ­as trabajados y producciÃ³n de fluido > 0 en el mes de `fecha`."""
     if df_f9 is None or df_f9.empty or 'FECHA_FORMA9' not in df_f9.columns:
         return set()
     f9 = df_f9.copy()
@@ -813,16 +823,16 @@ def _balance_pozos(df_bd_raw, df_f9, fecha_ini, fecha_fin, pozos_validos=None):
     """
     Balance de pozos ON entre dos cortes mensuales.
 
-    La identidad Base + Nuevos + Reactivados − Fallados − Apagados = Final
-    se cumple por construcción: los pozos que entran y salen del conjunto ON
+    La identidad Base + Nuevos + Reactivados âˆ’ Fallados âˆ’ Apagados = Final
+    se cumple por construcciÃ³n: los pozos que entran y salen del conjunto ON
     se clasifican de forma excluyente.
-      · Nuevos      → entran y su primera corrida arranca dentro del periodo
-      · Reactivados → entran y ya existían antes del periodo
-      · Fallados    → salen y registran falla dentro del periodo
-      · Apagados    → salen sin falla registrada
+      Â· Nuevos      â†’ entran y su primera corrida arranca dentro del periodo
+      Â· Reactivados â†’ entran y ya existÃ­an antes del periodo
+      Â· Fallados    â†’ salen y registran falla dentro del periodo
+      Â· Apagados    â†’ salen sin falla registrada
 
     NOTA: Usa df_bd_raw SIN filtrar por fecha_eval para capturar todas las fallas
-    del periodo, aunque la corrida haya empezado después de fecha_fin.
+    del periodo, aunque la corrida haya empezado despuÃ©s de fecha_fin.
     """
     # Pozos ON al inicio y fin del periodo (desde Forma 9)
     on_ini = _pozos_on(df_f9, fecha_ini, pozos_validos=pozos_validos)
@@ -853,8 +863,8 @@ def _balance_pozos(df_bd_raw, df_f9, fecha_ini, fecha_fin, pozos_validos=None):
     reactivados = entrantes - nuevos
     fallados = {p for p in salientes if p in con_falla}
     
-    # FIX: También contar fallados que NO salieron del ON (fallaron y se reactivaron en el periodo)
-    # Estos están en con_falla pero NO en salientes porque volvieron a estar ON al final
+    # FIX: TambiÃ©n contar fallados que NO salieron del ON (fallaron y se reactivaron en el periodo)
+    # Estos estÃ¡n en con_falla pero NO en salientes porque volvieron a estar ON al final
     fallados_reactivados = {p for p in con_falla if p in on_fin and p in on_ini}
     fallados_total = fallados | fallados_reactivados
     
@@ -867,17 +877,17 @@ def _balance_pozos(df_bd_raw, df_f9, fecha_ini, fecha_fin, pozos_validos=None):
         'fallados':     len(fallados_total),  # Incluye reactivados que fallaron
         'apagados':     len(apagados),
         'final':        len(on_fin),
-        'fallados_salientes': len(fallados),          # Para depuración
-        'fallados_reactivados': len(fallados_reactivados),  # Para depuración
+        'fallados_salientes': len(fallados),          # Para depuraciÃ³n
+        'fallados_reactivados': len(fallados_reactivados),  # Para depuraciÃ³n
     }
 
 
 def _clasificar_fallas(df_bd, fecha_ini, fecha_fin):
     """
     Devuelve los eventos de falla del periodo con sus atributos:
-      · ETAPA     → etapa de Run Life al momento de la falla (taxonomía del proyecto)
-      · ES_ALS    → True si es falla imputable al sistema ALS (INDICADOR_MTBF == 1)
-      · PEND_PULL → True si aún no se ha realizado la extracción a la fecha de corte (FECHA_PULL > fecha_fin o NaT)
+      Â· ETAPA     â†’ etapa de Run Life al momento de la falla (taxonomÃ­a del proyecto)
+      Â· ES_ALS    â†’ True si es falla imputable al sistema ALS (INDICADOR_MTBF == 1)
+      Â· PEND_PULL â†’ True si aÃºn no se ha realizado la extracciÃ³n a la fecha de corte (FECHA_PULL > fecha_fin o NaT)
     """
     vacio = pd.DataFrame(columns=['POZO', 'ETAPA', 'ES_ALS', 'PEND_PULL'])
     if df_bd is None or df_bd.empty or 'FECHA_FALLA' not in df_bd.columns:
@@ -910,10 +920,10 @@ def _clasificar_fallas(df_bd, fecha_ini, fecha_fin):
 
 def _matriz_fallas(df_ev):
     """
-    Matriz etapa × tipo de falla:
-      · 'ALS': Total de fallas ALS (con o sin pull)
-      · 'No ALS': Total de fallas No ALS (con o sin pull)
-      · 'Pend Pulling': Cuántas de esas fallas todavía no tienen fecha de pull
+    Matriz etapa Ã— tipo de falla:
+      Â· 'ALS': Total de fallas ALS (con o sin pull)
+      Â· 'No ALS': Total de fallas No ALS (con o sin pull)
+      Â· 'Pend Pulling': CuÃ¡ntas de esas fallas todavÃ­a no tienen fecha de pull
     """
     matriz = {et: {'ALS': 0, 'No ALS': 0, 'Pend Pulling': 0} for et in RL_ETAPAS}
     if df_ev is None or df_ev.empty:
@@ -951,17 +961,17 @@ def render_tab_tablero(
         'NICK':      st.session_state.get('general_nick_filter',      'TODOS'),
     }
 
-    # ── Ignorar fecha_ini y usar sólo fecha_evaluacion para el Tablero ──────
+    # â”€â”€ Ignorar fecha_ini y usar sÃ³lo fecha_evaluacion para el Tablero â”€â”€â”€â”€â”€â”€
     df_raw = st.session_state.get('df_bd_calculated')
     if df_raw is not None:
         df_resumen = df_raw.copy()
         EXCLUIDOS = {
-            'CANAGUARO', 'ENTRERIOS', 'ENTRE RIOS', 'ENTRE RÍOS', 'ENTRE_RIOS',
+            'CANAGUARO', 'ENTRERIOS', 'ENTRE RIOS', 'ENTRE RÃOS', 'ENTRE_RIOS',
             'MAPACHE', 'PERICO', 'PERICO (88)', 'MAPACHE PERICO', 'MAPACHE - PERICO',
             'MAPACHE/PERICO', 'MAPACHE-PERICO',
             'CORCEL NE', 'CORCEL_NE', 'CORCEL-NE', 'CORCEL N3', 'CORCEL_N3', 'CORCEL-N3',
-            'RIO META', 'RIO_META', 'RÍO META', 'RÍO_META',
-            'EL DIFICIL', 'EL DIFICIL NE', 'DIFICIL', 'EL DIFÍCIL', 'EL DIFÍCIL NE'
+            'RIO META', 'RIO_META', 'RÃO META', 'RÃO_META',
+            'EL DIFICIL', 'EL DIFICIL NE', 'DIFICIL', 'EL DIFÃCIL', 'EL DIFÃCIL NE'
         }
         for col_filter in ('ACTIVO', 'BLOQUE', 'CAMPO'):
             if col_filter in df_resumen.columns and EXCLUIDOS:
@@ -987,17 +997,17 @@ def render_tab_tablero(
     df['_FALL'] = df['FECHA_FALLA'].dt.normalize() if 'FECHA_FALLA' in df.columns else pd.Series(pd.NaT, index=df.index)
     df['_PULL'] = df['FECHA_PULL'].dt.normalize()  if 'FECHA_PULL'  in df.columns else pd.Series(pd.NaT, index=df.index)
 
-    # ── ALS en fondo ─────────────────────────────────────────────────────────
+    # â”€â”€ ALS en fondo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     mask_fondo = (df['_RUN'] <= fecha_eval_date) & (df['_PULL'].isna() | (df['_PULL'] > fecha_eval_date))
     df_fondo = df[mask_fondo]
     als_fondo = df_fondo['POZO'].nunique() if 'POZO' in df_fondo.columns else 0
 
-    # ── Fallados y operativos ────────────────────────────────────────────────
+    # â”€â”€ Fallados y operativos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     df_falla = df_fondo[df_fondo['_FALL'].notna() & (df_fondo['_FALL'] <= fecha_eval_date)]
     als_fallados  = df_falla['POZO'].nunique() if 'POZO' in df_falla.columns else 0
     als_operativos = df_fondo[df_fondo['_FALL'].isna() | (df_fondo['_FALL'] > fecha_eval_date)]['POZO'].nunique() if 'POZO' in df_fondo.columns else 0
 
-    # ── Activos / Inactivos ────
+    # â”€â”€ Activos / Inactivos â”€â”€â”€â”€
     df_f9_raw = st.session_state.get('df_forma9_calculated')
     if df_f9_raw is not None:
         df_forma9_untr = df_f9_raw.copy()
@@ -1015,9 +1025,9 @@ def render_tab_tablero(
     activos   = len(pozos_on)
     inactivos = max(0, als_operativos - activos)
 
-    # ── Composición por tipo de ALS ──────────────────────────────────────────
-    # Cada sistema se descompone en encendidos (reportan días trabajados en el
-    # mes con fluido > 0), apagados (operativos pero sin producción) y fallados en fondo.
+    # â”€â”€ ComposiciÃ³n por tipo de ALS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # Cada sistema se descompone en encendidos (reportan dÃ­as trabajados en el
+    # mes con fluido > 0), apagados (operativos pero sin producciÃ³n) y fallados en fondo.
     als_breakdown = {}
     if 'ALS' in df_fondo.columns and 'POZO' in df_fondo.columns:
         for t in ALS_TIPOS:
@@ -1043,12 +1053,12 @@ def render_tab_tablero(
     disp_oper    = activos   / total_pozos * 100
     uso_oper     = als_operativos / max(als_fondo, 1) * 100
 
-    # ── Serie IF mensual (Últimos 12 meses + Rolling 12M unificado) ──────────
+    # â”€â”€ Serie IF mensual (Ãšltimos 12 meses + Rolling 12M unificado) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if_cats, if_vals, if_tot_vals, on_vals, off_vals = [], [], [], [], []
     _MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
     from dateutil.relativedelta import relativedelta
 
-    # Calculamos 24 meses hacia atrás para que la ventana móvil (Rolling 12M)
+    # Calculamos 24 meses hacia atrÃ¡s para que la ventana mÃ³vil (Rolling 12M)
     # de cada uno de los 12 meses graficados sea 100% precisa y continua.
     hist_start = fecha_eval_dt - relativedelta(months=23)
     months_hist = [hist_start + relativedelta(months=i) for i in range(24)]
@@ -1059,7 +1069,7 @@ def render_tab_tablero(
         last_day = calendar.monthrange(y, m)[1]
         end_m_ts = pd.Timestamp(year=y, month=m, day=last_day).normalize()
 
-        # Pozos ON universales (días trabajados > 0 y fluido > 0)
+        # Pozos ON universales (dÃ­as trabajados > 0 y fluido > 0)
         p_on_set = _pozos_on(df_forma9_untr, m_dt, pozos_validos=pozos_validos)
         on_cnt = len(p_on_set)
 
@@ -1107,20 +1117,20 @@ def render_tab_tablero(
     if_actual = if_vals[-1] if if_vals else 0.0
     if_max = max(max(if_vals + if_tot_vals) * 1.3, META_IF * 2, 20) if (if_vals and if_tot_vals) else 20
 
-    # ── MTBF ─────────────────────────────────────────────────────────────────
+    # â”€â”€ MTBF â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     try:
         mtbf_val, _ = mtbf_mod.calcular_mtbf(df, fecha_evaluacion)
         mtbf_val = float(mtbf_val) if mtbf_val and not np.isnan(mtbf_val) else 0.0
     except Exception:
         mtbf_val = 0.0
 
-    # ── RunLife promedio ──────────────────────────────────────────────────────
+    # â”€â”€ RunLife promedio â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     rl_col = next((c for c in ('RUN LIFE', 'RUN_LIFE', 'RUNLIFE') if c in df.columns), None)
     rl_val = float(df[rl_col].dropna().mean()) if rl_col else 0.0
     if np.isnan(rl_val):
         rl_val = 0.0
 
-    # ── Calcular metas dinámicas para el Campo/Activo seleccionado ──────────
+    # â”€â”€ Calcular metas dinÃ¡micas para el Campo/Activo seleccionado â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     anio_prev = anio_eval - 1
     fecha_prev_fin = pd.to_datetime(f"{anio_prev}-12-31").normalize()
 
@@ -1131,12 +1141,12 @@ def render_tab_tablero(
     if df_raw is not None:
         df_prev = df_raw.copy()
         EXCLUIDOS = {
-            'CANAGUARO', 'ENTRERIOS', 'ENTRE RIOS', 'ENTRE RÍOS', 'ENTRE_RIOS',
+            'CANAGUARO', 'ENTRERIOS', 'ENTRE RIOS', 'ENTRE RÃOS', 'ENTRE_RIOS',
             'MAPACHE', 'PERICO', 'PERICO (88)', 'MAPACHE PERICO', 'MAPACHE - PERICO',
             'MAPACHE/PERICO', 'MAPACHE-PERICO',
             'CORCEL NE', 'CORCEL_NE', 'CORCEL-NE', 'CORCEL N3', 'CORCEL_N3', 'CORCEL-N3',
-            'RIO META', 'RIO_META', 'RÍO META', 'RÍO_META',
-            'EL DIFICIL', 'EL DIFICIL NE', 'DIFICIL', 'EL DIFÍCIL', 'EL DIFÍCIL NE'
+            'RIO META', 'RIO_META', 'RÃO META', 'RÃO_META',
+            'EL DIFICIL', 'EL DIFICIL NE', 'DIFICIL', 'EL DIFÃCIL', 'EL DIFÃCIL NE'
         }
         for col_filter in ('ACTIVO', 'BLOQUE', 'CAMPO'):
             if col_filter in df_prev.columns and EXCLUIDOS:
@@ -1145,11 +1155,11 @@ def render_tab_tablero(
             if col_dt in df_prev.columns:
                 df_prev[col_dt] = pd.to_datetime(df_prev[col_dt], errors='coerce')
         
-        # Filtro hasta el último día del año anterior
+        # Filtro hasta el Ãºltimo dÃ­a del aÃ±o anterior
         df_prev = df_prev[df_prev['FECHA_RUN'].dt.normalize() <= fecha_prev_fin].copy()
         df_prev.loc[df_prev['FECHA_FALLA'].dt.normalize() > fecha_prev_fin, 'FECHA_FALLA'] = pd.NaT
         
-        # Aplicar los mismos filtros que en la pestaña actual
+        # Aplicar los mismos filtros que en la pestaÃ±a actual
         for col_f, val_f in _filtros.items():
             if val_f != 'TODOS' and col_f in df_prev.columns:
                 df_prev = df_prev[df_prev[col_f] == val_f]
@@ -1176,8 +1186,8 @@ def render_tab_tablero(
     meta_mtbf_calc = round(mtbf_prev_val) if mtbf_prev_val > 0 else META_MTBF
     meta_rl_calc = round(rl_prev_val) if rl_prev_val > 0 else META_RL
 
-    # ── Correlación de Producción vs Longevidad (para el gráfico de desempeño en Columna 3) ──
-    rl_bins   = ['< 2 años', '2 – 4 años', '4 – 6 años', '> 6 años']
+    # â”€â”€ CorrelaciÃ³n de ProducciÃ³n vs Longevidad (para el grÃ¡fico de desempeÃ±o en Columna 3) â”€â”€
+    rl_bins   = ['< 2 aÃ±os', '2 â€“ 4 aÃ±os', '4 â€“ 6 aÃ±os', '> 6 aÃ±os']
     pozos_perf_data = [0, 0, 0, 0]
     bopd_perf_data = [0.0, 0.0, 0.0, 0.0]
     try:
@@ -1217,10 +1227,10 @@ def render_tab_tablero(
             if not pozo_data.empty:
                 rl = pozo_data.iloc[0].get('RUN LIFE', 0)
                 years = rl / 365.25 if rl else 0
-                if years < 2: rango = '< 2 años'
-                elif years < 4: rango = '2 – 4 años'
-                elif years < 6: rango = '4 – 6 años'
-                else: rango = '> 6 años'
+                if years < 2: rango = '< 2 aÃ±os'
+                elif years < 4: rango = '2 â€“ 4 aÃ±os'
+                elif years < 6: rango = '4 â€“ 6 aÃ±os'
+                else: rango = '> 6 aÃ±os'
                 results_perf.append({'POZO': pozo, 'BOPD': bopd, 'RUN_LIFE': rl, 'RANGO': rango})
 
         if results_perf:
@@ -1231,8 +1241,8 @@ def render_tab_tablero(
     except Exception as _e_perf:
         pass
 
-    # Construir datos coloreados para mantener la estética de barra individual anterior
-    # Rampa semántica plana por rango de RunLife (verde = joven, rojo = longevo)
+    # Construir datos coloreados para mantener la estÃ©tica de barra individual anterior
+    # Rampa semÃ¡ntica plana por rango de RunLife (verde = joven, rojo = longevo)
     _RL_COLORS = [_G, _G2, _Y, _R]
     pozos_perf_colored = [
         {
@@ -1247,14 +1257,14 @@ def render_tab_tablero(
     mtbf_max = max(mtbf_val * 1.4, meta_mtbf_calc * 1.5, 3000)
     rl_max   = max(rl_val   * 1.4, meta_rl_calc * 1.5, 2500)
 
-    # ── Ventana del periodo (usada por el encabezado y los paneles inferiores) ─
+    # â”€â”€ Ventana del periodo (usada por el encabezado y los paneles inferiores) â”€
     fecha_ini_str = st.session_state.get('fecha_inicio_state')
     if fecha_ini_str is not None:
         fecha_ini_dt = pd.to_datetime(fecha_ini_str).normalize()
     else:
         fecha_ini_dt = fecha_eval_date - pd.DateOffset(years=1)
 
-    # ── Balance de pozos ON del periodo (waterfall) ───────────────────────────
+    # â”€â”€ Balance de pozos ON del periodo (waterfall) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     try:
         # Usar df_raw (sin filtrar) para capturar TODAS las fallas del periodo
         balance = _balance_pozos(df_raw, df_forma9_untr, fecha_ini_dt, fecha_eval_date)
@@ -1263,7 +1273,7 @@ def render_tab_tablero(
                    'fallados': 0, 'apagados': 0, 'final': 0,
                    'fallados_salientes': 0, 'fallados_reactivados': 0}
 
-    # ── Fallas del periodo y del mes en curso, por etapa y tipo ───────────────
+    # â”€â”€ Fallas del periodo y del mes en curso, por etapa y tipo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     try:
         ev_periodo = _clasificar_fallas(df_resumen, fecha_ini_dt, fecha_eval_date)
     except Exception:
@@ -1277,7 +1287,7 @@ def render_tab_tablero(
     mat_periodo = _matriz_fallas(ev_periodo)
     mat_mes     = _matriz_fallas(ev_mes)
 
-    # Series apiladas para el gráfico de fallas por antigüedad
+    # Series apiladas para el grÃ¡fico de fallas por antigÃ¼edad
     series_antig = {t: [mat_periodo[et][t] for et in RL_ETAPAS] for t in TIPOS_FALLA}
     tot_mes      = {t: sum(mat_mes[et][t] for et in RL_ETAPAS) for t in TIPOS_FALLA}
 
@@ -1287,9 +1297,9 @@ def render_tab_tablero(
     mes_curso_lbl   = f"{_MESES_LARGO[mes_eval - 1].capitalize()} {anio_eval}"
 
     # Migas de pan con los filtros activos del sidebar
-    _activos_lbl = " · ".join(v for v in _filtros.values() if v != 'TODOS') or "Todos los activos"
+    _activos_lbl = " Â· ".join(v for v in _filtros.values() if v != 'TODOS') or "Todos los activos"
 
-    # ── Alcance del análisis (contexto que no se repite en ningún panel) ──────
+    # â”€â”€ Alcance del anÃ¡lisis (contexto que no se repite en ningÃºn panel) â”€â”€â”€â”€â”€â”€
     def _n_unicos(col):
         return int(df_resumen[col].nunique()) if col in df_resumen.columns else 0
 
@@ -1299,14 +1309,14 @@ def render_tab_tablero(
 
     _MES_CORTO = ['ene', 'feb', 'mar', 'abr', 'may', 'jun',
                   'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
-    periodo_lbl = (f"{_MES_CORTO[fecha_ini_dt.month - 1]} {fecha_ini_dt.year} — "
+    periodo_lbl = (f"{_MES_CORTO[fecha_ini_dt.month - 1]} {fecha_ini_dt.year} â€” "
                    f"{_MES_CORTO[mes_eval - 1]} {anio_eval}")
 
-    # ═════════════════════════════════════════════════════════════════════════
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # ENCABEZADO EJECUTIVO
-    # Sólo contexto y alcance: las cifras de KPI viven en sus propios paneles y
-    # no se repiten aquí.
-    # ═════════════════════════════════════════════════════════════════════════
+    # SÃ³lo contexto y alcance: las cifras de KPI viven en sus propios paneles y
+    # no se repiten aquÃ­.
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     hero_html = f"""
 <div class="tbl-hero">
   <div class="tbl-hero-brand">
@@ -1321,7 +1331,7 @@ def render_tab_tablero(
       </svg>
     </div>
     <div>
-      <div class="tbl-hero-kicker">Levantamiento Artificial · Parex</div>
+      <div class="tbl-hero-kicker">Levantamiento Artificial Â· Parex</div>
       <div class="tbl-hero-title">Tablero Ejecutivo ALS</div>
     </div>
   </div>
@@ -1337,7 +1347,7 @@ def render_tab_tablero(
     </div>
     <div class="tbl-hero-item">
       <span class="tbl-hero-k">Cobertura</span>
-      <span class="tbl-hero-v">{n_bloques} bloques · {n_campos} campos</span>
+      <span class="tbl-hero-v">{n_bloques} bloques Â· {n_campos} campos</span>
     </div>
     <div class="tbl-hero-item">
       <span class="tbl-hero-k">Corridas analizadas</span>
@@ -1352,15 +1362,15 @@ def render_tab_tablero(
 """.replace("\n", " ")
 
     st.markdown(hero_html, unsafe_allow_html=True)
-    # ═════════════════════════════════════════════════════════════════════════
-    # LAYOUT DE 3 COLUMNAS SIMÉTRICAS
-    # ═════════════════════════════════════════════════════════════════════════
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # LAYOUT DE 3 COLUMNAS SIMÃ‰TRICAS
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
     col_l, col_c, col_r = st.columns([1, 1, 1], gap="medium")
 
-    # ─────────────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     # COLUMNA 1: KPIs OPERATIVOS (RENDERIZADO HTML COMPLETO)
-    # ─────────────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     with col_l:
         fallas_als = int((df_resumen['INDICADOR_MTBF'] == 1).sum()) if df_resumen is not None else 0
         
@@ -1382,10 +1392,10 @@ def render_tab_tablero(
             pozos_fallados_periodo = 0
             idx_sev = 0.0
 
-        # ── Barras por sistema ALS: encendidos / apagados / fallados ─────────
-        # Cada barra ocupa el alto completo y muestra la COMPOSICIÓN del sistema.
-        # Escalarlas por tamaño absoluto no sirve: ESP tiene ~1.000 pozos y EPCP
-        # puede tener 1, con lo que las pequeñas desaparecerían.
+        # â”€â”€ Barras por sistema ALS: encendidos / apagados / fallados â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # Cada barra ocupa el alto completo y muestra la COMPOSICIÃ“N del sistema.
+        # Escalarlas por tamaÃ±o absoluto no sirve: ESP tiene ~1.000 pozos y EPCP
+        # puede tener 1, con lo que las pequeÃ±as desaparecerÃ­an.
         _tipos_vis = [t for t in ALS_TIPOS if als_breakdown.get(t, {}).get('total', 0) > 0]
 
         mini_bars_html = ""
@@ -1398,7 +1408,7 @@ def render_tab_tablero(
                 f'<div class="tbl-mini-bar-val">{_fmt(bd["on"])}</div>'
                 f'<div class="tbl-mini-bar-slot">'
                 f'<div class="tbl-mini-bar-stack" '
-                f'title="{t} · {_fmt(tot)} pozos: {bd["on"]} encendidos, '
+                f'title="{t} Â· {_fmt(tot)} pozos: {bd["on"]} encendidos, '
                 f'{bd["off"]} apagados, {bd["fall"]} fallados">'
                 f'<div class="seg fall" style="height:{pct(bd["fall"]):.1f}%;"></div>'
                 f'<div class="seg off"  style="height:{pct(bd["off"]):.1f}%;"></div>'
@@ -1418,7 +1428,7 @@ def render_tab_tablero(
             '</div>'
         )
 
-        # Color del medidor según cumplimiento
+        # Color del medidor segÃºn cumplimiento
         _disp_cls = 'g' if disp_oper >= 80 else ('y' if disp_oper >= 60 else 'r')
         _uso_cls  = 'g' if uso_oper  >= 80 else ('y' if uso_oper  >= 60 else 'r')
         _disp_col = _G if disp_oper >= 80 else (_Y if disp_oper >= 60 else _R)
@@ -1486,7 +1496,7 @@ def render_tab_tablero(
         <div class="tbl-fallados-atrib-val">{fallas_totales} / {pozos_fallados_periodo}</div>
       </div>
       <div class="tbl-fallados-atrib">
-        <div class="tbl-fallados-atrib-lbl">Índice de severidad</div>
+        <div class="tbl-fallados-atrib-lbl">Ãndice de severidad</div>
         <div class="tbl-fallados-atrib-val">{_fmt(idx_sev, 2)}</div>
       </div>
     </div>
@@ -1556,9 +1566,9 @@ def render_tab_tablero(
 
         st.markdown(kpi_panel_html, unsafe_allow_html=True)
 
-    # ─────────────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     # COLUMNA 2: GAUGE IF + TENDENCIA ANUAL
-    # ─────────────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     with col_c:
         col2_html = f"""
 <!DOCTYPE html>
@@ -1615,7 +1625,7 @@ def render_tab_tablero(
 </head>
 <body>
     <div class="tbl-panel">
-        <div class="tbl-sec-title">Índice de Falla (I.F. ALS &lt;1500) <span class="tbl-live-dot"></span></div>
+        <div class="tbl-sec-title">Ãndice de Falla (I.F. ALS &lt;1500) <span class="tbl-live-dot"></span></div>
         <div id="gauge_if" class="chart-container" style="height: 192px;"></div>
         <div id="chart_if_anual" class="chart-container" style="height: 234px;"></div>
     </div>
@@ -1692,7 +1702,7 @@ def render_tab_tablero(
                         fontWeight: "700",
                         fontFamily: "Inter, Segoe UI, sans-serif"
                     }},
-                    data: [{{ value: value, name: "Meta IF: ≤ {_fmt(META_IF, 1)}%" }}]
+                    data: [{{ value: value, name: "Meta IF: â‰¤ {_fmt(META_IF, 1)}%" }}]
                 }}]
             }};
             
@@ -1726,7 +1736,7 @@ def render_tab_tablero(
                 grid: {{ top: "16%", left: "3%", right: "9%", bottom: "18%", containLabel: true }},
                 xAxis: {{
                     type: "category",
-                    data: {json.dumps(if_cats)},
+                    data: {_jdumps(if_cats)},
                     axisLabel: {{ color: "{_T2}", fontSize: 11, fontFamily: "Inter, Segoe UI, sans-serif" }},
                     axisLine: {{ lineStyle: {{ color: "rgba(46,125,70,0.12)" }} }},
                     axisTick: {{ show: false }}
@@ -1754,7 +1764,7 @@ def render_tab_tablero(
                         name: "Pozos ON",
                         type: "bar",
                         stack: "pozos",
-                        data: {json.dumps(on_vals)},
+                        data: {_jdumps(on_vals)},
                         barMaxWidth: 16,
                         itemStyle: {{
                             color: {{
@@ -1774,7 +1784,7 @@ def render_tab_tablero(
                         name: "Pozos OFF",
                         type: "bar",
                         stack: "pozos",
-                        data: {json.dumps(off_vals)},
+                        data: {_jdumps(off_vals)},
                         barMaxWidth: 16,
                         itemStyle: {{
                             color: "{_R2}",
@@ -1785,7 +1795,7 @@ def render_tab_tablero(
                         name: "IF ALS",
                         type: "line",
                         yAxisIndex: 1,
-                        data: {json.dumps(if_vals)},
+                        data: {_jdumps(if_vals)},
                         smooth: 0.5,
                         symbol: "circle",
                         symbolSize: 6,
@@ -1826,7 +1836,7 @@ def render_tab_tablero(
                         name: "IF Total",
                         type: "line",
                         yAxisIndex: 1,
-                        data: {json.dumps(if_tot_vals)},
+                        data: {_jdumps(if_tot_vals)},
                         smooth: 0.5,
                         symbol: "circle",
                         symbolSize: 6,
@@ -1865,9 +1875,9 @@ def render_tab_tablero(
 """
         components.html(col2_html, height=520, scrolling=False)
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # COLUMNA 3: GAUGES MTBF + RUNLIFE + CORRELACIÓN PRODUCCIÓN VS LONGEVIDAD
-    # ─────────────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # COLUMNA 3: GAUGES MTBF + RUNLIFE + CORRELACIÃ“N PRODUCCIÃ“N VS LONGEVIDAD
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     with col_r:
 
         # MTBF no tiene meta punitiva -> siempre en verde
@@ -1881,16 +1891,16 @@ def render_tab_tablero(
         _rl_w = min(rl_val / meta_rl_calc * _ESC, 100) if meta_rl_calc else 0
 
         def _rango_de(dias):
-            """Rango de la distribución en el que cae una meta dada en días."""
+            """Rango de la distribuciÃ³n en el que cae una meta dada en dÃ­as."""
             anios = dias / 365.25
             if anios < 2: return rl_bins[0]
             if anios < 4: return rl_bins[1]
             if anios < 6: return rl_bins[2]
             return rl_bins[3]
 
-        _pie_metas = f"Meta RL Fallados ({_fmt(meta_rl_calc)} d) cae en «{_rango_de(meta_rl_calc)}» · MTBF: {_fmt(mtbf_val)} d"
+        _pie_metas = f"Meta RL Fallados ({_fmt(meta_rl_calc)} d) cae en Â«{_rango_de(meta_rl_calc)}Â» Â· MTBF: {_fmt(mtbf_val)} d"
 
-        # Etiquetas del gráfico de distribución: % y BOPD dentro de cada barra
+        # Etiquetas del grÃ¡fico de distribuciÃ³n: % y BOPD dentro de cada barra
         _tot_pozos_perf = max(sum(pozos_perf_data), 1)
         _dist_labels = [
             f"{p / _tot_pozos_perf * 100:.0f}%\n{b:,.0f}".replace(",", ".")
@@ -2012,7 +2022,7 @@ def render_tab_tablero(
         <div class="metas-row">
             <div class="meta-col">
                 <div class="meta-title">MTBF</div>
-                <div class="meta-val">{_fmt(mtbf_val)}<span class="u">días</span></div>
+                <div class="meta-val">{_fmt(mtbf_val)}<span class="u">dÃ­as</span></div>
                 <div class="meta-track">
                     <div class="meta-fill" style="width:{_mtbf_w:.1f}%;background:{_mtbf_col};"></div>
                 </div>
@@ -2020,19 +2030,19 @@ def render_tab_tablero(
             </div>
             <div class="meta-col">
                 <div class="meta-title">Run Life</div>
-                <div class="meta-val">{_fmt(rl_val)}<span class="u">días</span></div>
+                <div class="meta-val">{_fmt(rl_val)}<span class="u">dÃ­as</span></div>
                 <div class="meta-track">
                     <div class="meta-fill" style="width:{_rl_w:.1f}%;background:{_rl_col};"></div>
                     <div class="meta-mark" style="left:{_ESC}%;"></div>
                 </div>
-                <div class="meta-cap">Meta RL (Fallados): <b>{_fmt(meta_rl_calc)} d</b> · {_rl_pct:.0f}%</div>
+                <div class="meta-cap">Meta RL (Fallados): <b>{_fmt(meta_rl_calc)} d</b> Â· {_rl_pct:.0f}%</div>
             </div>
         </div>
 
         <div class="sec-divider"></div>
-        <div class="tbl-sec-title">Distribución por Run Life</div>
+        <div class="tbl-sec-title">DistribuciÃ³n por Run Life</div>
         <div id="chart_rl" class="chart-container"></div>
-        <div class="foot-note">Dentro de cada barra: % del total y BOPD · {_pie_metas}</div>
+        <div class="foot-note">Dentro de cada barra: % del total y BOPD Â· {_pie_metas}</div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
@@ -2054,7 +2064,7 @@ def render_tab_tablero(
                     textStyle: {{ color: "{_T}", fontSize: 12, fontFamily: "Inter, Segoe UI, sans-serif" }},
                     formatter: function(params) {{
                         var i = params[0].dataIndex;
-                        var bopd = {json.dumps(bopd_perf_data)}[i];
+                        var bopd = {_jdumps(bopd_perf_data)}[i];
                         return '<b>' + params[0].name + '</b><br/>' +
                                params[0].value + ' pozos<br/>' +
                                bopd.toLocaleString('es-CO') + ' BOPD';
@@ -2063,7 +2073,7 @@ def render_tab_tablero(
                 grid: {{ top: "22%", left: "4%", right: "4%", bottom: "4%", containLabel: true }},
                 xAxis: {{
                     type: "category",
-                    data: {json.dumps(rl_bins)},
+                    data: {_jdumps(rl_bins)},
                     axisLabel: {{
                         color: "{_T2}",
                         fontSize: 11.5,
@@ -2088,7 +2098,7 @@ def render_tab_tablero(
                         name: "Pozos",
                         type: "bar",
                         barMaxWidth: 74,
-                        data: {json.dumps(pozos_perf_colored)},
+                        data: {_jdumps(pozos_perf_colored)},
                         label: {{
                             show: true,
                             position: "top",
@@ -2105,7 +2115,7 @@ def render_tab_tablero(
                         barMaxWidth: 74,
                         silent: true,
                         itemStyle: {{ color: "transparent" }},
-                        data: {json.dumps(pozos_perf_data)},
+                        data: {_jdumps(pozos_perf_data)},
                         label: {{
                             show: true,
                             position: "inside",
@@ -2115,7 +2125,7 @@ def render_tab_tablero(
                             fontWeight: "bold",
                             color: "#ffffff",
                             formatter: function(p) {{
-                                return {json.dumps(_dist_labels)}[p.dataIndex];
+                                return {_jdumps(_dist_labels)}[p.dataIndex];
                             }}
                         }}
                     }}
@@ -2132,13 +2142,13 @@ def render_tab_tablero(
 """
         components.html(col3_html, height=520, scrolling=False)
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # FILA 2: BALANCE DE POZOS · FALLAS POR ANTIGÜEDAD · FALLAS DEL MES
-    # ─────────────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # FILA 2: BALANCE DE POZOS Â· FALLAS POR ANTIGÃœEDAD Â· FALLAS DEL MES
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
     col_b1, col_b2, col_b3 = st.columns([1, 1, 1], gap="medium")
 
-    # ── 1. Balance de pozos ON (waterfall) ───────────────────────────────────
+    # â”€â”€ 1. Balance de pozos ON (waterfall) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     with col_b1:
         _wf_pasos = [
             ('Base',        balance['base'],        'total'),
@@ -2227,14 +2237,14 @@ def render_tab_tablero(
 </head>
 <body>
     <div class="tbl-panel">
-        <div class="tbl-sec-title">Balance de pozos ON · último año <span class="tbl-live-dot"></span></div>
+        <div class="tbl-sec-title">Balance de pozos ON Â· Ãºltimo aÃ±o <span class="tbl-live-dot"></span></div>
         <div id="chart_wf" class="chart-container"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <script>
         (function() {{
-            var etiquetas = {json.dumps(_wf_labels)};
+            var etiquetas = {_jdumps(_wf_labels)};
             var option = {{
                 backgroundColor: "transparent",
                 animation: true,
@@ -2257,7 +2267,7 @@ def render_tab_tablero(
                 grid: {{ top: "16%", left: "3%", right: "3%", bottom: "8%", containLabel: true }},
                 xAxis: {{
                     type: "category",
-                    data: {json.dumps(_wf_cats)},
+                    data: {_jdumps(_wf_cats)},
                     axisLabel: {{ color: "{_T2}", fontSize: 11.5, fontFamily: "Inter, Segoe UI, sans-serif", interval: 0 }},
                     axisLine: {{ lineStyle: {{ color: "rgba(46,125,70,0.12)" }} }},
                     axisTick: {{ show: false }}
@@ -2276,14 +2286,14 @@ def render_tab_tablero(
                         barMaxWidth: 42,
                         itemStyle: {{ color: "transparent" }},
                         emphasis: {{ itemStyle: {{ color: "transparent" }} }},
-                        data: {json.dumps(_base_wf)}
+                        data: {_jdumps(_base_wf)}
                     }},
                     {{
                         name: "Pozos",
                         type: "bar",
                         stack: "wf",
                         barMaxWidth: 42,
-                        data: {json.dumps(_wf_data)},
+                        data: {_jdumps(_wf_data)},
                         label: {{
                             show: true,
                             position: "top",
@@ -2306,7 +2316,7 @@ def render_tab_tablero(
 """
         components.html(wf_html, height=330, scrolling=False)
 
-    # ── 2. Fallas del último año por etapa de Run Life ───────────────────────
+    # â”€â”€ 2. Fallas del Ãºltimo aÃ±o por etapa de Run Life â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     with col_b2:
         _tot_antig = sum(mat_periodo[et]['ALS'] + mat_periodo[et]['No ALS'] for et in RL_ETAPAS)
         _pila_max = max((series_antig['ALS'][i] + series_antig['No ALS'][i]
@@ -2395,7 +2405,7 @@ def render_tab_tablero(
 <body>
     <div class="tbl-panel">
         <div class="tbl-sec-title">
-            Fallas por etapa · último año
+            Fallas por etapa Â· Ãºltimo aÃ±o
             <span class="tbl-live-dot"></span>
             <span class="tbl-count">{_fmt(_tot_antig)}</span>
         </div>
@@ -2420,14 +2430,14 @@ def render_tab_tablero(
                     textStyle: {{ color: "{_T}", fontSize: 12.5, fontFamily: "Inter, Segoe UI, sans-serif" }},
                     formatter: function(params) {{
                         var i = params[0].dataIndex;
-                        var als = {json.dumps(series_antig['ALS'])}[i];
-                        var noAls = {json.dumps(series_antig['No ALS'])}[i];
-                        var pend = {json.dumps(series_antig['Pend Pulling'])}[i];
+                        var als = {_jdumps(series_antig['ALS'])}[i];
+                        var noAls = {_jdumps(series_antig['No ALS'])}[i];
+                        var pend = {_jdumps(series_antig['Pend Pulling'])}[i];
                         return '<b>' + params[0].name + '</b><br/>' +
                                'Total: <b>' + (als + noAls) + ' fallas</b><br/>' +
-                               '<span style="color:{_G};">●</span> ALS: ' + als + '<br/>' +
-                               '<span style="color:{_N};">●</span> No ALS: ' + noAls + '<br/>' +
-                               '<span style="color:#9FB6C9;">●</span> Pendientes de pull: ' + pend;
+                               '<span style="color:{_G};">â—</span> ALS: ' + als + '<br/>' +
+                               '<span style="color:{_N};">â—</span> No ALS: ' + noAls + '<br/>' +
+                               '<span style="color:#9FB6C9;">â—</span> Pendientes de pull: ' + pend;
                     }}
                 }},
                 legend: {{
@@ -2441,14 +2451,14 @@ def render_tab_tablero(
                 grid: {{ top: "10%", left: "3%", right: "3%", bottom: "20%", containLabel: true }},
                 xAxis: {{
                     type: "category",
-                    data: {json.dumps(RL_ETAPAS)},
+                    data: {_jdumps(RL_ETAPAS)},
                     axisLabel: {{
                         color: "{_T2}",
                         fontSize: 8.5,
                         fontFamily: "Inter, Segoe UI, sans-serif",
                         interval: 0,
                         formatter: function(v, i) {{
-                            return v + '\\n' + {json.dumps(RL_ETAPA_EJE)}[i].replace('&lt;', '<').replace('&gt;', '>');
+                            return v + '\\n' + {_jdumps(RL_ETAPA_EJE)}[i].replace('&lt;', '<').replace('&gt;', '>');
                         }},
                         lineHeight: 13
                     }},
@@ -2462,7 +2472,7 @@ def render_tab_tablero(
                     axisLabel: {{ color: "{_T2}", fontSize: 11 }},
                     splitLine: {{ lineStyle: {{ color: "rgba(46,125,70,0.06)", type: "dashed" }} }}
                 }},
-                series: {json.dumps(_series_antig_js)}
+                series: {_jdumps(_series_antig_js)}
             }};
             var chart = echarts.init(document.getElementById('chart_fa'));
             chart.setOption(option);
@@ -2474,7 +2484,7 @@ def render_tab_tablero(
 """
         components.html(fa_html, height=330, scrolling=False)
 
-    # ── 3. Tabla de fallas del mes en curso ──────────────────────────────────
+    # â”€â”€ 3. Tabla de fallas del mes en curso â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     with col_b3:
         _filas = ""
         for _i, (_et, _eje) in enumerate(zip(RL_ETAPAS, RL_ETAPA_EJE)):
@@ -2489,7 +2499,7 @@ def render_tab_tablero(
         _tot_row = "".join(f'<td><span class="v">{tot_mes[t]}</span></td>'
                            for t in TIPOS_FALLA)
         _tot_mes_all = tot_mes['ALS'] + tot_mes['No ALS']
-        _resumen_mes = f"ALS: {tot_mes['ALS']} · No ALS: {tot_mes['No ALS']} · Pend. pull: {tot_mes['Pend Pulling']}"
+        _resumen_mes = f"ALS: {tot_mes['ALS']} Â· No ALS: {tot_mes['No ALS']} Â· Pend. pull: {tot_mes['Pend Pulling']}"
 
         tabla_html = f"""
 <div class="tbl-fallas-panel">
@@ -2500,7 +2510,7 @@ def render_tab_tablero(
   <table class="tbl-ft">
     <thead>
       <tr>
-        <th class="et">Categoría</th>
+        <th class="et">CategorÃ­a</th>
         <th>ALS</th>
         <th>No ALS</th>
         <th>Pend. P.</th>
@@ -2511,15 +2521,15 @@ def render_tab_tablero(
       <tr class="tot"><td class="et">Total ({_tot_mes_all})</td>{_tot_row}</tr>
     </tbody>
   </table>
-  <div class="tbl-fallas-foot">Fallas clasificadas por causa · Pend. P. indica eventos aún sin fecha de extracción</div>
+  <div class="tbl-fallas-foot">Fallas clasificadas por causa Â· Pend. P. indica eventos aÃºn sin fecha de extracciÃ³n</div>
 </div>
 """.replace("\n", " ")
 
         st.markdown(tabla_html, unsafe_allow_html=True)
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # FILA 3: TENDENCIA DE PRODUCCIÓN & CURVAS DE SUPERVIVENCIA
-    # ─────────────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # FILA 3: TENDENCIA DE PRODUCCIÃ“N & CURVAS DE SUPERVIVENCIA
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
     col_bl, col_br = st.columns([2, 1], gap="medium")
 
@@ -2574,7 +2584,7 @@ def render_tab_tablero(
             "itemStyle": {"color": cdata['color']}
         })
 
-    # 2. Calcular tendencia mensual de producción (BOPD, BWPD, BFPD & Pozos ON)
+    # 2. Calcular tendencia mensual de producciÃ³n (BOPD, BWPD, BFPD & Pozos ON)
     prod_months = []
     prod_oil = []
     prod_water = []
@@ -2711,15 +2721,15 @@ def render_tab_tablero(
                     borderWidth: 1,
                     textStyle: {{ color: "{_T}", fontSize: 12.5, fontFamily: "Inter, Segoe UI, sans-serif" }},
                     formatter: function(params) {{
-                        var html = '<div style="font-weight:bold;margin-bottom:4px;">Run Life: ' + Math.round(params[0].value[0]) + ' días</div>';
+                        var html = '<div style="font-weight:bold;margin-bottom:4px;">Run Life: ' + Math.round(params[0].value[0]) + ' dÃ­as</div>';
                         params.forEach(function(item) {{
-                            html += '<span style="color:' + item.color + '">●</span> ' + item.seriesName + ': <b>' + item.value[1].toFixed(1) + '%</b><br/>';
+                            html += '<span style="color:' + item.color + '">â—</span> ' + item.seriesName + ': <b>' + item.value[1].toFixed(1) + '%</b><br/>';
                         }});
                         return html;
                     }}
                 }},
                 legend: {{
-                    data: {json.dumps(list(curves_data.keys()))},
+                    data: {_jdumps(list(curves_data.keys()))},
                     textStyle: {{ color: "{_T2}", fontSize: 11.5, fontFamily: "Inter, Segoe UI, sans-serif" }},
                     bottom: 0,
                     icon: "circle"
@@ -2727,7 +2737,7 @@ def render_tab_tablero(
                 grid: {{ top: "14%", left: "5%", right: "8%", bottom: "16%", containLabel: true }},
                 xAxis: {{
                     type: "value",
-                    name: "DÍAS",
+                    name: "DÃAS",
                     nameTextStyle: {{ color: "{_T2}", fontSize: 10.5 }},
                     axisLabel: {{ color: "{_T2}", fontSize: 11 }},
                     axisLine: {{ lineStyle: {{ color: "rgba(46,125,70,0.12)" }} }},
@@ -2743,7 +2753,7 @@ def render_tab_tablero(
                     axisLine: {{ lineStyle: {{ color: "rgba(46,125,70,0.12)" }} }},
                     splitLine: {{ lineStyle: {{ color: "rgba(46,125,70,0.06)", type: "dashed" }} }}
                 }},
-                series: {json.dumps(series_survival)}
+                series: {_jdumps(series_survival)}
             }};
             chart.setOption(option);
             window.addEventListener('resize', function() {{ chart.resize(); }});
@@ -2754,7 +2764,7 @@ def render_tab_tablero(
 """
         components.html(bl_html, height=330, scrolling=False)
 
-    # 4. Renderizar Panel Izquierdo: Tendencia de Producción Mensual (BOPD, BWPD, BFPD & Pozos ON)
+    # 4. Renderizar Panel Izquierdo: Tendencia de ProducciÃ³n Mensual (BOPD, BWPD, BFPD & Pozos ON)
     with col_bl:
         br_html = f"""
 <!DOCTYPE html>
@@ -2811,7 +2821,7 @@ def render_tab_tablero(
 </head>
 <body>
     <div class="tbl-panel">
-        <div class="tbl-sec-title">Tendencia de Producción &amp; Pozos ON <span class="tbl-live-dot"></span></div>
+        <div class="tbl-sec-title">Tendencia de ProducciÃ³n &amp; Pozos ON <span class="tbl-live-dot"></span></div>
         <div id="chart_production" class="chart-container"></div>
     </div>
 
@@ -2839,7 +2849,7 @@ def render_tab_tablero(
                 grid: {{ top: "12%", left: "5%", right: "5%", bottom: "15%", containLabel: true }},
                 xAxis: {{
                     type: "category",
-                    data: {json.dumps(prod_months)},
+                    data: {_jdumps(prod_months)},
                     axisLabel: {{ color: "{_T2}", fontSize: 11, fontFamily: "Inter, Segoe UI, sans-serif" }},
                     axisLine: {{ lineStyle: {{ color: "rgba(46,125,70,0.12)" }} }},
                     axisTick: {{ show: false }}
@@ -2847,7 +2857,7 @@ def render_tab_tablero(
                 yAxis: [
                     {{
                         type: "value",
-                        name: "PRODUCCIÓN (BPD)",
+                        name: "PRODUCCIÃ“N (BPD)",
                         nameTextStyle: {{ color: "{_T2}", fontSize: 10.5 }},
                         axisLabel: {{ color: "{_T2}", fontSize: 11 }},
                         axisLine: {{ lineStyle: {{ color: "rgba(46,125,70,0.12)" }} }},
@@ -2868,7 +2878,7 @@ def render_tab_tablero(
                         name: "BOPD (Crudo)",
                         type: "line",
                         smooth: true,
-                        data: {json.dumps(prod_oil)},
+                        data: {_jdumps(prod_oil)},
                         lineStyle: {{ width: 2.5, color: "{_G}" }},
                         itemStyle: {{ color: "{_G}" }},
                         symbol: "circle",
@@ -2878,7 +2888,7 @@ def render_tab_tablero(
                         name: "BWPD (Agua)",
                         type: "line",
                         smooth: true,
-                        data: {json.dumps(prod_water)},
+                        data: {_jdumps(prod_water)},
                         lineStyle: {{ width: 2, color: "#0ea5e9" }},
                         itemStyle: {{ color: "#0ea5e9" }},
                         symbol: "circle",
@@ -2888,7 +2898,7 @@ def render_tab_tablero(
                         name: "BFPD (Fluido)",
                         type: "line",
                         smooth: true,
-                        data: {json.dumps(prod_fluid)},
+                        data: {_jdumps(prod_fluid)},
                         lineStyle: {{ width: 2, color: "#707070" }},
                         itemStyle: {{ color: "#707070" }},
                         symbol: "circle",
@@ -2898,7 +2908,7 @@ def render_tab_tablero(
                         name: "Pozos ON",
                         type: "bar",
                         yAxisIndex: 1,
-                        data: {json.dumps(prod_pozos)},
+                        data: {_jdumps(prod_pozos)},
                         barWidth: "40%",
                         itemStyle: {{
                             color: {{
@@ -2925,7 +2935,7 @@ def render_tab_tablero(
 """
         components.html(br_html, height=330, scrolling=False)
 
-    # ── CÁLCULO DE MÉTRICAS DE PRODUCCIÓN PARA EL TICKER ─────────────────────────
+    # â”€â”€ CÃLCULO DE MÃ‰TRICAS DE PRODUCCIÃ“N PARA EL TICKER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     total_bopd = 0.0
     promedio_bopd = 0.0
     total_bfpd = 0.0
@@ -2970,15 +2980,15 @@ def render_tab_tablero(
     except Exception:
         pass
 
-    # ── TICKER HORIZONTAL DE DATOS (TELEPROMPTER / MARQUEE STYLE) ────────────────
+    # â”€â”€ TICKER HORIZONTAL DE DATOS (TELEPROMPTER / MARQUEE STYLE) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     st.markdown('<div style="margin-top: 10px;"></div>', unsafe_allow_html=True)
     
-    # Construcción dinámica de items para el ticker
+    # ConstrucciÃ³n dinÃ¡mica de items para el ticker
     ticker_items = []
     ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">ALS EN FONDO:</span><span class="ticker-val">{_fmt(als_fondo)} POZOS</span></span>')
     ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">ACTIVOS OPERATIVOS:</span><span class="ticker-val">{_fmt(als_operativos)} POZOS ({(als_operativos/max(1,als_fondo)*100):.1f}%)</span></span>')
     ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">DISPONIBILIDAD:</span><span class="ticker-val">{disp_oper:.1f}%</span></span>')
-    ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">UTILIZACIÓN:</span><span class="ticker-val">{uso_oper:.1f}%</span></span>')
+    ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">UTILIZACIÃ“N:</span><span class="ticker-val">{uso_oper:.1f}%</span></span>')
     ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">PROD. CRUDO TOTAL:</span><span class="ticker-val warning">{total_bopd:,.0f} BOPD</span></span>')
     ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">PROD. CRUDO PROM:</span><span class="ticker-val warning">{promedio_bopd:.1f} BOPD/POZO</span></span>')
     
@@ -2991,8 +3001,8 @@ def render_tab_tablero(
         
     ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">ALS FALLADOS:</span><span class="ticker-val danger">{_fmt(als_fallados)} POZOS ({(als_fallados/max(1,als_fondo)*100):.1f}%)</span></span>')
     ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">FALLAS PERIODO:</span><span class="ticker-val danger">{fallas_totales} EVENTOS</span></span>')
-    ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">MTBF EFECTIVO:</span><span class="ticker-val warning">{mtbf_val:.1f} DÍAS</span></span>')
-    ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">RUN LIFE PROMEDIO:</span><span class="ticker-val">{rl_val:.1f} DÍAS</span></span>')
+    ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">MTBF EFECTIVO:</span><span class="ticker-val warning">{mtbf_val:.1f} DÃAS</span></span>')
+    ticker_items.append(f'<span class="ticker-item"><span class="ticker-label">RUN LIFE PROMEDIO:</span><span class="ticker-val">{rl_val:.1f} DÃAS</span></span>')
     
     track_html = "".join(ticker_items)
     
