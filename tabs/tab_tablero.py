@@ -1162,15 +1162,20 @@ def render_tab_tablero(
         except Exception:
             mtbf_prev_val = 0.0
             
-        # Calcular Run Life a fecha_prev_fin
+        # Calcular Run Life de los pozos fallados a fecha_prev_fin
+        df_prev_fallados = df_prev[df_prev['FECHA_FALLA'].notna()]
         rl_col_prev = next((c for c in ('RUN LIFE', 'RUN_LIFE', 'RUNLIFE') if c in df_prev.columns), None)
-        rl_prev_val = float(df_prev[rl_col_prev].dropna().mean()) if rl_col_prev else 0.0
-        if np.isnan(rl_prev_val):
-            rl_prev_val = 0.0
+        if not df_prev_fallados.empty and rl_col_prev:
+            rl_prev_val = float(df_prev_fallados[rl_col_prev].dropna().mean())
+        else:
+            df_fallados_all = df_resumen[df_resumen['FECHA_FALLA'].notna()] if df_resumen is not None else pd.DataFrame()
+            rl_col_res = next((c for c in ('RUN LIFE', 'RUN_LIFE', 'RUNLIFE') if c in df_fallados_all.columns), None)
+            rl_prev_val = float(df_fallados_all[rl_col_res].dropna().mean()) if not df_fallados_all.empty and rl_col_res else float(META_RL)
+        if np.isnan(rl_prev_val) or rl_prev_val <= 0:
+            rl_prev_val = float(META_RL)
 
-    # Meta dinámica = valor de fin de año anterior * 1.1 (si es mayor a 0), de lo contrario meta general
-    meta_mtbf_calc = round(mtbf_prev_val * 1.1) if mtbf_prev_val > 0 else META_MTBF
-    meta_rl_calc = round(rl_prev_val * 1.1) if rl_prev_val > 0 else META_RL
+    meta_mtbf_calc = round(mtbf_prev_val) if mtbf_prev_val > 0 else META_MTBF
+    meta_rl_calc = round(rl_prev_val) if rl_prev_val > 0 else META_RL
 
     # ── Correlación de Producción vs Longevidad (para el gráfico de desempeño en Columna 3) ──
     rl_bins   = ['< 2 años', '2 – 4 años', '4 – 6 años', '> 6 años']
@@ -1854,16 +1859,15 @@ def render_tab_tablero(
     # ─────────────────────────────────────────────────────────────────────────
     with col_r:
 
-        # Cumplimiento de meta para las barras de MTBF y Run Life
-        # El porcentaje mostrado es el real; sólo el ancho de la barra se recorta
-        _mtbf_pct = (mtbf_val / meta_mtbf_calc * 100) if meta_mtbf_calc else 0
-        _rl_pct   = (rl_val   / meta_rl_calc   * 100) if meta_rl_calc   else 0
-        _mtbf_col = _G if mtbf_val >= meta_mtbf_calc else _R
-        _rl_col   = _G if rl_val   >= meta_rl_calc   else _R
-        # La meta se ancla al 82% del ancho para dejar ver el excedente
+        # MTBF no tiene meta punitiva -> siempre en verde
+        _mtbf_col = _G
         _ESC = 82.0
-        _mtbf_w = min(mtbf_val / meta_mtbf_calc * _ESC, 100) if meta_mtbf_calc else 0
-        _rl_w   = min(rl_val   / meta_rl_calc   * _ESC, 100) if meta_rl_calc   else 0
+        _mtbf_w = min(max(mtbf_val / 2000.0 * _ESC, 35), 100) if mtbf_val else 0
+
+        # Meta de Run Life basada en pozos fallados
+        _rl_pct = (rl_val / meta_rl_calc * 100) if meta_rl_calc else 0
+        _rl_col = _G if rl_val >= meta_rl_calc else _R
+        _rl_w = min(rl_val / meta_rl_calc * _ESC, 100) if meta_rl_calc else 0
 
         def _rango_de(dias):
             """Rango de la distribución en el que cae una meta dada en días."""
@@ -1873,8 +1877,7 @@ def render_tab_tablero(
             if anios < 6: return rl_bins[2]
             return rl_bins[3]
 
-        _pie_metas = (f"Meta RL ({_fmt(meta_rl_calc)} d) cae en «{_rango_de(meta_rl_calc)}» · "
-                      f"Meta MTBF ({_fmt(meta_mtbf_calc)} d) en «{_rango_de(meta_mtbf_calc)}»")
+        _pie_metas = f"Meta RL Fallados ({_fmt(meta_rl_calc)} d) cae en «{_rango_de(meta_rl_calc)}» · MTBF: {_fmt(mtbf_val)} d"
 
         # Etiquetas del gráfico de distribución: % y BOPD dentro de cada barra
         _tot_pozos_perf = max(sum(pozos_perf_data), 1)
@@ -2001,9 +2004,8 @@ def render_tab_tablero(
                 <div class="meta-val">{_fmt(mtbf_val)}<span class="u">días</span></div>
                 <div class="meta-track">
                     <div class="meta-fill" style="width:{_mtbf_w:.1f}%;background:{_mtbf_col};"></div>
-                    <div class="meta-mark" style="left:{_ESC}%;"></div>
                 </div>
-                <div class="meta-cap">Meta MTBF: <b>{_fmt(meta_mtbf_calc)}</b> · {_mtbf_pct:.0f}% de cumplimiento</div>
+                <div class="meta-cap">Tiempo medio entre fallas operacionales</div>
             </div>
             <div class="meta-col">
                 <div class="meta-title">Run Life</div>
@@ -2012,7 +2014,7 @@ def render_tab_tablero(
                     <div class="meta-fill" style="width:{_rl_w:.1f}%;background:{_rl_col};"></div>
                     <div class="meta-mark" style="left:{_ESC}%;"></div>
                 </div>
-                <div class="meta-cap">Meta RL: <b>{_fmt(meta_rl_calc)}</b> · {_rl_pct:.0f}% de cumplimiento</div>
+                <div class="meta-cap">Meta RL (Fallados): <b>{_fmt(meta_rl_calc)} d</b> · {_rl_pct:.0f}%</div>
             </div>
         </div>
 

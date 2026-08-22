@@ -310,15 +310,19 @@ def _calcular_rl_agrupado_cached(df_raw, grupo_col, fecha_eval_norm, anio_prev_v
             desglose_fall.sort(key=lambda x: x['fallas'], reverse=True)
 
         grp_prev_sub = grp_sub[grp_sub['_RUN'] <= prev_yr_end]
-        grp_op_prev_sub = grp_prev_sub[
-            (grp_prev_sub['_RUN'] <= prev_yr_end) &
-            (grp_prev_sub['_FALL'].isna() | (grp_prev_sub['_FALL'] > prev_yr_end)) &
-            (grp_prev_sub['_PULL'].isna() | (grp_prev_sub['_PULL'] > prev_yr_end))
+        # Meta de Run Life basada en pozos fallados del año previo
+        grp_fall_prev_sub = grp_prev_sub[
+            (grp_prev_sub['_FALL'].notna()) &
+            (grp_prev_sub['_FALL'] <= prev_yr_end)
         ]
-        rl_prev_sub_s = (prev_yr_end - pd.to_datetime(grp_op_prev_sub['_RUN'])).dt.days
-        m_rl = round(float(rl_prev_sub_s.mean()), 1) if len(rl_prev_sub_s) > 0 else 1500.0
-        rle_prev_sub_s = grp_op_prev_sub['_RLE']
-        m_rle = round(float(rle_prev_sub_s.mean()), 1) if len(rle_prev_sub_s) > 0 and (rle_prev_sub_s > 0).any() else m_rl
+        if not grp_fall_prev_sub.empty:
+            rl_prev_sub_s = (pd.to_datetime(grp_fall_prev_sub['_FALL']) - pd.to_datetime(grp_fall_prev_sub['_RUN'])).dt.days
+            m_rl = round(float(rl_prev_sub_s.mean()), 1) if len(rl_prev_sub_s) > 0 else 1500.0
+            rle_prev_sub_s = grp_fall_prev_sub['_RLE']
+            m_rle = round(float(rle_prev_sub_s.mean()), 1) if len(rle_prev_sub_s) > 0 and (rle_prev_sub_s > 0).any() else m_rl
+        else:
+            m_rl = round(float(rl_fall_val), 1) if rl_fall_val > 0 else 1500.0
+            m_rle = round(float(rle_fall_val), 1) if rle_fall_val > 0 else m_rl
 
         mtbf_flota_val, _ = calcular_mtbf(grp_sub, fecha_eval_norm)
         col_rle_sub = 'RUN_LIFE_EFECTIVO' if 'RUN_LIFE_EFECTIVO' in grp_sub.columns else 'RUN LIFE'
@@ -1481,13 +1485,14 @@ def _render_seccion_dispersion_modelo_bomba(df_bloque_raw, fecha_eval_norm_b, fe
 
     df_fallas_als['MODELO_LIMPIO'] = df_fallas_als[col_modelo].astype(str).str.strip().str.upper()
 
-    # Controles superiores: 1. Sistema ALS, 2. Cantidad de Modelos, 3. Ordenamiento
-    col_c1, col_c2, col_c3 = st.columns([1.2, 1.2, 1.2])
+    # Controles superiores: 1. Sistema ALS (default ESP), 2. Modelos, 3. Orden
+    col_c1, col_c2, col_c3 = st.columns([1.3, 1.3, 1.2])
     with col_c1:
         als_unique = ["TODOS"]
         if 'ALS' in df_fallas_als.columns:
             als_unique += sorted([str(x).strip() for x in df_fallas_als['ALS'].dropna().unique() if str(x).strip() and str(x).strip().upper() != 'NAN'])
-        als_sel = st.selectbox("Filtrar Sistema ALS:", options=als_unique, index=1 if "ESP" in als_unique else 0, key="tab_ind_mb_als_select")
+        esp_idx = als_unique.index("ESP") if "ESP" in als_unique else 0
+        als_sel = st.selectbox("Sistema ALS:", options=als_unique, index=esp_idx, key="tab_ind_mb_als_select")
 
     # Filtrar primero por el sistema ALS seleccionado para no mezclar tecnologías
     if als_sel != "TODOS" and 'ALS' in df_fallas_als.columns:
@@ -1507,9 +1512,9 @@ def _render_seccion_dispersion_modelo_bomba(df_bloque_raw, fecha_eval_norm_b, fe
         )
     with col_c3:
         sort_opt = st.selectbox(
-            "Ordenar Eje X por:",
-            options=["Frecuencia de Fallas (Mayor a Menor)", "MTBF (Mayor a Menor)", "MTBF (Menor a Mayor)", "Nombre Alfabético"],
-            index=0,
+            "Ordenar por:",
+            options=["Frecuencia Fallas (↓)", "MTBF (Mejor → Peor)", "MTBF (Peor → Mejor)", "Alfabético"],
+            index=1,  # Default: mejores bombas primero
             key="tab_ind_mb_sort_select"
         )
 
@@ -1562,11 +1567,11 @@ def _render_seccion_dispersion_modelo_bomba(df_bloque_raw, fecha_eval_norm_b, fe
         })
 
     # Ordenar según la opción seleccionada
-    if sort_opt == "Frecuencia de Fallas (Mayor a Menor)":
+    if sort_opt == "Frecuencia Fallas (↓)":
         model_stats.sort(key=lambda x: x['fallas'], reverse=True)
-    elif sort_opt == "MTBF (Mayor a Menor)":
+    elif sort_opt == "MTBF (Mejor → Peor)":
         model_stats.sort(key=lambda x: x['mtbf'], reverse=True)
-    elif sort_opt == "MTBF (Menor a Mayor)":
+    elif sort_opt == "MTBF (Peor → Mejor)":
         model_stats.sort(key=lambda x: x['mtbf'], reverse=False)
     else:
         model_stats.sort(key=lambda x: x['modelo'], reverse=False)
@@ -1574,10 +1579,52 @@ def _render_seccion_dispersion_modelo_bomba(df_bloque_raw, fecha_eval_norm_b, fe
     ordered_model_names = [m['modelo'] for m in model_stats]
     model_idx_map = {name: i for i, name in enumerate(ordered_model_names)}
 
-    # Crear gráfico Plotly
+    # ── SECCIÓN: MEJORES Y PEORES BOMBAS (Resumen Ejecutivo) ──────────────────
+    if model_stats:
+        best = model_stats[0]
+        worst = model_stats[-1]
+        top3 = model_stats[:3]
+        bottom3 = model_stats[-3:] if len(model_stats) >= 3 else model_stats
+        
+        st.markdown(f"""
+        <style>
+        .mb-best {{ background:rgba(19,118,89,0.08); border-left:4px solid #137659; border-radius:10px; padding:12px 16px; }}
+        .mb-worst {{ background:rgba(192,57,43,0.08); border-left:4px solid #c62828; border-radius:10px; padding:12px 16px; }}
+        .mb-card {{ background:#fff; border:1px solid rgba(19,118,89,0.15); border-radius:10px; padding:10px 14px; transition:box-shadow .2s; }}
+        .mb-card:hover {{ box-shadow:0 4px 16px rgba(19,118,89,0.15); }}
+        .mb-rank {{ font-weight:800; font-size:0.7rem; color:#8a8d88; text-transform:uppercase; letter-spacing:0.5px; }}
+        .mb-model {{ font-weight:700; font-size:0.9rem; color:#1f221e; margin-top:2px; }}
+        .mb-mtbf {{ font-weight:900; font-size:1.3rem; color:#137659; line-height:1.1; }}
+        .mb-mtbf-warn {{ color:#c09c2e; }}
+        .mb-mtbf-bad {{ color:#c62828; }}
+        .mb-meta {{ font-size:0.7rem; color:#5b5c55; margin-top:2px; }}
+        </style>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:12px; margin-bottom:16px;">
+            <div class="mb-best">
+                <div class="mb-rank">🏆 Mejor Modelo — {best['modelo']}</div>
+                <div class="mb-mtbf">{best['mtbf']:.0f} días MTBF</div>
+                <div class="mb-meta">{best['fallas']} fallas · P50: {best['med_rl']:.0f}d · Rango: {best['min_rl']:.0f}–{best['max_rl']:.0f}d</div>
+            </div>
+            <div class="mb-worst">
+                <div class="mb-rank">⚠ Modelo a Revisar — {worst['modelo']}</div>
+                <div class="mb-mtbf mb-mtbf-bad">{worst['mtbf']:.0f} días MTBF</div>
+                <div class="mb-meta">{worst['fallas']} fallas · P50: {worst['med_rl']:.0f}d · Rango: {worst['min_rl']:.0f}–{worst['max_rl']:.0f}d</div>
+            </div>
+            <div class="mb-card">
+                <div class="mb-rank">Top 3 Mejores</div>
+                <div style="margin-top:6px;">{" · ".join([f"<b>{m['modelo']}</b> ({m['mtbf']:.0f}d)" for m in top3])}</div>
+            </div>
+            <div class="mb-card">
+                <div class="mb-rank">Bottom 3</div>
+                <div style="margin-top:6px;">{" · ".join([f"<b>{m['modelo']}</b> ({m['mtbf']:.0f}d)" for m in bottom3])}</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # ── GRÁFICO MEJORADO ──────────────────────────────────────────────────────
     fig_mb = go_fig.Figure()
 
-    # 1. Puntos de dispersión (Scatter de cada falla individual con jitter)
+    # 1. Puntos de dispersión (cada falla con jitter)
     scatter_x = []
     scatter_y = []
     scatter_hover = []
@@ -1588,8 +1635,7 @@ def _render_seccion_dispersion_modelo_bomba(df_bloque_raw, fecha_eval_norm_b, fe
         if mod not in model_idx_map:
             continue
         base_x = model_idx_map[mod]
-        # Jitter sutil horizontal entre -0.20 y +0.20
-        jitter = np.random.uniform(-0.20, 0.20)
+        jitter = np.random.uniform(-0.18, 0.18)
         final_x = base_x + jitter
         val_y = r['RL_DIAS']
 
@@ -1604,151 +1650,121 @@ def _render_seccion_dispersion_modelo_bomba(df_bloque_raw, fecha_eval_norm_b, fe
         scatter_x.append(final_x)
         scatter_y.append(val_y)
         scatter_hover.append(
-            f"<b style='color:{_R}; font-size:13px'>{pozo_str}</b> ({mod})<br>"
+            f"<b style='color:{_R}; font-size:12px'>{pozo_str}</b> <span style='color:#8a8d88;'>{mod}</span><br>"
             f"<hr style='margin:3px 0; border-color:rgba(192,57,43,0.15)'>"
-            f"• <b>Run Life a la Falla:</b> {val_y:.0f} días<br>"
-            f"• <b>Sistema ALS:</b> {als_str} | <b>Proveedor:</b> {prov_str}<br>"
-            f"• <b>Campo:</b> {campo_str} | <b>Bloque:</b> {bloque_str}<br>"
-            f"• <b>Fecha Run:</b> {frun_str}<br>"
-            f"• <b>Fecha Falla:</b> {ffall_str}"
+            f"• <b>Run Life a Falla:</b> {val_y:.0f} días<br>"
+            f"• <b>ALS:</b> {als_str} | <b>Prov:</b> {prov_str}<br>"
+            f"• <b>Campo/Bloque:</b> {campo_str} / {bloque_str}<br>"
+            f"• <b>Run:</b> {frun_str} → <b>Falla:</b> {ffall_str}"
         )
 
-    # Añadir traza de Dispersión
     fig_mb.add_trace(go_fig.Scatter(
-        x=scatter_x,
-        y=scatter_y,
-        mode='markers',
-        name='🔴 Eventos de Falla ALS (Dispersión)',
-        marker=dict(
-            size=8.5,
-            color='rgba(192, 57, 43, 0.65)',
-            line=dict(color=_R, width=1)
-        ),
-        hovertext=scatter_hover,
-        hoverinfo='text',
-        hoverlabel=dict(bgcolor="rgba(255,255,255,0.97)", bordercolor=_R,
-                        font=dict(size=10, family="Inter, sans-serif", color=_T)),
+        x=scatter_x, y=scatter_y, mode='markers',
+        name='Eventos de Falla ALS',
+        marker=dict(size=8, color='rgba(192,57,43,0.55)', line=dict(color=_R, width=0.8)),
+        hovertext=scatter_hover, hoverinfo='text',
+        hoverlabel=dict(bgcolor="rgba(255,255,255,0.97)", bordercolor=_R, font=dict(size=10, family="Inter", color=_T)),
     ))
 
-    # 2. Línea y Diamantes de MTBF Solo Fallas
+    # 2. MTBF por modelo — MARCADORES COLOREADOS por performance
     mtbf_xs = [model_idx_map[m['modelo']] for m in model_stats]
     mtbf_ys = [m['mtbf'] for m in model_stats]
+    
+    # Color según MTBF: verde >= global, amarillo >= 70% global, rojo < 70%
+    mtbf_colors = []
+    mtbf_symbols = []
+    for m in model_stats:
+        ratio = m['mtbf'] / mtbf_global_sf if mtbf_global_sf > 0 else 1
+        if ratio >= 1.0:
+            mtbf_colors.append(_G)
+            mtbf_symbols.append('diamond')
+        elif ratio >= 0.7:
+            mtbf_colors.append(_Y)
+            mtbf_symbols.append('diamond')
+        else:
+            mtbf_colors.append(_R)
+            mtbf_symbols.append('diamond')
+
     mtbf_hover = [
-        f"<b style='color:{_Y}; font-size:13px'>{m['modelo']}</b><br>"
-        f"<hr style='margin:3px 0; border-color:rgba(201,138,44,0.15)'>"
-        f"• <b>MTBF Solo Fallas:</b> {m['mtbf']:.1f} días<br>"
-        f"• <b>Total Fallas Registradas:</b> {m['fallas']} pozos<br>"
-        f"• <b>Run Life Promedio:</b> {m['prom_rl']:.1f} días<br>"
-        f"• <b>Mediana (P50):</b> {m['med_rl']:.1f} días<br>"
-        f"• <b>Rango RL:</b> {m['min_rl']:.0f}d - {m['max_rl']:.0f}d"
-        for m in model_stats
+        f"<b style='color:{mtbf_colors[i]}; font-size:13px'>{m['modelo']}</b><br>"
+        f"<hr style='margin:3px 0; border-color:rgba({int(mtbf_colors[i][1:3],16)},{int(mtbf_colors[i][3:5],16)},{int(mtbf_colors[i][5:7],16)},0.15)'>"
+        f"• <b>MTBF Solo Fallas:</b> {m['mtbf']:.1f} días {'✓' if mtbf_colors[i] == _G else '⚠' if mtbf_colors[i] == _Y else '✗'}<br>"
+        f"• <b>Fallas:</b> {m['fallas']} | <b>P50:</b> {m['med_rl']:.0f}d<br>"
+        f"• <b>RL Prom:</b> {m['prom_rl']:.0f}d | <b>Rango:</b> {m['min_rl']:.0f}–{m['max_rl']:.0f}d<br>"
+        f"• <b>vs Global ({mtbf_global_sf:.0f}d):</b> {((m['mtbf']/mtbf_global_sf-1)*100):+.1f}%"
+        for i, m in enumerate(model_stats)
     ]
     mtbf_labels = [f"{m['mtbf']:.0f}d" for m in model_stats]
 
     fig_mb.add_trace(go_fig.Scatter(
-        x=mtbf_xs,
-        y=mtbf_ys,
-        mode='lines+markers+text',
-        name=f'🟡 Línea MTBF Solo Fallas ({als_sel})',
-        line=dict(color=_Y, width=3.5),
-        marker=dict(
-            symbol='diamond',
-            size=11,
-            color=_Y,
-            line=dict(color="#A06E22", width=1.5)
-        ),
-        text=mtbf_labels,
-        textposition='top center',
+        x=mtbf_xs, y=mtbf_ys, mode='lines+markers+text',
+        name=f'MTBF Solo Fallas ({als_sel})',
+        line=dict(color='#8a8d88', width=2, dash='dot'),
+        marker=dict(symbol=mtbf_symbols, size=12, color=mtbf_colors, line=dict(color='white', width=1.5)),
+        text=mtbf_labels, textposition='top center',
         textfont=dict(size=9.5, color=_T, family='Inter, sans-serif', weight='bold'),
-        hovertext=mtbf_hover,
-        hoverinfo='text',
-        hoverlabel=dict(bgcolor="rgba(255,255,255,0.97)", bordercolor=_Y,
-                        font=dict(size=10.5, family="Inter, sans-serif", color=_T)),
+        hovertext=mtbf_hover, hoverinfo='text',
+        hoverlabel=dict(bgcolor="rgba(255,255,255,0.97)", font=dict(size=10, family="Inter", color=_T)),
     ))
 
-    # 3. Línea de MTBF Global a Falla (en vez de meta 1500d)
+    # 3. Banda de confianza ±25% alrededor de MTBF Global
     if mtbf_global_sf and mtbf_global_sf > 0:
+        fig_mb.add_hrect(
+            y0=mtbf_global_sf * 0.75, y1=mtbf_global_sf * 1.25,
+            fillcolor=_G, opacity=0.06, line_width=0,
+            annotation_text="Zona Esperada (±25% Global)", annotation_position="top left",
+            annotation_font=dict(size=9, color=_G, family="Inter", weight=500)
+        )
         fig_mb.add_hline(
-            y=mtbf_global_sf,
-            line_dash="dash",
-            line_color=_G,
-            line_width=2.2,
-            annotation_text=f"MTBF Global a Falla ({als_sel}): {mtbf_global_sf:.0f}d",
-            annotation_position="top left",
-            annotation_font=dict(size=10, color=_G, family="Inter, sans-serif", weight="bold")
+            y=mtbf_global_sf, line_dash="solid", line_color=_G, line_width=2.5,
+            annotation_text=f"MTBF Global ({als_sel}): {mtbf_global_sf:.0f}d",
+            annotation_position="top right", annotation_font=dict(size=10, color=_G, family="Inter", weight="bold")
         )
 
     max_y_val = max(max(scatter_y) if scatter_y else 0, max(mtbf_ys) if mtbf_ys else 0, mtbf_global_sf if mtbf_global_sf else 500)
 
     fig_mb.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         font=dict(family="Inter, sans-serif", color=_T, size=10),
-        margin=dict(l=35, r=15, t=50, b=70),
+        margin=dict(l=35, r=15, t=50, b=80),
         xaxis=dict(
-            tickmode='array',
-            tickvals=list(range(len(ordered_model_names))),
-            ticktext=ordered_model_names,
-            tickangle=-35 if len(ordered_model_names) > 6 else 0,
-            showgrid=True,
-            gridcolor="rgba(46,125,70,0.06)",
-            showline=True,
-            linecolor=_BR,
-            tickfont=dict(size=9, color=_T, family="Inter, sans-serif"),
+            tickmode='array', tickvals=list(range(len(ordered_model_names))),
+            ticktext=ordered_model_names, tickangle=-35 if len(ordered_model_names) > 6 else 0,
+            showgrid=True, gridcolor="rgba(46,125,70,0.05)", showline=True, linecolor=_BR,
+            tickfont=dict(size=9, color=_T, family="Inter"),
         ),
         yaxis=dict(
-            title="Run Life a la Falla / MTBF (días)",
-            range=[0, max_y_val * 1.25 if max_y_val > 0 else 1000],
-            showgrid=True,
-            gridcolor="rgba(46,125,70,0.07)",
-            gridwidth=1,
-            showline=False,
-            tickfont=dict(size=8.5, color=_T2, family="Inter, sans-serif"),
-            ticksuffix="d"
+            title="Run Life a la Falla / MTBF (días)", range=[0, max_y_val * 1.2 if max_y_val > 0 else 1000],
+            showgrid=True, gridcolor="rgba(46,125,70,0.06)", gridwidth=1,
+            tickfont=dict(size=8.5, color=_T2, family="Inter"), ticksuffix="d"
         ),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.04,
-            xanchor="center",
-            x=0.5,
-            font=dict(size=10, family="Inter, sans-serif", color=_T, weight=600),
-            bgcolor="rgba(255,255,255,0.96)",
-            bordercolor=_BR,
-            borderwidth=1.2,
-            itemsizing="constant",
-            itemwidth=35,
-            tracegroupgap=12
-        ),
-        height=470
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5,
+                    font=dict(size=9.5, family="Inter", color=_T, weight=600),
+                    bgcolor="rgba(255,255,255,0.96)", bordercolor=_BR, borderwidth=1),
+        height=500
     )
 
     plotly_config_mb = {
-        "displayModeBar": True,
-        "displaylogo": False,
-        "toImageButtonOptions": {
-            "format": "png",
-            "filename": f"dispersion_fallas_mtbf_por_modelo_{als_sel.lower()}",
-            "height": 600,
-            "width": 1100,
-            "scale": 3
-        }
+        "displayModeBar": True, "displaylogo": False,
+        "toImageButtonOptions": {"format": "png", "filename": f"dispersion_mtbf_modelos_{als_sel.lower()}", "height": 650, "width": 1200, "scale": 3}
     }
     st.plotly_chart(fig_mb, use_container_width=True, config=plotly_config_mb)
 
-    # Tabla resumen por modelo de bomba
-    with st.expander(f"📋 RESUMEN TABULAR DE MTBF Y FALLAS POR MODELO DE BOMBA ({als_sel})", expanded=False):
+    # ── TABLA RESUMEN ──────────────────────────────────────────────────────────
+    with st.expander(f"📋 RESUMEN MTBF Y FALLAS POR MODELO ({als_sel})", expanded=False):
         df_tab_modelos = pd.DataFrame([
             {
-                'Modelo de Bomba': m['modelo'],
-                'Tecnología ALS': m['tech'],
-                'Fallas Registradas': m['fallas'],
-                'MTBF Solo Fallas (días)': f"{m['mtbf']:.1f}d",
-                'Run Life Promedio (días)': f"{m['prom_rl']:.1f}d",
-                'Mediana P50 (días)': f"{m['med_rl']:.1f}d",
-                'Mínimo RL (días)': f"{m['min_rl']:.0f}d",
-                'Máximo RL (días)': f"{m['max_rl']:.0f}d",
-            } for m in model_stats
+                'Modelo': m['modelo'],
+                'ALS': m['tech'],
+                'Fallas': m['fallas'],
+                'MTBF (días)': f"{m['mtbf']:.1f}",
+                'vs Global (%)': f"{(m['mtbf']/mtbf_global_sf-1)*100:+.1f}%" if mtbf_global_sf else "N/A",
+                'RL Prom (d)': f"{m['prom_rl']:.1f}",
+                'P50 (d)': f"{m['med_rl']:.1f}",
+                'Min RL (d)': f"{m['min_rl']:.0f}",
+                'Máx RL (d)': f"{m['max_rl']:.0f}",
+                'Clasificación': '✓ Bueno' if mtbf_colors[i] == _G else ('⚠ Regular' if mtbf_colors[i] == _Y else '✗ Crítico')
+            } for i, m in enumerate(model_stats)
         ])
         render_hud_table(df_tab_modelos, table_id=f"resumen_modelos_bomba_mtbf_{als_sel}")
 
@@ -1975,158 +1991,6 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
 
         st.markdown("<div style='height:14px;'></div>", unsafe_allow_html=True)
 
-        # --- 2. GRÁFICOS DE TENDENCIA ---
-        df_mensual_grafico = df_mensual_hist.copy()
-        if fecha_inicio is None:
-            fecha_inicio = st.session_state.get('fecha_inicio_state')
-        if fecha_inicio is not None:
-            limite_inicio = pd.to_datetime(fecha_inicio).strftime('%Y-%m')
-            df_mensual_grafico = df_mensual_grafico[df_mensual_grafico['Mes'] >= limite_inicio].copy()
-
-        months_idx = [str(m) for m in df_mensual_grafico['Mes']]
-        val_if_on  = [round(float(x)*100, 2) for x in df_mensual_grafico['Indice_Falla_Rolling_ON'].tolist()]
-        val_if_als = [round(float(x)*100, 2) for x in df_mensual_grafico['Indice_Falla_Rolling_ALS_ON'].tolist()]
-        val_if_on_1500  = [round(float(x)*100, 2) for x in df_mensual_grafico.get('Indice_Falla_Rolling_ON_1500',  pd.Series([0]*len(df_mensual_grafico))).tolist()]
-        val_if_als_1500 = [round(float(x)*100, 2) for x in df_mensual_grafico.get('Indice_Falla_Rolling_ALS_ON_1500', pd.Series([0]*len(df_mensual_grafico))).tolist()]
-
-        st.markdown(
-            f"""
-            <div style="{_CARD} padding:14px 18px; margin-bottom:12px; border-left:4px solid {_G}; box-sizing:border-box;">
-                <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
-                    <div>
-                        <h6 style="color:{_G2}; font-family:{_FS}; font-weight:800; letter-spacing:0.8px; text-transform:uppercase; font-size:0.85rem; margin:0;">
-                            📈 TENDENCIA MENSUAL DE ÍNDICES DE FALLA Y OPERATIVIDAD (ROLLING 12M)
-                        </h6>
-                        <span style="font-size:0.75rem; color:{_T2}; font-family:{_FS};">
-                            Evolución histórica de confiabilidad y relación pozos activos vs eventos de falla
-                        </span>
-                    </div>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-        g_left, g_right = st.columns(2)
-
-        with g_left:
-            # Calcular media + desviación estándar para alertas estadísticas
-            import json as _json
-            import numpy as _np
-            if_arr = _np.array(val_if_on, dtype=float)
-            if_mean = float(_np.nanmean(if_arr)) if len(if_arr) > 0 else 0
-            if_std  = float(_np.nanstd(if_arr))  if len(if_arr) > 0 else 0
-            # Marcar meses con IF > mean + 1std como alertas
-            alert_months = [i for i, v in enumerate(val_if_on) if v > (if_mean + if_std)]
-
-            mark_points = []
-            for idx in alert_months:
-                if idx < len(months_idx):
-                    mark_points.append({
-                        "coord": [months_idx[idx], val_if_on[idx]],
-                        "symbol": "pin", "symbolSize": 30,
-                        "itemStyle": {"color": "#c62828"},
-                        "label": {"show": False}
-                    })
-
-            echarts_line = {
-                "backgroundColor": "transparent",
-                "title": {"text": "EVOLUCIÓN DE ÍNDICES (Rolling 12M)", "left": "center", "top": 8,
-                          "textStyle": {"color": _G2, "fontSize": 12, "fontFamily": "Inter, sans-serif", "fontWeight": "800"},
-                          "subtext": f"Media histórica: {if_mean:.2f}% | Alerta si supera {(if_mean+if_std):.2f}%",
-                          "subtextStyle": {"color": _T2, "fontSize": 9.5, "fontFamily": "Inter, sans-serif"}},
-                "textStyle": {"fontFamily": "Inter, sans-serif"},
-                "tooltip": {"trigger": "axis", "backgroundColor": "rgba(255,255,255,0.97)", "borderColor": _BR,
-                            "textStyle": {"color": _T, "fontFamily": "Inter, sans-serif"}, "axisPointer": {"type": "cross"}},
-                "legend": {
-                    "data": ["I.F. Total", "I.F. ALS", "I.F. <1500", "I.F. ALS <1500"],
-                    "bottom": 6,
-                    "textStyle": {"color": _T2, "fontSize": 9.5, "fontFamily": "Inter, sans-serif", "fontWeight": "600"},
-                    "icon": "circle",
-                    "itemWidth": 9,
-                    "itemHeight": 9,
-                    "itemGap": 14,
-                    "backgroundColor": "rgba(255, 255, 255, 0.94)",
-                    "borderColor": _BR,
-                    "borderWidth": 1,
-                    "borderRadius": 20,
-                    "padding": [5, 14]
-                },
-                "grid": {"left": "4%", "right": "4%", "bottom": "20%", "top": "22%", "containLabel": True},
-                "xAxis": [{"type": "category", "data": months_idx,
-                           "axisLabel": {"color": _T2, "fontSize": 8.5, "fontFamily": "Inter, sans-serif", "rotate": 30}}],
-                "yAxis": [{"type": "value",
-                           "axisLabel": {"formatter": "{value}%", "color": _T2, "fontFamily": "Inter, sans-serif", "fontSize": 8.5},
-                           "splitLine": {"lineStyle": {"color": "rgba(46,125,70,0.06)"}}}],
-                "series": [
-                    {"name": "I.F. Total", "type": "line", "smooth": True, "data": val_if_on,
-                     "itemStyle": {"color": _G}, "lineStyle": {"width": 2.5, "color": _G},
-                     "areaStyle": {"color": f"{_G}12"},
-                     "markPoint": {"data": mark_points, "label": {"show": False}},
-                     "markLine": {"silent": True, "data": [
-                         {"yAxis": 7.5, "label": {"show": True, "formatter": "Meta 7.5%",
-                                                   "color": _R, "fontSize": 9, "fontFamily": "Inter, sans-serif"},
-                          "lineStyle": {"color": _R, "type": "dashed", "width": 1.8}}
-                     ]}},
-                    {"name": "I.F. ALS", "type": "line", "smooth": True, "data": val_if_als,
-                     "itemStyle": {"color": _Y}, "lineStyle": {"width": 2.5, "color": _Y}},
-                    {"name": "I.F. <1500", "type": "line", "smooth": True, "data": val_if_on_1500,
-                     "itemStyle": {"color": "#5C6B73"}, "lineStyle": {"width": 1.8, "type": "dashed", "color": "#5C6B73"}},
-                    {"name": "I.F. ALS <1500", "type": "line", "smooth": True, "data": val_if_als_1500,
-                     "itemStyle": {"color": _G2}, "lineStyle": {"width": 1.8, "type": "dashed", "color": _G2}}
-                ]
-            }
-            components.html(f'<div id="echarts-if-line" style="width:100%;height:370px;{_CARD}border-radius:18px!important;overflow:hidden;box-sizing:border-box;"></div>'
-                            f'<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>'
-                            f'<script>(function(){{var c=echarts.init(document.getElementById("echarts-if-line"),null);'
-                            f'c.setOption({_json.dumps(echarts_line)});'
-                            f'window.addEventListener("resize",function(){{c.resize();}});}})();</script>',
-                            height=380)
-
-        with g_right:
-            p_ops  = df_mensual_grafico['Pozos Operativos'].tolist()
-            f_tots = df_mensual_grafico['Fallas Totales'].tolist()
-            echarts_op = {
-                "backgroundColor": "transparent",
-                "title": {"text": "TENDENCIA OPERATIVIDAD VS EVENTOS", "left": "center", "top": 8,
-                          "textStyle": {"color": _G2, "fontSize": 12, "fontFamily": "Inter, sans-serif", "fontWeight": "800"}},
-                "textStyle": {"fontFamily": "Inter, sans-serif"},
-                "tooltip": {"trigger": "axis", "backgroundColor": "rgba(255,255,255,0.97)", "borderColor": _BR,
-                            "textStyle": {"color": _T, "fontFamily": "Inter, sans-serif"}},
-                "legend": {
-                    "data": ["Pozos Operativos", "Eventos Totales"],
-                    "bottom": 6,
-                    "textStyle": {"color": _T2, "fontSize": 9.5, "fontFamily": "Inter, sans-serif", "fontWeight": "600"},
-                    "icon": "circle",
-                    "itemWidth": 9,
-                    "itemHeight": 9,
-                    "itemGap": 14,
-                    "backgroundColor": "rgba(255, 255, 255, 0.94)",
-                    "borderColor": _BR,
-                    "borderWidth": 1,
-                    "borderRadius": 20,
-                    "padding": [5, 14]
-                },
-                "grid": {"left": "4%", "right": "8%", "bottom": "20%", "top": "18%", "containLabel": True},
-                "xAxis": [{"type": "category", "data": months_idx, "axisLabel": {"color": _T2, "fontSize": 8.5, "fontFamily": "Inter, sans-serif", "rotate": 30}}],
-                "yAxis": [
-                    {"type": "value", "name": "POZOS", "nameTextStyle": {"color": _T2, "fontSize": 9}, "axisLabel": {"color": _T2, "fontFamily": "Inter, sans-serif", "fontSize": 8.5}, "splitLine": {"lineStyle": {"color": "rgba(46,125,70,0.06)"}}},
-                    {"type": "value", "name": "EVENTOS", "position": "right", "nameTextStyle": {"color": _Y, "fontSize": 9}, "axisLabel": {"color": _Y, "fontFamily": "Inter, sans-serif", "fontSize": 8.5}, "splitLine": {"show": False}}
-                ],
-                "series": [
-                    {"name": "Pozos Operativos", "type": "line", "smooth": True, "data": p_ops,
-                     "itemStyle": {"color": _G}, "lineStyle": {"width": 2.5, "color": _G},
-                     "areaStyle": {"color": f"{_G}15"}},
-                    {"name": "Eventos Totales", "type": "bar", "yAxisIndex": 1, "data": f_tots,
-                     "barWidth": "35%",
-                     "itemStyle": {"color": f"{_Y}85", "borderRadius": [8, 8, 0, 0]}}
-                ]
-            }
-            components.html(f'<div id="echarts-op-fallas" style="width:100%;height:370px;{_CARD}border-radius:18px!important;overflow:hidden;box-sizing:border-box;"></div>'
-                            f'<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>'
-                            f'<script>(function(){{var c=echarts.init(document.getElementById("echarts-op-fallas"),null);c.setOption({_json.dumps(echarts_op)});window.addEventListener("resize",function(){{c.resize();}});}})();</script>',
-                            height=380)
-
         # --- 3. ÍNDICES DE FALLA Y RUN LIFE POR BLOQUE ---
         _filtro_activo = (
             st.session_state.get('general_bloque_filter', 'TODOS') != 'TODOS' or
@@ -2352,17 +2216,19 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                     rle_fall_s = grp_fallados_all['_RLE']
                     rle_fall_val = float(rle_fall_s.mean()) if len(rle_fall_s) > 0 and (rle_fall_s > 0).any() else rl_fall_val
 
-                    # Metas de Run Life del Año Anterior
-                    grp_activos_prev = grp_runs_prev[
-                        (grp_runs_prev['_RUN'] <= prev_year_end) &
-                        (grp_runs_prev['_FALL'].isna() | (grp_runs_prev['_FALL'] > prev_year_end)) &
-                        (grp_runs_prev['_PULL'].isna() | (grp_runs_prev['_PULL'] > prev_year_end))
+                    # Metas de Run Life del Año Anterior basadas en pozos fallados
+                    grp_fallados_prev = grp_runs_prev[
+                        (grp_runs_prev['_FALL'].notna()) &
+                        (grp_runs_prev['_FALL'] <= prev_year_end)
                     ]
-                    rl_prev_s = (prev_year_end - pd.to_datetime(grp_activos_prev['_RUN'])).dt.days
-                    rl_prev_val = rl_prev_s.mean() if len(rl_prev_s) > 0 else 0.0
-
-                    rle_prev_s = grp_activos_prev['_RLE']
-                    rle_prev_val = float(rle_prev_s.mean()) if len(rle_prev_s) > 0 and (rle_prev_s > 0).any() else rl_prev_val
+                    if not grp_fallados_prev.empty:
+                        rl_prev_s = (pd.to_datetime(grp_fallados_prev['_FALL']) - pd.to_datetime(grp_fallados_prev['_RUN'])).dt.days
+                        rl_prev_val = rl_prev_s.mean() if len(rl_prev_s) > 0 else 0.0
+                        rle_prev_s = grp_fallados_prev['_RLE']
+                        rle_prev_val = float(rle_prev_s.mean()) if len(rle_prev_s) > 0 and (rle_prev_s > 0).any() else rl_prev_val
+                    else:
+                        rl_prev_val = rl_fall_val if rl_fall_val > 0 else 1500.0
+                        rle_prev_val = rle_fall_val if rle_fall_val > 0 else 1500.0
 
                     meta_rl = round(rl_prev_val, 1) if rl_prev_val > 0 else 1500.0
                     meta_rle = round(rle_prev_val, 1) if rle_prev_val > 0 else 1500.0

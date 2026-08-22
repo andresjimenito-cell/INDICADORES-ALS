@@ -249,7 +249,7 @@ def render_tab_mtbf(df_bd_filtered, df_forma9_filtered, fecha_evaluacion,
 
     k1, k2, k3, k4 = st.columns(4)
     with k1:
-        badge = _color_badge(mtbf_global, META_MTBF)
+        badge_mtbf = f'<span class="mtbf-badge" style="background:{_G3}; color:{_G}; border:1px solid {_G}50;">● OPERATIVO</span>'
         st.markdown(f"""
         <div class="mtbf-card">
             <div class="mtbf-icon green">
@@ -257,12 +257,12 @@ def render_tab_mtbf(df_bd_filtered, df_forma9_filtered, fecha_evaluacion,
             </div>
             <div class="mtbf-lbl">TMEF Global</div>
             <div class="mtbf-val" style="color:{_G};">{mtbf_global:.0f}<span style="font-size:16px;">d</span></div>
-            {badge}
-            <div class="mtbf-sub">Meta: {META_MTBF} días</div>
+            {badge_mtbf}
+            <div class="mtbf-sub">Tiempo Medio Entre Fallas</div>
         </div>
         """, unsafe_allow_html=True)
     with k2:
-        badge = _color_badge(mtbf_efectivo_global, META_MTBF)
+        badge_mtbf_ef = f'<span class="mtbf-badge" style="background:{_G3}; color:{_G2}; border:1px solid {_G2}50;">● OPERATIVO</span>'
         st.markdown(f"""
         <div class="mtbf-card">
             <div class="mtbf-icon dark">
@@ -270,7 +270,7 @@ def render_tab_mtbf(df_bd_filtered, df_forma9_filtered, fecha_evaluacion,
             </div>
             <div class="mtbf-lbl">TMEF Efectivo</div>
             <div class="mtbf-val" style="color:{_G2};">{mtbf_efectivo_global:.0f}<span style="font-size:16px;">d</span></div>
-            {badge}
+            {badge_mtbf_ef}
             <div class="mtbf-sub">Basado en RLE efectivo</div>
         </div>
         """, unsafe_allow_html=True)
@@ -416,12 +416,11 @@ def render_tab_mtbf(df_bd_filtered, df_forma9_filtered, fecha_evaluacion,
 
                 bar_act_data = []
                 for _, r in df_act.iterrows():
-                    c = _G if r['MTBF'] >= META_MTBF else (_Y if r['MTBF'] >= META_MTBF * 0.7 else _R)
-                    bar_act_data.append({"value": r['MTBF'], "itemStyle": {"color": c, "borderRadius": [0, 5, 5, 0]}})
+                    bar_act_data.append({"value": r['MTBF'], "itemStyle": {"color": _G, "borderRadius": [0, 5, 5, 0]}})
 
                 act_opts = {
                     "backgroundColor": "transparent",
-                    "title": {"text": "MTBF POR ACTIVO VS META", "left": "center", "top": 8,
+                    "title": {"text": "MTBF POR ACTIVO", "left": "center", "top": 8,
                               "textStyle": {"color": _G2, "fontSize": 12, "fontFamily": "Inter, sans-serif", "fontWeight": "800"}},
                     "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"},
                                 "backgroundColor": "rgba(255,255,255,0.97)", "borderColor": _BR,
@@ -436,15 +435,7 @@ def render_tab_mtbf(df_bd_filtered, df_forma9_filtered, fecha_evaluacion,
                     "series": [
                         {"name": "MTBF", "type": "bar", "data": bar_act_data, "barWidth": "50%",
                          "label": {"show": True, "position": "right", "color": _T2,
-                                   "fontFamily": "Inter, sans-serif", "fontSize": 10, "formatter": "{c}d"}},
-                        {"name": "Meta", "type": "line",
-                         "data": [[META_MTBF, a] for a in df_act['ACTIVO'].tolist()],
-                         "lineStyle": {"type": "dashed", "color": _R, "width": 2},
-                         "itemStyle": {"color": _R}, "symbol": "none",
-                         "markLine": {"silent": True, "data": [{"xAxis": META_MTBF, "label":
-                                       {"show": True, "formatter": f"Meta {META_MTBF}d",
-                                        "color": _R, "fontSize": 9, "fontFamily": "Inter, sans-serif"},
-                                       "lineStyle": {"color": _R, "type": "dashed", "width": 2}}]}}
+                                   "fontFamily": "Inter, sans-serif", "fontSize": 10, "formatter": "{c}d"}}
                     ]
                 }
                 components.html(_echarts(act_opts, 350, "mtbf-activo"), height=360)
