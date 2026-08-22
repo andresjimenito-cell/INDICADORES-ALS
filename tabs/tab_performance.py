@@ -178,14 +178,11 @@ def render_tab_performance(df_bd_filtered, df_forma9_filtered, fecha_evaluacion)
             df_forma9_untr['FECHA_FORMA9'] = pd.to_datetime(df_forma9_untr['FECHA_FORMA9'], errors='coerce')
 
     # ── 2. PROCESAMIENTO DE PRODUCCIÓN Y POZOS ON ───────────────────────────
-    _fe = fecha_eval.to_pydatetime()
-    eval_year  = _fe.year
-    eval_month = _fe.month
+    _eval_period = fecha_eval.to_period('M')
     try:
         if not df_forma9_untr.empty and 'FECHA_FORMA9' in df_forma9_untr.columns:
             df_month = df_forma9_untr[
-                (df_forma9_untr['FECHA_FORMA9'].dt.year  == eval_year) &
-                (df_forma9_untr['FECHA_FORMA9'].dt.month == eval_month)
+                df_forma9_untr['FECHA_FORMA9'].dt.to_period('M') == _eval_period
             ].copy()
         else:
             df_month = pd.DataFrame()

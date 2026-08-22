@@ -2,35 +2,28 @@ import pandas as pd
 import numpy as np
 import streamlit as st
 try:
-    from ui.theme import get_colors, get_plotly_layout
+    from ui.theme import get_colors, get_plotly_layout, get_brand_color, get_surface_color
 except Exception:
     try:
-        from theme import get_colors, get_plotly_layout
+        from theme import get_colors, get_plotly_layout, get_brand_color, get_surface_color  # type: ignore[no-redef]
     except Exception:
-        get_colors = lambda: {'primary': '#2E7D46', 'background': '#ffffff'}
-        get_plotly_layout = lambda: {}
+        get_colors        = lambda: {}                      # type: ignore[assignment]
+        get_plotly_layout = lambda **kw: {}                 # type: ignore[assignment]
+        get_brand_color   = lambda role: '#2E7D46'          # type: ignore[assignment]
+        get_surface_color = lambda role: '#ffffff'          # type: ignore[assignment]
 from datetime import timedelta
 
-_colors_raw = get_colors()
-# Soporte de dict anidado (ui.theme) y dict plano (fallback)
+# Colores corporativos Parex — helper functions devuelven str directamente
+COLOR_PRINCIPAL    : str = get_brand_color('primary')          # '#2E7D46'
+_bg_raw            : str = get_surface_color('background')     # '#F7F8F5'
+COLOR_FONDO_OSCURO        = None  # tema claro — sin fondo oscuro
 try:
-    COLOR_PRINCIPAL   = _colors_raw['brand']['primary']
-except (KeyError, TypeError):
-    COLOR_PRINCIPAL   = _colors_raw.get('primary', '#2E7D46')  # type: ignore[union-attr]
-try:
-    _bg_raw = _colors_raw['surface']['background']
-except (KeyError, TypeError):
-    _bg_raw = _colors_raw.get('background', '#ffffff')  # type: ignore[union-attr]
-try:
-    _chart_series = _colors_raw['chart']['series']
+    _chart_series: list = get_colors()['chart']['series']
 except (KeyError, TypeError):
     _chart_series = [COLOR_PRINCIPAL, '#C98A2C', '#1F4620', '#223A5E']
-if isinstance(_bg_raw, str) and _bg_raw.strip().lower() in ('#ffffff', 'white', '#f7f8f5'):
-    COLOR_FONDO_OSCURO = None
-else:
-    COLOR_FONDO_OSCURO = (_bg_raw if isinstance(_bg_raw, str) else None) or '#1a1a2e'
 get_color_sequence = lambda mode=None: _chart_series
-get_plotly_layout = get_plotly_layout
+get_plotly_layout  = get_plotly_layout
+
 
 @st.cache_data(show_spinner=False)
 def calcular_indice_falla_anual(df_bd, df_forma9, fecha_evaluacion, fecha_inicio=None):
