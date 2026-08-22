@@ -2,7 +2,8 @@
 tabs/tab_indices.py
 ===================
 Visualización profesional de Índices de Falla y Operatividad.
-Utiliza estética HUD y Zero Space Waste.
+DISEÑO REDISEÑADO: Estética limpia, consistente y armoniosa.
+Zero Space Waste con jerarquía visual clara.
 """
 
 import json
@@ -53,6 +54,114 @@ def _halo(color):
     r, g, b = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
     return (f"0 0 0 4px rgba({r},{g},{b},0.10), 0 4px 10px rgba({r},{g},{b},0.30), "
             f"inset 0 1px 0 rgba(255,255,255,0.28)")
+
+
+# ── COMPONENTES UI REUTILIZABLES ──────────────────────────────────────────────
+
+def render_section_header(title, subtitle="", icon="📊", color=_G):
+    """Renderiza un encabezado de sección consistente y elegante."""
+    st.markdown(f"""
+    <div style="{_CARD} padding:16px 20px; margin:24px 0 16px 0; border-left:5px solid {color};">
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div style="font-size:1.6rem; line-height:1; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.08));">{icon}</div>
+                <div>
+                    <h5 style="color:{_G2}; font-family:{_FS}; font-weight:800; letter-spacing:0.6px; text-transform:uppercase; font-size:0.9rem; margin:0 0 2px 0;">
+                        {title}
+                    </h5>
+                    {'<span style="font-size:0.78rem; color:'+_T2+'; font-family:'+_FS+';">'+subtitle+'</span>' if subtitle else ''}
+                </div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def render_metric_card(value, label, unit="", color=_G, icon=None, width_percent=24):
+    """Tarjeta métrica minimalista para KPIs."""
+    icon_html = f'<div style="font-size:1.4rem; margin-bottom:6px;">{icon}</div>' if icon else ''
+    unit_span = f'<span style="font-size:0.9rem; color:{_T2};"> {unit}</span>' if unit else ''
+    
+    st.markdown(f"""
+    <div style="flex:{width_percent}%; min-width:200px; background:#ffffff; border-radius:14px; padding:16px; 
+                border:1px solid {_BR}; border-top:3px solid {color}; box-shadow:{_SH1};">
+        {icon_html}
+        <div style="font-size:0.75rem; font-weight:700; color:{_T2}; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
+            {label}
+        </div>
+        <div style="font-size:1.9rem; font-weight:900; color:{color}; line-height:1.1;">
+            {value}{unit_span}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def render_info_box(message, type="info"):
+    """Caja de información contextual con estilo consistente."""
+    colors = {
+        "info": (_G, _G3, "ℹ️"),
+        "warning": (_Y, _Y2, "⚠️"),
+        "error": (_R, _R2, "❌"),
+        "success": (_G, _G3, "✅")
+    }
+    bg_color, border_color, icon = colors.get(type, colors["info"])
+    
+    st.markdown(f"""
+    <div style="background:{border_color}; padding:14px 18px; border-radius:12px; 
+                border-left:4px solid {bg_color}; font-size:0.82rem; color:{_T}; line-height:1.6; margin:12px 0;">
+        <strong>{icon}</strong> {message}
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def create_clean_plotly_layout(fig, title="", height=400, legend_position="right"):
+    """Aplica layout limpio y consistente a gráficas Plotly."""
+    fig.update_layout(
+        title=dict(
+            text=title,
+            font=dict(family=_FS, size=13, color=_T),
+            x=0.02,
+            y=0.98,
+            xanchor='left',
+            yanchor='top'
+        ),
+        plot_bgcolor='#ffffff',
+        paper_bgcolor='#ffffff',
+        font=dict(family=_FS, size=11, color=_T),
+        margin=dict(l=50, r=20, t=60, b=50),
+        height=height,
+        showlegend=True,
+        legend=dict(
+            bgcolor='rgba(255,255,255,0.98)',
+            bordercolor=_BR,
+            borderwidth=1,
+            font=dict(size=10, family=_FS),
+            x=1.02 if legend_position == "right" else 0.5,
+            y=1,
+            xanchor='left' if legend_position == "right" else 'center',
+            yanchor='top'
+        ),
+        hovermode='x unified',
+        hoverlabel=dict(
+            bgcolor='rgba(255,255,255,0.98)',
+            bordercolor=_BR,
+            font=dict(family=_FS, size=11)
+        )
+    )
+    fig.update_xaxes(
+        gridcolor='rgba(0,0,0,0.06)',
+        linecolor=_BR,
+        tickfont=dict(family=_FS, size=10)
+    )
+    fig.update_yaxes(
+        gridcolor='rgba(0,0,0,0.06)',
+        linecolor=_BR,
+        tickfont=dict(family=_FS, size=10)
+    )
+    return fig
+
+
+# ── TABLA HUD OPTIMIZADA ──────────────────────────────────────────────────────
 
 def render_general_table(df_bd, table_id="general_table"):
     """Renderiza la tabla de detalles generales con estilo HUD (scrollX activado)."""
@@ -377,24 +486,13 @@ def _calcular_rl_agrupado_cached(df_raw, grupo_col, fecha_eval_norm, anio_prev_v
 
 @_fragment
 def _render_seccion_run_life_bloque(df_bloque_raw, fecha_eval_norm_b, anio_prev, fecha_eval_dt_b, EXCL_BLOQUES):
-    st.markdown("<div style='height:14px;'></div>", unsafe_allow_html=True)
-    st.markdown(
-        f"""
-        <div style="{_CARD} padding:14px 18px; margin-bottom:12px; border-left:4px solid {_G}; box-sizing:border-box;">
-            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
-                <div>
-                    <h6 style="color:{_G2}; font-family:{_FS}; font-weight:800; letter-spacing:0.8px; text-transform:uppercase; font-size:0.85rem; margin:0;">
-                        ⏱️ RUN LIFE Y MTBF: POZOS OPERATIVOS VS FALLADOS ALS
-                    </h6>
-                    <span style="font-size:0.75rem; color:{_T2}; font-family:{_FS};">
-                        Comparativa de vida útil en servicio y tiempo medio entre fallas a fecha de corte {fecha_eval_dt_b.strftime('%d/%m/%Y')}
-                    </span>
-                </div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
+    render_section_header(
+        title="⏱️ Run Life y MTBF: Pozos Operativos vs Fallados ALS",
+        subtitle=f"Comparativa de vida útil en servicio y tiempo medio entre fallas a fecha de corte {fecha_eval_dt_b.strftime('%d/%m/%Y')}",
+        icon="📊",
+        color=_G
     )
+    
     col_rl_grp, col_rl_prov, col_rl_sel = st.columns([1.2, 1.2, 1.2])
     with col_rl_grp:
         has_modelo_rl = any(any(k in str(c).upper() for k in ['MODELO DE BOMBA', 'MODELO DE BOMABA', 'MODELO BOMBA', 'MODELO']) for c in df_bloque_raw.columns)
@@ -692,27 +790,24 @@ def _render_seccion_run_life_bloque(df_bloque_raw, fecha_eval_norm_b, anio_prev,
 
 @_fragment
 def _render_seccion_campana_gauss(df_fallas_als_all, df_bloque_raw, fecha_eval_norm_b, fecha_eval_dt_b):
-    st.markdown("<div style='height:18px;'></div>", unsafe_allow_html=True)
-    st.markdown(
-        f"""
-        <div style="{_CARD} padding:14px 18px; margin-bottom:12px; border-left:4px solid {_G}; box-sizing:border-box;">
-            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
-                <div>
-                    <h6 style="color:{_G2}; font-family:{_FS}; font-weight:800; letter-spacing:0.8px; text-transform:uppercase; font-size:0.85rem; margin:0;">
-                        🔔 CAMPANA DE GAUSS Y DISTRIBUCIÓN DE FALLAS ALS
-                    </h6>
-                    <span style="font-size:0.75rem; color:{_T2}; font-family:{_FS};">
-                        Distribución de frecuencia y ajuste estadístico normal (Gauss) de pozos fallados ALS a fecha {fecha_eval_dt_b.strftime('%d/%m/%Y')}
-                    </span>
-                </div>
-                <div style="background:{_G3}; padding:4px 14px; border-radius:20px; border:1px solid rgba(46,125,70,0.25); font-family:{_FS}; font-size:0.75rem; font-weight:700; color:{_G2};">
-                    Total Fallas ALS: <b>{len(df_fallas_als_all)} eventos</b>
-                </div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
+    render_section_header(
+        title="🔔 Campana de Gauss y Distribución de Fallas ALS",
+        subtitle=f"Distribución de frecuencia y ajuste estadístico normal (Gauss) de pozos fallados ALS a fecha {fecha_eval_dt_b.strftime('%d/%m/%Y')}",
+        icon="📊",
+        color=_G
     )
+    
+    # Badge informativo en línea
+    col_badge, _ = st.columns([0.3, 0.7])
+    with col_badge:
+        st.markdown(f"""
+        <div style="background:{_G3}; padding:6px 14px; border-radius:20px; border:1px solid rgba(46,125,70,0.25); 
+                    font-family:{_FS}; font-size:0.78rem; font-weight:700; color:{_G2}; display:inline-block;">
+            Total Fallas ALS: <b>{len(df_fallas_als_all)} eventos</b>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("<div style='height:16px;'></div>", unsafe_allow_html=True)
 
     col_cg_dim, col_cg_elem, col_cg_metric, col_cg_bin = st.columns([1.1, 1.3, 1.1, 0.9])
     
@@ -860,7 +955,7 @@ def _render_seccion_campana_gauss(df_fallas_als_all, df_bloque_raw, fecha_eval_n
                 <div class="if-sem-sub">{fallas_inf_cnt} fallas prematuras</div>
             </div>""", unsafe_allow_html=True)
 
-        st.markdown("<div style='height:12px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height:20px;'></div>", unsafe_allow_html=True)
 
         # Configurar el ancho de bins
         if cg_bin_choice == "50 días":
@@ -1331,24 +1426,14 @@ def _render_seccion_campana_gauss(df_fallas_als_all, df_bloque_raw, fecha_eval_n
 
 @_fragment
 def _render_seccion_dispersion_modelo_bomba(df_bloque_raw, fecha_eval_norm_b, fecha_eval_dt_b):
-    st.markdown("<div style='height:18px;'></div>", unsafe_allow_html=True)
-    st.markdown(
-        f"""
-        <div style="{_CARD} padding:14px 18px; margin-bottom:12px; border-left:4px solid {_G}; box-sizing:border-box;">
-            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
-                <div>
-                    <h6 style="color:{_G2}; font-family:{_FS}; font-weight:800; letter-spacing:0.8px; text-transform:uppercase; font-size:0.85rem; margin:0;">
-                        🎯 DISPERSIÓN DE FALLAS Y MTBF POR MODELO DE BOMBA (SOLO FALLAS ALS)
-                    </h6>
-                    <span style="font-size:0.75rem; color:{_T2}; font-family:{_FS};">
-                        Puntos individuales de eventos de falla (dispersión) sobre la línea de MTBF actuarial por modelo de equipo a {fecha_eval_dt_b.strftime('%Y-%m-%d')}
-                    </span>
-                </div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
+    render_section_header(
+        title="🎯 Dispersión de Fallas y MTBF por Modelo de Bomba",
+        subtitle=f"Puntos individuales de eventos de falla (dispersión) sobre la línea de MTBF actuarial por modelo de equipo a {fecha_eval_dt_b.strftime('%Y-%m-%d')}",
+        icon="📊",
+        color=_G
     )
+    
+    st.markdown("<div style='height:16px;'></div>", unsafe_allow_html=True)
 
     if df_bloque_raw.empty:
         st.info("Sin datos para analizar modelos de bomba.")
@@ -2522,5 +2607,215 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
         
         render_hud_table(df_detalle, table_id="detalle_mensual")
         
+        # ── TABLA 1: FALLAS DEL MES SELECCIONADO ────────────────────────────────
+        st.markdown("<br>", unsafe_allow_html=True)
+        from utils.text_utils import clean_text
+        
+        # Determinar el mes de evaluación
+        mes_falla_dt = fecha_eval_dt_b
+        mes_falla_str = mes_falla_dt.strftime('%B %Y')
+        mes_falla_title = clean_text(f"Fallas de {mes_falla_str}")
+        
+        st.markdown(f"""
+        <div style='color:{_G2}; font-family:{_FS}; font-size:0.85rem; font-weight:800; 
+                    text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px; 
+                    border-left:3px solid {_R}; padding-left:8px;'>
+            📋 {mes_falla_title}
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Filtrar fallas del mes seleccionado
+        anio_mes = mes_falla_dt.year
+        mes_num = mes_falla_dt.month
+        
+        df_fallas_mes = df_bloque_raw[
+            (df_bloque_raw['_FALL'].notna()) &
+            (pd.to_datetime(df_bloque_raw['_FALL']).dt.year == anio_mes) &
+            (pd.to_datetime(df_bloque_raw['_FALL']).dt.month == mes_num) &
+            (df_bloque_raw['INDICADOR_MTBF'] == 1)
+        ].copy()
+        
+        if not df_fallas_mes.empty:
+            # Calcular columnas necesarias
+            if 'RUN LIFE @ FALLA' in df_fallas_mes.columns:
+                col_rl = 'RUN LIFE @ FALLA'
+            elif 'RUN LIFE FALLA' in df_fallas_mes.columns:
+                col_rl = 'RUN LIFE FALLA'
+            elif 'RUN LIFE' in df_fallas_mes.columns:
+                col_rl = 'RUN LIFE'
+            else:
+                col_rl = None
+            
+            if col_rl and col_rl in df_fallas_mes.columns:
+                df_fallas_mes['RL_DIAS'] = pd.to_numeric(df_fallas_mes[col_rl], errors='coerce')
+            else:
+                df_fallas_mes['RL_DIAS'] = (df_fallas_mes['_FALL'] - df_fallas_mes['_RUN']).dt.days
+            
+            # Clasificar por sistema ALS
+            col_als = next((c for c in ['ALS', 'SISTEMA ALS', 'SISTEMA_ALS', 'METODO'] if c in df_fallas_mes.columns), None)
+            if col_als:
+                df_fallas_mes['ES_ALS'] = ~df_fallas_mes[col_als].astype(str).str.upper().str.strip().isin(
+                    ['FN', 'FLUJO NATURAL', 'FLUJO_NATURAL', 'F.N.', 'FLUJO NAT', 'NAN', '']
+                )
+            else:
+                df_fallas_mes['ES_ALS'] = True
+            
+            # Contadores
+            total_fallas = len(df_fallas_mes)
+            fallas_als = df_fallas_mes['ES_ALS'].sum()
+            fallas_no_als = total_fallas - fallas_als
+            pendientes_pull = df_fallas_mes['FECHA_PULL'].isna().sum()
+            
+            # Mostrar badges
+            badge_cols = st.columns(4)
+            with badge_cols[0]:
+                st.markdown(f"""
+                <div style='background:#ffffff; border:1px solid {_BR}; border-radius:10px; 
+                            padding:12px; text-align:center; box-shadow:{_SH1};'>
+                    <div style='font-size:0.7rem; color:{_T2}; text-transform:uppercase; font-weight:700;'>Total Fallas</div>
+                    <div style='font-size:1.8rem; font-weight:900; color:{_R};'>{total_fallas}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with badge_cols[1]:
+                st.markdown(f"""
+                <div style='background:#ffffff; border:1px solid {_BR}; border-radius:10px; 
+                            padding:12px; text-align:center; box-shadow:{_SH1};'>
+                    <div style='font-size:0.7rem; color:{_T2}; text-transform:uppercase; font-weight:700;'>ALS</div>
+                    <div style='font-size:1.8rem; font-weight:900; color:{_G};'>{int(fallas_als)}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with badge_cols[2]:
+                st.markdown(f"""
+                <div style='background:#ffffff; border:1px solid {_BR}; border-radius:10px; 
+                            padding:12px; text-align:center; box-shadow:{_SH1};'>
+                    <div style='font-size:0.7rem; color:{_T2}; text-transform:uppercase; font-weight:700;'>No ALS</div>
+                    <div style='font-size:1.8rem; font-weight:900; color:{_Y};'>{int(fallas_no_als)}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with badge_cols[3]:
+                st.markdown(f"""
+                <div style='background:#ffffff; border:1px solid {_BR}; border-radius:10px; 
+                            padding:12px; text-align:center; box-shadow:{_SH1};'>
+                    <div style='font-size:0.7rem; color:{_T2}; text-transform:uppercase; font-weight:700;'>Pend. Pull</div>
+                    <div style='font-size:1.8rem; font-weight:900; color:{_T};'>{pendientes_pull}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            st.markdown("<div style='height:12px;'></div>", unsafe_allow_html=True)
+            
+            # Construir tabla detallada
+            cols_tabla = ['POZO', 'CAMPO', 'BLOQUE', 'PROVEEDOR', 'ALS', 'FECHA_RUN', 'FECHA_FALLA', 'RL_DIAS']
+            cols_existentes = [c for c in cols_tabla if c in df_fallas_mes.columns]
+            df_tabla_mes = df_fallas_mes[cols_existentes].copy()
+            
+            # Formatear fechas
+            if 'FECHA_RUN' in df_tabla_mes.columns:
+                df_tabla_mes['FECHA_RUN'] = pd.to_datetime(df_tabla_mes['FECHA_RUN']).dt.strftime('%Y-%m-%d')
+            if 'FECHA_FALLA' in df_tabla_mes.columns:
+                df_tabla_mes['FECHA_FALLA'] = pd.to_datetime(df_tabla_mes['FECHA_FALLA']).dt.strftime('%Y-%m-%d')
+            if 'RL_DIAS' in df_tabla_mes.columns:
+                df_tabla_mes['RL_DIAS'] = df_tabla_mes['RL_DIAS'].fillna(0).astype(int)
+                df_tabla_mes = df_tabla_mes.sort_values(by='FECHA_FALLA', ascending=False)
+            
+            # Renombrar columnas
+            rename_dict = {
+                'POZO': 'Pozo',
+                'CAMPO': 'Campo',
+                'BLOQUE': 'Bloque',
+                'PROVEEDOR': 'Proveedor',
+                'ALS': 'Sistema ALS',
+                'FECHA_RUN': 'Fecha Run',
+                'FECHA_FALLA': 'Fecha Falla',
+                'RL_DIAS': 'Run Life (días)'
+            }
+            df_tabla_mes.rename(columns=rename_dict, inplace=True)
+            
+            render_hud_table(df_tabla_mes, table_id=f"fallas_{mes_num}_{anio_mes}")
+        else:
+            st.info(f"No se registraron fallas en {mes_falla_str}.")
+        
+        # ── TABLA 2: FALLAS POR ETAPA (ÚLTIMO AÑO) ─────────────────────────────
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown(f"""
+        <div style='color:{_G2}; font-family:{_FS}; font-size:0.85rem; font-weight:800; 
+                    text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px; 
+                    border-left:3px solid {_Y}; padding-left:8px;'>
+            ⏱️ Fallas por Etapa · Último Año
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Filtrar fallas del último año
+        fecha_inicio_ano = fecha_eval_dt_b - pd.DateOffset(years=1)
+        df_fallas_ano = df_bloque_raw[
+            (df_bloque_raw['_FALL'].notna()) &
+            (df_bloque_raw['_FALL'] >= fecha_inicio_ano) &
+            (df_bloque_raw['_FALL'] <= fecha_eval_dt_b) &
+            (df_bloque_raw['INDICADOR_MTBF'] == 1)
+        ].copy()
+        
+        if not df_fallas_ano.empty:
+            # Calcular Run Life si no existe
+            if 'RL_DIAS' not in df_fallas_ano.columns:
+                if col_rl and col_rl in df_fallas_ano.columns:
+                    df_fallas_ano['RL_DIAS'] = pd.to_numeric(df_fallas_ano[col_rl], errors='coerce')
+                else:
+                    df_fallas_ano['RL_DIAS'] = (df_fallas_ano['_FALL'] - df_fallas_ano['_RUN']).dt.days
+            
+            df_fallas_ano['RL_DIAS'] = df_fallas_ano['RL_DIAS'].fillna(0)
+            
+            # Definir rangos de etapa
+            rangos = [
+                (0, 30, "0-30 días"),
+                (31, 90, "31-90 días"),
+                (91, 180, "91-180 días"),
+                (181, 365, "181-365 días"),
+                (366, 730, "366-730 días"),
+                (731, 1095, "731-1095 días"),
+                (1096, float('inf'), ">1095 días")
+            ]
+            
+            datos_etapas = []
+            for min_d, max_d, label in rangos:
+                count = ((df_fallas_ano['RL_DIAS'] >= min_d) & (df_fallas_ano['RL_DIAS'] <= max_d)).sum()
+                pct = (count / len(df_fallas_ano) * 100) if len(df_fallas_ano) > 0 else 0
+                
+                # Calcular RL promedio en este rango
+                mask = (df_fallas_ano['RL_DIAS'] >= min_d) & (df_fallas_ano['RL_DIAS'] <= max_d)
+                rl_prom = df_fallas_ano.loc[mask, 'RL_DIAS'].mean() if mask.any() else 0
+                
+                datos_etapas.append({
+                    'Etapa': label,
+                    'Fallas': int(count),
+                    '% del Total': f"{pct:.1f}%",
+                    'RL Promedio (días)': f"{rl_prom:.1f}d" if rl_prom > 0 else "N/A"
+                })
+            
+            df_etapas = pd.DataFrame(datos_etapas)
+            render_hud_table(df_etapas, table_id="fallas_por_etapa_ultimo_ano")
+            
+            # Gráfica de barras opcional
+            col_graf1, col_graf2 = st.columns([2, 1])
+            with col_graf1:
+                fig_etapas = go_fig.Figure()
+                fig_etapas.add_trace(go_fig.Bar(
+                    x=df_etapas['Etapa'],
+                    y=df_etapas['Fallas'],
+                    marker_color=_G,
+                    hovertemplate='<b>%{x}</b><br>Fallas: %{y}<extra></extra>'
+                ))
+                fig_etapas.update_layout(
+                    plot_bgcolor='#ffffff',
+                    paper_bgcolor='#ffffff',
+                    font=dict(family='Inter', size=11),
+                    margin=dict(l=40, r=20, t=30, b=60),
+                    height=350,
+                    showlegend=False,
+                    xaxis=dict(title='Etapa (días)', tickangle=-45),
+                    yaxis=dict(title='Número de Fallas')
+                )
+                st.plotly_chart(fig_etapas, use_container_width=True)
+        else:
+            st.info("No hay datos de fallas para el último año.")
+
     except Exception as e:
         st.error(f"Error en Tab Índices: {e}")
