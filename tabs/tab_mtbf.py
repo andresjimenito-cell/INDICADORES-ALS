@@ -216,7 +216,7 @@ def render_tab_mtbf(df_bd_filtered, df_forma9_filtered, fecha_evaluacion,
     except Exception:
         mtbf_global, step_df = 0.0, pd.DataFrame()
 
-    mtbf_global = float(mtbf_global) if pd.notna(mtbf_global) else 0.0
+    mtbf_global = mtbf_global if pd.notna(mtbf_global) else 0.0
 
     rl_total = float(bd['RUN LIFE'].mean()) if bd is not None and not bd.empty and 'RUN LIFE' in bd.columns and pd.notna(bd['RUN LIFE'].mean()) else 0.0
     rl_efec = float(bd['RUN_LIFE_EFECTIVO'].mean()) if bd is not None and not bd.empty and 'RUN_LIFE_EFECTIVO' in bd.columns and pd.notna(bd['RUN_LIFE_EFECTIVO'].mean()) and (bd['RUN_LIFE_EFECTIVO'] > 0).any() else rl_total
@@ -449,7 +449,7 @@ def render_tab_mtbf(df_bd_filtered, df_forma9_filtered, fecha_evaluacion,
                       "splitLine": {"lineStyle": {"color": "rgba(46,125,70,0.06)"}}},
             "series": [{
                 "type": "bar",
-                "data": [{"value": int(counts[l]), "itemStyle": {"color": bin_colors[i], "borderRadius": [5, 5, 0, 0]}} for i, l in enumerate(labels)],
+                "data": [{"value": counts[l], "itemStyle": {"color": bin_colors[i], "borderRadius": [5, 5, 0, 0]}} for i, l in enumerate(labels)],
                 "barWidth": "50%",
                 "label": {"show": True, "position": "top", "color": _T2,
                           "fontFamily": _FS, "fontSize": 10, "fontWeight": "bold",

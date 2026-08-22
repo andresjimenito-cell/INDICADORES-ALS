@@ -178,11 +178,13 @@ def render_tab_performance(df_bd_filtered, df_forma9_filtered, fecha_evaluacion)
             df_forma9_untr['FECHA_FORMA9'] = pd.to_datetime(df_forma9_untr['FECHA_FORMA9'], errors='coerce')
 
     # ── 2. PROCESAMIENTO DE PRODUCCIÓN Y POZOS ON ───────────────────────────
+    eval_year  = int(fecha_eval.year)
+    eval_month = int(fecha_eval.month)
     try:
         if not df_forma9_untr.empty and 'FECHA_FORMA9' in df_forma9_untr.columns:
             df_month = df_forma9_untr[
-                (df_forma9_untr['FECHA_FORMA9'].dt.year  == fecha_eval.year) &
-                (df_forma9_untr['FECHA_FORMA9'].dt.month == fecha_eval.month)
+                (df_forma9_untr['FECHA_FORMA9'].dt.year  == eval_year) &
+                (df_forma9_untr['FECHA_FORMA9'].dt.month == eval_month)
             ].copy()
         else:
             df_month = pd.DataFrame()
@@ -238,7 +240,7 @@ def render_tab_performance(df_bd_filtered, df_forma9_filtered, fecha_evaluacion)
                 prov = str(last.get('PROVEEDOR', 'N/A'))
                 if prov in ('nan', 'None', ''): prov = 'N/A'
 
-                falla = bool(pd.notna(last.get('FECHA_FALLA')))
+                falla = pd.notna(last.get('FECHA_FALLA'))
                 efic = round(bopd / (rle / 365.25), 1) if rle and rle > 0 else 0.0
                 results.append({'POZO': pozo, 'BOPD': round(bopd, 1), 'RUN_LIFE': rl,
                                  'RLE': rle, 'ALS': als, 'PROVEEDOR': prov,
@@ -258,9 +260,9 @@ def render_tab_performance(df_bd_filtered, df_forma9_filtered, fecha_evaluacion)
         st.warning("No hay pozos ON con producción detectados para el mes seleccionado.")
         return
 
-    total_bopd = float(df_perf['BOPD'].sum())
-    avg_bopd   = float(df_perf['BOPD'].mean()) if len(df_perf) > 0 else 0.0
-    avg_efic   = float(df_perf['EFIC'].mean()) if len(df_perf) > 0 else 0.0
+    total_bopd = df_perf['BOPD'].sum()
+    avg_bopd   = df_perf['BOPD'].mean() if len(df_perf) > 0 else 0.0
+    avg_efic   = df_perf['EFIC'].mean() if len(df_perf) > 0 else 0.0
     n_on       = len(df_perf)
     n_falla    = int(df_perf['FALLA'].sum())
 
