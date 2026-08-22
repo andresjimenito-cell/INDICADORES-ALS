@@ -18,29 +18,34 @@ from upload_ui import render_upload_section
 # Helpers internos
 # ---------------------------------------------------------------------------
 
+EXCLUIDOS_SIDEBAR = {
+    'CANAGUARO', 'ENTRERIOS', 'ENTRE RIOS', 'ENTRE RÍOS', 'ENTRE_RIOS',
+    'MAPACHE', 'PERICO', 'PERICO (88)', 'MAPACHE PERICO', 'MAPACHE - PERICO',
+    'MAPACHE/PERICO', 'MAPACHE-PERICO',
+    'CORCEL NE', 'CORCEL_NE', 'CORCEL-NE', 'CORCEL N3', 'CORCEL_N3', 'CORCEL-N3',
+    'RIO META', 'RIO_META', 'RÍO META', 'RÍO_META',
+    'EL DIFICIL', 'EL DIFICIL NE', 'DIFICIL', 'EL DIFÍCIL', 'EL DIFÍCIL NE'
+}
+
 def _unique_options(df_calc: pd.DataFrame, col: str) -> list:
     if df_calc is None or df_calc.empty or col not in df_calc.columns:
         return ['TODOS']
     try:
         opts = sorted(df_calc[col].dropna().astype(str).unique().tolist())
-        EXCLUIDOS = {
-            'CANAGUARO', 'ENTRERIOS', 'ENTRE RIOS', 'ENTRE RÍOS', 'ENTRE_RIOS',
-            'MAPACHE', 'PERICO', 'PERICO (88)', 'MAPACHE PERICO', 'MAPACHE - PERICO',
-            'MAPACHE/PERICO', 'MAPACHE-PERICO',
-            'CORCEL NE', 'CORCEL_NE', 'CORCEL-NE', 'CORCEL N3', 'CORCEL_N3', 'CORCEL-N3',
-            'RIO META', 'RIO_META', 'RÍO META', 'RÍO_META',
-            'EL DIFICIL', 'EL DIFICIL NE', 'DIFICIL', 'EL DIFÍCIL', 'EL DIFÍCIL NE'
-        }
-        opts = [o for o in opts if o.strip().upper() not in EXCLUIDOS]
+        opts = [o for o in opts if o.strip().upper() not in EXCLUIDOS_SIDEBAR]
         return ['TODOS'] + opts
     except Exception:
         return ['TODOS']
 
 
 def _ensure(options: list, key_name: str) -> list:
+    """Asegura que el valor actual en session_state esté en las opciones.
+    Si no está (ej. datos recargados), resetea a 'TODOS'."""
     cur = str(st.session_state.get(key_name, 'TODOS') or 'TODOS')
     if cur != 'TODOS' and cur not in options:
-        options = options + [cur]
+        # Valor obsoleto -> resetear
+        st.session_state[key_name] = 'TODOS'
+        return ['TODOS'] + [o for o in options if o != 'TODOS']
     return options
 
 
@@ -48,7 +53,7 @@ def _mark_change():
     st.session_state['filters_last_change'] = datetime.now().isoformat()
 
 
-def _select(label: str, icon: str, options: list, key: str):
+def _select(label: str, icon: str, options: list, key: str, disabled: bool = False):
     cur = str(st.session_state.get(key, 'TODOS') or 'TODOS')
     try:
         idx = options.index(cur) if cur in options else 0
@@ -57,7 +62,7 @@ def _select(label: str, icon: str, options: list, key: str):
 
     return st.sidebar.selectbox(
         f"{icon} {label}", options=options, index=idx, key=key,
-        on_change=_mark_change, label_visibility="visible"
+        on_change=_mark_change, label_visibility="visible", disabled=disabled
     )
 
 
@@ -216,30 +221,42 @@ def render_sidebar() -> dict:
     st.sidebar.markdown(_header_html(logo_tag), unsafe_allow_html=True)
 
     # ── Bloque de filtros ────────────────────────────────────────────────────
-    st.sidebar.markdown(_section_header(""), unsafe_allow_html=True)
+    st.sidebar.markdown(_section_header("FILTROS"), unsafe_allow_html=True)
 
     df_calc = st.session_state.get('df_bd_calculated')
+    has_data = df_calc is not None and not df_calc.empty
+    is_loading = st.session_state.get('_sidebar_loading', False)
 
     st.sidebar.markdown('<div style="padding: 0 10px;">', unsafe_allow_html=True)
 
-    if df_calc is None or df_calc.empty:
-        st.sidebar.markdown(_no_data_box(), unsafe_allow_html=True)
+    filter_cols = ('ACTIVO', 'BLOQUE', 'CAMPO', 'ALS', 'PROVEEDOR', 'NICK')
+    
+    if not has_data:
+        # Mostrar placeholders deshabilitados
+        for col in filter_cols:
+            _select(_FILTER_LABELS[col], _FILTER_ICONS[col], ['TODOS'], _FILTER_KEYS[col], disabled=True)
+        if is_loading:
+            st.sidebar.markdown(
+                '<div style="margin:8px 16px; padding:10px; background:rgba(19,118,89,0.08); '
+                'border:1px solid rgba(19,118,89,0.15); border-radius:6px; '
+                'text-align:center; font-family:\'Montserrat\', sans-serif !important; '
+                'font-size:0.6rem; color:#137659; letter-spacing:1px;">'
+                '⏳ Cargando datos...</div>', unsafe_allow_html=True)
+        else:
+            st.sidebar.markdown(_no_data_box(), unsafe_allow_html=True)
     else:
-        for col in ('ACTIVO', 'BLOQUE', 'CAMPO', 'ALS', 'PROVEEDOR', 'NICK'):
+        for col in filter_cols:
             opts = _ensure(_unique_options(df_calc, col), _FILTER_KEYS[col])
             _select(_FILTER_LABELS[col], _FILTER_ICONS[col], opts, _FILTER_KEYS[col])
 
     st.sidebar.markdown('</div>', unsafe_allow_html=True)
 
-    # ── Separador + herramientas ─────────────────────────────────────────────
+    # ── Separador + Configuración (Upload) ───────────────────────────────────
     st.sidebar.markdown(_divider(), unsafe_allow_html=True)
+    st.sidebar.markdown(_section_header("CONFIGURACIÓN"), unsafe_allow_html=True)
 
-    st.sidebar.markdown(_section_header("Herramientas"), unsafe_allow_html=True)
-    st.sidebar.markdown('<div style="padding: 4px 10px 8px 10px;">', unsafe_allow_html=True)
-
-    # Upload de configuración
-    render_upload_section(sidebar=True)
-    st.sidebar.markdown('</div>', unsafe_allow_html=True)
+    # Upload directo en sidebar (no popover) para evitar bugs
+    _render_upload_sidebar()
 
     # ── Separador + estado de filtros activos ────────────────────────────────
     st.sidebar.markdown(_divider(), unsafe_allow_html=True)
@@ -250,9 +267,42 @@ def render_sidebar() -> dict:
     n_active = len(active_keys)
 
     if n_active > 0:
-        st.sidebar.markdown(f'<div style="margin:0 10px 6px 10px; padding:5px 10px; background:rgba(21,128,61,0.04); border:1px solid rgba(21,128,61,0.15); border-left:2px solid #15803d; border-radius:4px; font-family:\'Montserrat\', sans-serif !important; font-size:0.55rem; color:#15803d; font-weight:700; letter-spacing:1.5px;">◈ {n_active} FILTRO{"S" if n_active > 1 else ""} ACTIVO{"S" if n_active > 1 else ""}</div>', unsafe_allow_html=True)
+        active_labels = []
+        for col, key in _FILTER_KEYS.items():
+            val = st.session_state.get(key, 'TODOS')
+            if val != 'TODOS':
+                active_labels.append(f"{_FILTER_ICONS[col]} {_FILTER_LABELS[col]}: <b>{val}</b>")
+        
+        st.sidebar.markdown(
+            f'<div style="margin:0 10px 6px 10px; padding:8px 10px; '
+            f'background:rgba(21,128,61,0.06); border:1px solid rgba(21,128,61,0.15); '
+            f'border-left:3px solid #15803d; border-radius:6px; '
+            f'font-family:\'Montserrat\', sans-serif !important; font-size:0.55rem; '
+            f'color:#15803d; font-weight:700; letter-spacing:1px; line-height:1.6;">'
+            f'◈ {n_active} FILTRO{"S" if n_active > 1 else ""} ACTIVO{"S" if n_active > 1 else ""}<br/>'
+            f'<span style="font-weight:500; font-size:0.5rem; opacity:0.8;">{" · ".join(active_labels)}</span>'
+            f'</div>', unsafe_allow_html=True)
+    else:
+        st.sidebar.markdown(
+            '<div style="margin:0 10px 6px 10px; padding:8px 10px; '
+            'background:rgba(19,118,89,0.04); border:1px dashed rgba(19,118,89,0.12); '
+            'border-radius:6px; font-family:\'Montserrat\', sans-serif !important; '
+            'font-size:0.55rem; color:#5b5c55; font-weight:600; text-align:center; '
+            'letter-spacing:1px;">Sin filtros activos</div>', unsafe_allow_html=True)
 
-    # ── Logout ───────────────────────────────────────────────────────────────
+    # ── Botón recargar datos ─────────────────────────────────────────────────
+    st.sidebar.markdown('<div style="padding: 4px 10px 8px 10px;">', unsafe_allow_html=True)
+    if st.sidebar.button("🔄 RECARGAR DATOS", key="btn_reload_data", use_container_width=True, help="Recalcula indicadores con los archivos actuales"):
+        st.session_state['_sidebar_loading'] = True
+        # Limpiar cache para forzar recálculo
+        keys_to_clear = [k for k in st.session_state.keys() if k.startswith('df_') or k in ('reporte_runes', 'historico_run_life', 'reporte_fallas', 'df_trabajo', 'verificaciones')]
+        for k in keys_to_clear:
+            st.session_state.pop(k, None)
+        st.rerun()
+    st.sidebar.markdown('</div>', unsafe_allow_html=True)
+
+    # ── Separador + Logout ───────────────────────────────────────────────────
+    st.sidebar.markdown(_divider(), unsafe_allow_html=True)
     st.sidebar.markdown('<div style="padding:4px 10px 10px 10px;">', unsafe_allow_html=True)
     if st.sidebar.button("⏻  CERRAR SESIÓN", key="ind_btn_logout", use_container_width=True):
         st.session_state.authenticated = False
@@ -270,3 +320,10 @@ def render_sidebar() -> dict:
         'selected_proveedor': st.session_state.get('general_proveedor_filter', 'TODOS'),
         'selected_nick':      st.session_state.get('general_nick_filter',      'TODOS'),
     }
+
+
+def _render_upload_sidebar():
+    """Renderiza la sección de carga directamente en sidebar (sin popover)."""
+    from upload_ui import render_upload_section
+    # Usar el upload_ui pero forzando modo sidebar
+    render_upload_section(sidebar=True)
