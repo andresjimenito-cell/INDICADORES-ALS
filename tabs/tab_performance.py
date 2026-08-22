@@ -15,7 +15,6 @@ import pandas as pd
 import numpy as np
 import streamlit as st
 import streamlit.components.v1 as components
-from ui.styles import render_hud_table
 
 # ── Tokens de Color y Estilo Simétricos (Parex Clásico) ─────────────────────
 _G  = "#2E7D46"   # Verde Principal
@@ -47,36 +46,143 @@ def _halo(c):
 
 
 def _echarts(opts: dict, h: int, cid: str) -> str:
+    # Sanitizar json para evitar NaN no válidos
+    opts_json = json.dumps(opts).replace('NaN', '0.0').replace('null', '0')
     return (
         f'<div id="{cid}" style="width:100%;height:{h}px;"></div>'
         f'<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>'
-        f'<script>(function(){{var c=echarts.init(document.getElementById("{cid}"));'
-        f'c.setOption({json.dumps(opts)});'
+        f'<script>(function(){{var el=document.getElementById("{cid}");if(!el)return;'
+        f'var c=echarts.init(el);'
+        f'c.setOption({opts_json});'
         f'window.addEventListener("resize",function(){{c.resize();}});}})();</script>'
     )
 
 
 def bucket_runlife(days):
-    if pd.isna(days): return 'N/A'
-    years = days / 365.25
-    if years < 2: return '< 2 años'
-    if years < 4: return '2–4 años'
-    if years < 6: return '4–6 años'
-    return '> 6 años'
+    if pd.isna(days) or days is None: return '< 2 años'
+    try:
+        years = float(days) / 365.25
+        if years < 2: return '< 2 años'
+        if years < 4: return '2–4 años'
+        if years < 6: return '4–6 años'
+        return '> 6 años'
+    except Exception:
+        return '< 2 años'
+
+
+def _render_custom_table(df_table, title=""):
+    """Renderiza una tabla ejecutiva rápida, ligera y con estilo nativo Parex."""
+    if df_table is None or df_table.empty:
+        st.info("Sin datos para mostrar.")
+        return
+
+    cols = list(df_table.columns)
+    rows_html = ""
+    for _, row in df_table.iterrows():
+        cells_html = ""
+        for c in cols:
+            val = str(row[c])
+            style = "padding: 8px 10px; font-size: 11.5px; border-bottom: 1px solid rgba(46,125,70,0.08);"
+            if c in ('BOPD', 'RLE (d)', 'RL (d)', 'Efic.'):
+                style += f" text-align: right; font-weight: 600; font-family: {_FS}; color: {_T};"
+            elif c == 'Pozo':
+                style += f" font-weight: 700; font-family: {_FS}; color: {_G2};"
+            elif c in ('Estado', 'Alerta'):
+                if 'FALLA' in val.upper():
+                    badge = f'<span style="background:{_R2}; color:{_R}; font-weight:700; padding:2px 7px; border-radius:10px; border:1px solid {_R}40; font-size:9.5px;">{val}</span>'
+                elif 'OK' in val.upper():
+                    badge = f'<span style="background:{_G3}; color:{_G}; font-weight:700; padding:2px 7px; border-radius:10px; border:1px solid {_G}40; font-size:9.5px;">{val}</span>'
+                else:
+                    badge = f'<span style="background:{_Y2}; color:{_Y}; font-weight:700; padding:2px 7px; border-radius:10px; border:1px solid {_Y}40; font-size:9.5px;">{val}</span>'
+                cells_html += f'<td style="{style} text-align:center;">{badge}</td>'
+                continue
+            else:
+                style += f" font-family: {_FS}; color: {_T2};"
+            cells_html += f'<td style="{style}">{val}</td>'
+        rows_html += f"<tr>{cells_html}</tr>"
+
+    headers_html = "".join([
+        f'<th style="background:{_G3}; color:{_G2}; font-family:{_FS}; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.6px; padding:8px 10px; border-bottom:1.5px solid {_BR}; text-align:{"right" if c in ("BOPD", "RLE (d)", "RL (d)", "Efic.") else ("center" if c in ("Estado", "Alerta") else "left")};">{c}</th>'
+        for c in cols
+    ])
+
+    table_html = f"""
+    <div style="{_CARD} padding:0; overflow:hidden; margin-top:4px;">
+        <table style="width:100%; border-collapse:collapse; text-align:left;">
+            <thead>
+                <tr>{headers_html}</tr>
+            </thead>
+            <tbody>
+                {rows_html}
+            </tbody>
+        </table>
+    </div>
+    """
+    st.markdown(table_html, unsafe_allow_html=True)
 
 
 def render_tab_performance(df_bd_filtered, df_forma9_filtered, fecha_evaluacion):
-    """Renderiza el módulo izquierdo de PERFORMANCE con simetría total a MTBF."""
+    """Renderiza el módulo izquierdo de PERFORMANCE con simetría total a MTBF y Tablero."""
     fecha_eval = pd.Timestamp(fecha_evaluacion)
+    fecha_eval_dt = fecha_eval.normalize()
 
-    # ── 1. PROCESAMIENTO DE PRODUCCIÓN Y POZOS ON ───────────────────────────
+    # ── 1. CARGA Y FILTRADO EXACTO (ALINEADO CON TABLERO E ÍNDICES) ───────────
+    df_raw = st.session_state.get('df_bd_calculated')
+    df_f9_raw = st.session_state.get('df_forma9_calculated')
+
+    _filtros = {
+        'ACTIVO':    st.session_state.get('general_activo_filter',    'TODOS'),
+        'BLOQUE':    st.session_state.get('general_bloque_filter',    'TODOS'),
+        'CAMPO':     st.session_state.get('general_campo_filter',     'TODOS'),
+        'ALS':       st.session_state.get('general_als_filter',       'TODOS'),
+        'PROVEEDOR': st.session_state.get('general_proveedor_filter', 'TODOS'),
+        'NICK':      st.session_state.get('general_nick_filter',      'TODOS'),
+    }
+
+    if df_raw is not None:
+        bd = df_raw.copy()
+        EXCLUIDOS = {
+            'CANAGUARO', 'ENTRERIOS', 'ENTRE RIOS', 'ENTRE RÍOS', 'ENTRE_RIOS',
+            'MAPACHE', 'PERICO', 'PERICO (88)', 'MAPACHE PERICO', 'MAPACHE - PERICO',
+            'MAPACHE/PERICO', 'MAPACHE-PERICO',
+            'CORCEL NE', 'CORCEL_NE', 'CORCEL-NE', 'CORCEL N3', 'CORCEL_N3', 'CORCEL-N3',
+            'RIO META', 'RIO_META', 'RÍO META', 'RÍO_META',
+            'EL DIFICIL', 'EL DIFICIL NE', 'DIFICIL', 'EL DIFÍCIL', 'EL DIFÍCIL NE', 'TODOS'
+        }
+        for col_filter in ('ACTIVO', 'BLOQUE', 'CAMPO'):
+            if col_filter in bd.columns and EXCLUIDOS:
+                bd = bd[~bd[col_filter].astype(str).str.upper().str.strip().isin(EXCLUIDOS)]
+        for col in ('FECHA_RUN', 'FECHA_FALLA', 'FECHA_PULL'):
+            if col in bd.columns:
+                bd[col] = pd.to_datetime(bd[col], errors='coerce')
+        bd = bd[bd['FECHA_RUN'].dt.normalize() <= fecha_eval_dt].copy()
+        bd.loc[bd['FECHA_FALLA'].dt.normalize() > fecha_eval_dt, 'FECHA_FALLA'] = pd.NaT
+        
+        for col, val in _filtros.items():
+            if val != 'TODOS' and col in bd.columns:
+                bd = bd[bd[col] == val]
+    else:
+        bd = df_bd_filtered.copy() if df_bd_filtered is not None else pd.DataFrame()
+        for col in ('FECHA_RUN', 'FECHA_FALLA', 'FECHA_PULL'):
+            if col in bd.columns:
+                bd[col] = pd.to_datetime(bd[col], errors='coerce')
+
+    if df_f9_raw is not None:
+        df_forma9_untr = df_f9_raw.copy()
+        df_forma9_untr['FECHA_FORMA9'] = pd.to_datetime(df_forma9_untr['FECHA_FORMA9'], errors='coerce')
+        pozos_en_resumen = bd['POZO'].astype(str).str.strip().unique() if 'POZO' in bd.columns else []
+        df_forma9_untr = df_forma9_untr[df_forma9_untr['POZO'].astype(str).str.strip().isin(pozos_en_resumen)].copy()
+    else:
+        df_forma9_untr = df_forma9_filtered.copy() if df_forma9_filtered is not None else pd.DataFrame()
+        if 'FECHA_FORMA9' in df_forma9_untr.columns:
+            df_forma9_untr['FECHA_FORMA9'] = pd.to_datetime(df_forma9_untr['FECHA_FORMA9'], errors='coerce')
+
+    # ── 2. PROCESAMIENTO DE PRODUCCIÓN Y POZOS ON ───────────────────────────
     try:
-        df_f9 = df_forma9_filtered.copy() if df_forma9_filtered is not None else pd.DataFrame()
-        if not df_f9.empty and 'FECHA_FORMA9' in df_f9.columns:
-            df_f9['FECHA_FORMA9'] = pd.to_datetime(df_f9['FECHA_FORMA9'], errors='coerce')
-            df_month = df_f9[
-                (df_f9['FECHA_FORMA9'].dt.year  == fecha_eval.year) &
-                (df_f9['FECHA_FORMA9'].dt.month == fecha_eval.month)
+        if not df_forma9_untr.empty and 'FECHA_FORMA9' in df_forma9_untr.columns:
+            df_month = df_forma9_untr[
+                (df_forma9_untr['FECHA_FORMA9'].dt.year  == fecha_eval.year) &
+                (df_forma9_untr['FECHA_FORMA9'].dt.month == fecha_eval.month)
             ].copy()
         else:
             df_month = pd.DataFrame()
@@ -94,35 +200,53 @@ def render_tab_performance(df_bd_filtered, df_forma9_filtered, fecha_evaluacion)
             mask_fluid = pd.Series(True, index=df_month.index)
 
         df_on = df_month[mask_dias & mask_fluid].copy()
+        pozos_validos = set(bd['POZO'].astype(str).str.strip().unique()) if 'POZO' in bd.columns else None
+        if pozos_validos is not None and not df_on.empty:
+            df_on = df_on[df_on['POZO'].astype(str).str.strip().isin(pozos_validos)].copy()
+
         if bopd_col and not df_on.empty:
-            df_on[bopd_col] = pd.to_numeric(df_on[bopd_col], errors='coerce').fillna(0)
-            df_sum = df_on.groupby('POZO', as_index=False).agg({bopd_col: 'mean'})
-            df_sum.rename(columns={bopd_col: 'BOPD'}, inplace=True)
+            df_on[bopd_col] = pd.to_numeric(df_on[bopd_col], errors='coerce').fillna(0.0)
+            df_on['POZO_STR'] = df_on['POZO'].astype(str).str.strip()
+            df_sum = df_on.groupby('POZO_STR', as_index=False).agg({bopd_col: 'mean'})
+            df_sum.rename(columns={'POZO_STR': 'POZO', bopd_col: 'BOPD'}, inplace=True)
+        elif not df_on.empty:
+            df_on['POZO_STR'] = df_on['POZO'].astype(str).str.strip()
+            df_sum = pd.DataFrame({'POZO': df_on['POZO_STR'].unique(), 'BOPD': 0.0})
         else:
             df_sum = pd.DataFrame(columns=['POZO', 'BOPD'])
 
-        bd = df_bd_filtered.copy() if df_bd_filtered is not None else pd.DataFrame()
-        if not bd.empty:
-            if 'FECHA_RUN' in bd.columns:
-                bd['FECHA_RUN'] = pd.to_datetime(bd['FECHA_RUN'], errors='coerce')
-            if 'FECHA_FALLA' in bd.columns:
-                bd['FECHA_FALLA'] = pd.to_datetime(bd['FECHA_FALLA'], errors='coerce')
+        # Pre-indexar BD para lookup por pozo
+        bd['_P_NORM'] = bd['POZO'].astype(str).str.strip() if 'POZO' in bd.columns else pd.Series(dtype=str)
+        bd_sorted = bd.sort_values('FECHA_RUN', ascending=False) if 'FECHA_RUN' in bd.columns else bd
 
         results = []
         for _, row in df_sum.iterrows():
-            pozo, bopd = row['POZO'], row['BOPD']
-            pozo_data = bd[bd['POZO'] == pozo].sort_values('FECHA_RUN', ascending=False) if not bd.empty and 'POZO' in bd.columns else pd.DataFrame()
+            pozo = str(row['POZO']).strip()
+            bopd = float(row.get('BOPD', 0.0) or 0.0)
+            pozo_data = bd_sorted[bd_sorted['_P_NORM'] == pozo] if not bd.empty and '_P_NORM' in bd_sorted.columns else pd.DataFrame()
             if not pozo_data.empty:
                 last = pozo_data.iloc[0]
-                rl   = last.get('RUN LIFE', 0) or 0
-                rle  = last.get('RUN_LIFE_EFECTIVO', rl) or rl
-                als  = str(last.get('ALS', 'N/A'))
+                raw_rl = last.get('RUN LIFE')
+                raw_rle = last.get('RUN_LIFE_EFECTIVO')
+                rl = float(raw_rl) if pd.notna(raw_rl) and raw_rl is not None else 0.0
+                rle = float(raw_rle) if pd.notna(raw_rle) and raw_rle is not None else rl
+                if pd.isna(rle) or rle < 0: rle = 0.0
+                if pd.isna(rl) or rl < 0: rl = 0.0
+
+                als = str(last.get('ALS', 'N/A'))
+                if als in ('nan', 'None', ''): als = 'N/A'
                 prov = str(last.get('PROVEEDOR', 'N/A'))
-                falla = pd.notna(last.get('FECHA_FALLA'))
-                efic = round(bopd / (rle / 365.25), 1) if rle and rle > 0 else 0
+                if prov in ('nan', 'None', ''): prov = 'N/A'
+
+                falla = bool(pd.notna(last.get('FECHA_FALLA')))
+                efic = round(bopd / (rle / 365.25), 1) if rle and rle > 0 else 0.0
                 results.append({'POZO': pozo, 'BOPD': round(bopd, 1), 'RUN_LIFE': rl,
                                  'RLE': rle, 'ALS': als, 'PROVEEDOR': prov,
                                  'FALLA': falla, 'EFIC': efic, 'RANGO': bucket_runlife(rl)})
+            else:
+                results.append({'POZO': pozo, 'BOPD': round(bopd, 1), 'RUN_LIFE': 0.0,
+                                 'RLE': 0.0, 'ALS': 'N/A', 'PROVEEDOR': 'N/A',
+                                 'FALLA': False, 'EFIC': 0.0, 'RANGO': bucket_runlife(0)})
 
         df_perf = pd.DataFrame(results)
 
@@ -134,18 +258,12 @@ def render_tab_performance(df_bd_filtered, df_forma9_filtered, fecha_evaluacion)
         st.warning("No hay pozos ON con producción detectados para el mes seleccionado.")
         return
 
-    total_bopd = df_perf['BOPD'].sum()
-    avg_bopd   = df_perf['BOPD'].mean()
-    avg_efic   = df_perf['EFIC'].mean()
+    total_bopd = float(df_perf['BOPD'].sum())
+    avg_bopd   = float(df_perf['BOPD'].mean()) if len(df_perf) > 0 else 0.0
+    avg_efic   = float(df_perf['EFIC'].mean()) if len(df_perf) > 0 else 0.0
     n_on       = len(df_perf)
     n_falla    = int(df_perf['FALLA'].sum())
 
-    _filtros = {
-        'ACTIVO': st.session_state.get('general_activo_filter', 'TODOS'),
-        'BLOQUE': st.session_state.get('general_bloque_filter', 'TODOS'),
-        'CAMPO':  st.session_state.get('general_campo_filter',  'TODOS'),
-        'ALS':    st.session_state.get('general_als_filter',    'TODOS'),
-    }
     _activos_lbl = " · ".join(v for v in _filtros.values() if v != 'TODOS') or "Todos los activos"
 
     # ── 1. ENCABEZADO HERO SIMÉTRICO ──────────────────────────────────────────
@@ -301,10 +419,15 @@ def render_tab_performance(df_bd_filtered, df_forma9_filtered, fecha_evaluacion)
         scatter_data = []
         for _, r in grp.iterrows():
             estado_s = "FALLA" if r['FALLA'] else "ON"
+            rle_val = float(r['RLE']) if pd.notna(r['RLE']) else 0.0
+            bopd_val = float(r['BOPD']) if pd.notna(r['BOPD']) else 0.0
+            rl_val = float(r['RUN_LIFE']) if pd.notna(r['RUN_LIFE']) else 0.0
+            efic_val = float(r['EFIC']) if pd.notna(r['EFIC']) else 0.0
+
             scatter_data.append({
-                "value": [float(r['RLE']), float(r['BOPD'])],
-                "name": r['POZO'],
-                "tooltip_extra": f"{r['PROVEEDOR']} | RL: {r['RUN_LIFE']:.0f}d | Efic: {r['EFIC']:.1f} BOPD/año | {estado_s}",
+                "value": [rle_val, bopd_val],
+                "name": str(r['POZO']),
+                "tooltip_extra": f"{r['PROVEEDOR']} | RL: {rl_val:.0f}d | Efic: {efic_val:.1f} BOPD/año | {estado_s}",
                 "itemStyle": {
                     "color": als_colors.get(str(als_name), _G),
                     "borderColor": _R if r['FALLA'] else als_colors.get(str(als_name), _G),
@@ -320,20 +443,24 @@ def render_tab_performance(df_bd_filtered, df_forma9_filtered, fecha_evaluacion)
 
     # Línea de tendencia
     if len(df_perf) > 3:
-        df_clean = df_perf[['RLE', 'BOPD']].dropna()
-        x_arr = df_clean['RLE'].to_numpy(dtype=float)
-        y_arr = df_clean['BOPD'].to_numpy(dtype=float)
-        if len(x_arr) > 0:
-            coef = np.polyfit(x_arr, y_arr, 1)
-            x_min, x_max = float(x_arr.min()), float(x_arr.max())
-            scatter_series.append({
-                "name": "Tendencia", "type": "line",
-                "data": [[x_min, round(float(np.polyval(coef, x_min)), 1)],
-                         [x_max, round(float(np.polyval(coef, x_max)), 1)]],
-                "lineStyle": {"type": "dashed", "color": _T2, "width": 1.5},
-                "itemStyle": {"color": _T2}, "symbol": "none",
-                "tooltip": {"show": False}
-            })
+        try:
+            df_clean = df_perf[['RLE', 'BOPD']].dropna()
+            df_clean = df_clean[(df_clean['RLE'] > 0) | (df_clean['BOPD'] > 0)]
+            x_arr = df_clean['RLE'].to_numpy(dtype=float)
+            y_arr = df_clean['BOPD'].to_numpy(dtype=float)
+            if len(x_arr) > 2 and (x_arr.max() > x_arr.min()):
+                coef = np.polyfit(x_arr, y_arr, 1)
+                x_min, x_max = float(x_arr.min()), float(x_arr.max())
+                scatter_series.append({
+                    "name": "Tendencia", "type": "line",
+                    "data": [[x_min, round(float(np.polyval(coef, x_min)), 1)],
+                             [x_max, round(float(np.polyval(coef, x_max)), 1)]],
+                    "lineStyle": {"type": "dashed", "color": _T2, "width": 1.5},
+                    "itemStyle": {"color": _T2}, "symbol": "none",
+                    "tooltip": {"show": False}
+                })
+        except Exception:
+            pass
 
     scatter_opts = {
         "backgroundColor": "transparent",
@@ -385,7 +512,7 @@ def render_tab_performance(df_bd_filtered, df_forma9_filtered, fecha_evaluacion)
                   "splitLine": {"lineStyle": {"color": "rgba(46,125,70,0.06)"}}},
         "series": [{
             "type": "bar",
-            "data": [{"value": round(float(bopd_map.get(l, 0.0)), 1),
+            "data": [{"value": round(float(bopd_map.get(l, 0.0) or 0.0), 1),
                       "itemStyle": {"color": bracket_colors[i], "borderRadius": [5, 5, 0, 0]}}
                      for i, l in enumerate(rl_brackets)],
             "barWidth": "50%",
@@ -407,5 +534,9 @@ def render_tab_performance(df_bd_filtered, df_forma9_filtered, fecha_evaluacion)
     )
     top5 = df_perf.nlargest(5, 'BOPD')[['POZO', 'BOPD', 'RLE', 'EFIC', 'ALS', 'FALLA']].copy()
     top5['ESTADO'] = top5['FALLA'].map({True: '⚠ FALLA', False: 'OK'})
-    top5 = top5.rename(columns={'POZO': 'Pozo', 'BOPD': 'BOPD', 'RLE': 'RLE (d)', 'EFIC': 'Efic.', 'ALS': 'Tec.', 'ESTADO': 'Estado'})
-    render_hud_table(top5[['Pozo', 'BOPD', 'RLE (d)', 'Efic.', 'Tec.', 'Estado']])
+    top5['BOPD'] = top5['BOPD'].apply(lambda x: f"{float(x):,.1f}")
+    top5['RLE (d)'] = top5['RLE'].apply(lambda x: f"{float(x):.0f}d")
+    top5['Efic.'] = top5['EFIC'].apply(lambda x: f"{float(x):.1f}")
+    top5['Tec.'] = top5['ALS']
+    top5['Estado'] = top5['ESTADO']
+    _render_custom_table(top5[['Pozo', 'BOPD', 'RLE (d)', 'Efic.', 'Tec.', 'Estado']], title="Top 5 Productores")

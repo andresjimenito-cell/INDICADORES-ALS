@@ -16,8 +16,6 @@ import numpy as np
 import streamlit as st
 import streamlit.components.v1 as components
 from core.mtbf import calcular_mtbf
-from core.run_life_efectivo import calcular_run_life_efectivo
-from ui.styles import render_hud_table
 
 # ── Tokens de Color y Estilo Simétricos (Parex Clásico) ─────────────────────
 _G  = "#2E7D46"   # Verde Principal
@@ -49,11 +47,13 @@ def _halo(c):
 
 
 def _echarts(opts: dict, h: int, cid: str) -> str:
+    opts_json = json.dumps(opts).replace('NaN', '0.0').replace('null', '0')
     return (
         f'<div id="{cid}" style="width:100%;height:{h}px;"></div>'
         f'<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>'
-        f'<script>(function(){{var c=echarts.init(document.getElementById("{cid}"));'
-        f'c.setOption({json.dumps(opts)});'
+        f'<script>(function(){{var el=document.getElementById("{cid}");if(!el)return;'
+        f'var c=echarts.init(el);'
+        f'c.setOption({opts_json});'
         f'window.addEventListener("resize",function(){{c.resize();}});}})();</script>'
     )
 
@@ -89,8 +89,8 @@ def _kaplan_meier(df_bd):
         unique_t, counts = np.unique(t_sorted, return_counts=True)
         surv = 1.0
         n_at_risk = len(t_sorted)
-        x_vals: list[float] = [0.0]
-        y_vals: list[float] = [100.0]
+        x_vals = [0.0]
+        y_vals = [100.0]
 
         for ut in unique_t:
             mask_t = (t_sorted == ut)
@@ -110,37 +110,115 @@ def _kaplan_meier(df_bd):
     return curves
 
 
+def _render_custom_table(df_table, title=""):
+    """Renderiza una tabla ejecutiva rápida, ligera y con estilo nativo Parex."""
+    if df_table is None or df_table.empty:
+        st.info("Sin datos para mostrar.")
+        return
+
+    cols = list(df_table.columns)
+    rows_html = ""
+    for _, row in df_table.iterrows():
+        cells_html = ""
+        for c in cols:
+            val = str(row[c])
+            style = "padding: 8px 10px; font-size: 11.5px; border-bottom: 1px solid rgba(46,125,70,0.08);"
+            if c in ('BOPD', 'RLE (d)', 'RL (d)', 'Efic.'):
+                style += f" text-align: right; font-weight: 600; font-family: {_FS}; color: {_T};"
+            elif c == 'Pozo':
+                style += f" font-weight: 700; font-family: {_FS}; color: {_G2};"
+            elif c in ('Estado', 'Alerta'):
+                if 'FALLA' in val.upper():
+                    badge = f'<span style="background:{_R2}; color:{_R}; font-weight:700; padding:2px 7px; border-radius:10px; border:1px solid {_R}40; font-size:9.5px;">{val}</span>'
+                elif 'OK' in val.upper():
+                    badge = f'<span style="background:{_G3}; color:{_G}; font-weight:700; padding:2px 7px; border-radius:10px; border:1px solid {_G}40; font-size:9.5px;">{val}</span>'
+                else:
+                    badge = f'<span style="background:{_Y2}; color:{_Y}; font-weight:700; padding:2px 7px; border-radius:10px; border:1px solid {_Y}40; font-size:9.5px;">{val}</span>'
+                cells_html += f'<td style="{style} text-align:center;">{badge}</td>'
+                continue
+            else:
+                style += f" font-family: {_FS}; color: {_T2};"
+            cells_html += f'<td style="{style}">{val}</td>'
+        rows_html += f"<tr>{cells_html}</tr>"
+
+    headers_html = "".join([
+        f'<th style="background:{_G3}; color:{_G2}; font-family:{_FS}; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.6px; padding:8px 10px; border-bottom:1.5px solid {_BR}; text-align:{"right" if c in ("BOPD", "RLE (d)", "RL (d)", "Efic.") else ("center" if c in ("Estado", "Alerta") else "left")};">{c}</th>'
+        for c in cols
+    ])
+
+    table_html = f"""
+    <div style="{_CARD} padding:0; overflow:hidden; margin-top:4px;">
+        <table style="width:100%; border-collapse:collapse; text-align:left;">
+            <thead>
+                <tr>{headers_html}</tr>
+            </thead>
+            <tbody>
+                {rows_html}
+            </tbody>
+        </table>
+    </div>
+    """
+    st.markdown(table_html, unsafe_allow_html=True)
+
+
 def render_tab_mtbf(df_bd_filtered, df_forma9_filtered, fecha_evaluacion,
                     verificaciones_filtered=None, selected_activo="TODOS"):
-    """Renderiza el módulo derecho de PERFORMANCE con simetría total a Producción."""
+    """Renderiza el módulo derecho de PERFORMANCE con simetría total a Producción y Tablero."""
     fecha_eval_dt = pd.to_datetime(fecha_evaluacion)
+    fecha_eval_norm = fecha_eval_dt.normalize()
 
-    # ── 1. CÁLCULOS BASE DE CONFIABILIDAD ────────────────────────────────────
-    try:
-        mtbf_global, step_df = calcular_mtbf(df_bd_filtered, fecha_evaluacion)
-    except Exception:
-        mtbf_global, step_df = 0, pd.DataFrame()
-
-    mtbf_efectivo_global = 0
-    if df_bd_filtered is not None and not df_bd_filtered.empty:
-        try:
-            mtbf_efectivo_global, _ = calcular_mtbf(df_bd_filtered, fecha_evaluacion, col_life='RUN_LIFE_EFECTIVO')
-        except Exception:
-            pass
-
-    rl_total = df_bd_filtered['RUN LIFE'].mean() if df_bd_filtered is not None and not df_bd_filtered.empty and 'RUN LIFE' in df_bd_filtered.columns else 0
-    rl_efec = 0
-    try:
-        rl_efec, _ = calcular_run_life_efectivo(df_bd_filtered, df_forma9_filtered, fecha_evaluacion)
-    except Exception:
-        pass
+    # ── 1. CARGA Y FILTRADO EXACTO (ALINEADO CON TABLERO E ÍNDICES) ───────────
+    df_raw = st.session_state.get('df_bd_calculated')
+    df_f9_raw = st.session_state.get('df_forma9_calculated')
 
     _filtros = {
-        'ACTIVO': st.session_state.get('general_activo_filter', 'TODOS'),
-        'BLOQUE': st.session_state.get('general_bloque_filter', 'TODOS'),
-        'CAMPO':  st.session_state.get('general_campo_filter',  'TODOS'),
-        'ALS':    st.session_state.get('general_als_filter',    'TODOS'),
+        'ACTIVO':    st.session_state.get('general_activo_filter',    'TODOS'),
+        'BLOQUE':    st.session_state.get('general_bloque_filter',    'TODOS'),
+        'CAMPO':     st.session_state.get('general_campo_filter',     'TODOS'),
+        'ALS':       st.session_state.get('general_als_filter',       'TODOS'),
+        'PROVEEDOR': st.session_state.get('general_proveedor_filter', 'TODOS'),
+        'NICK':      st.session_state.get('general_nick_filter',      'TODOS'),
     }
+
+    if df_raw is not None:
+        bd = df_raw.copy()
+        EXCLUIDOS = {
+            'CANAGUARO', 'ENTRERIOS', 'ENTRE RIOS', 'ENTRE RÍOS', 'ENTRE_RIOS',
+            'MAPACHE', 'PERICO', 'PERICO (88)', 'MAPACHE PERICO', 'MAPACHE - PERICO',
+            'MAPACHE/PERICO', 'MAPACHE-PERICO',
+            'CORCEL NE', 'CORCEL_NE', 'CORCEL-NE', 'CORCEL N3', 'CORCEL_N3', 'CORCEL-N3',
+            'RIO META', 'RIO_META', 'RÍO META', 'RÍO_META',
+            'EL DIFICIL', 'EL DIFICIL NE', 'DIFICIL', 'EL DIFÍCIL', 'EL DIFÍCIL NE', 'TODOS'
+        }
+        for col_filter in ('ACTIVO', 'BLOQUE', 'CAMPO'):
+            if col_filter in bd.columns and EXCLUIDOS:
+                bd = bd[~bd[col_filter].astype(str).str.upper().str.strip().isin(EXCLUIDOS)]
+        for col in ('FECHA_RUN', 'FECHA_FALLA', 'FECHA_PULL'):
+            if col in bd.columns:
+                bd[col] = pd.to_datetime(bd[col], errors='coerce')
+        bd = bd[bd['FECHA_RUN'].dt.normalize() <= fecha_eval_norm].copy()
+        bd.loc[bd['FECHA_FALLA'].dt.normalize() > fecha_eval_norm, 'FECHA_FALLA'] = pd.NaT
+        
+        for col, val in _filtros.items():
+            if val != 'TODOS' and col in bd.columns:
+                bd = bd[bd[col] == val]
+    else:
+        bd = df_bd_filtered.copy() if df_bd_filtered is not None else pd.DataFrame()
+        for col in ('FECHA_RUN', 'FECHA_FALLA', 'FECHA_PULL'):
+            if col in bd.columns:
+                bd[col] = pd.to_datetime(bd[col], errors='coerce')
+
+    # ── 2. CÁLCULOS BASE DE CONFIABILIDAD ────────────────────────────────────
+    try:
+        mtbf_global, step_df = calcular_mtbf(bd, fecha_evaluacion)
+    except Exception:
+        mtbf_global, step_df = 0.0, pd.DataFrame()
+
+    mtbf_global = float(mtbf_global) if pd.notna(mtbf_global) else 0.0
+
+    rl_total = float(bd['RUN LIFE'].mean()) if bd is not None and not bd.empty and 'RUN LIFE' in bd.columns and pd.notna(bd['RUN LIFE'].mean()) else 0.0
+    rl_efec = float(bd['RUN_LIFE_EFECTIVO'].mean()) if bd is not None and not bd.empty and 'RUN_LIFE_EFECTIVO' in bd.columns and pd.notna(bd['RUN_LIFE_EFECTIVO'].mean()) and (bd['RUN_LIFE_EFECTIVO'] > 0).any() else rl_total
+
     _activos_lbl = " · ".join(v for v in _filtros.values() if v != 'TODOS') or "Todos los activos"
 
     # ── 1. ENCABEZADO HERO SIMÉTRICO ──────────────────────────────────────────
@@ -290,10 +368,13 @@ def render_tab_mtbf(df_bd_filtered, df_forma9_filtered, fecha_evaluacion,
     st.markdown("<div style='height:14px;'></div>", unsafe_allow_html=True)
 
     # ── 3. GRÁFICA PRINCIPAL: CURVA DE SUPERVIVENCIA KAPLAN-MEIER (340px) ─────
-    km_curves = _kaplan_meier(df_bd_filtered) if df_bd_filtered is not None and not df_bd_filtered.empty else {}
+    km_curves = _kaplan_meier(bd) if bd is not None and not bd.empty else {}
     if km_curves:
         km_series = []
+        max_x = 100.0
         for als, curve in km_curves.items():
+            if curve.get('x'):
+                max_x = max(max_x, max(curve['x']))
             km_series.append({
                 "name": als, "type": "line", "smooth": False,
                 "step": "end",
@@ -305,7 +386,7 @@ def render_tab_mtbf(df_bd_filtered, df_forma9_filtered, fecha_evaluacion,
             })
         km_series.append({
             "name": "50% supervivencia", "type": "line",
-            "data": [[0, 50], [max(max(c['x']) for c in km_curves.values()), 50]],
+            "data": [[0, 50], [max_x, 50]],
             "lineStyle": {"type": "dashed", "color": _T2, "width": 1.5},
             "itemStyle": {"color": _T2}, "symbol": "none",
             "tooltip": {"show": False}
@@ -339,8 +420,8 @@ def render_tab_mtbf(df_bd_filtered, df_forma9_filtered, fecha_evaluacion,
     st.markdown("<div style='height:14px;'></div>", unsafe_allow_html=True)
 
     # ── 4. GRÁFICA SECUNDARIA: DISTRIBUCIÓN DE CORRIDAS POR RUN LIFE (270px) ──
-    if df_bd_filtered is not None and not df_bd_filtered.empty and 'RUN LIFE' in df_bd_filtered.columns:
-        rl_vals = df_bd_filtered['RUN LIFE'].dropna()
+    if bd is not None and not bd.empty and 'RUN LIFE' in bd.columns:
+        rl_vals = pd.to_numeric(bd['RUN LIFE'], errors='coerce').dropna()
         bins    = [0, 90, 365, 730, 1460, float('inf')]
         labels  = ['< 90d\n(Crítico)', '90–365d\n(Prematuro)', '1–2 años\n(Normal)',
                    '2–4 años\n(Bueno)', '> 4 años\n(Óptimo)']
@@ -386,12 +467,15 @@ def render_tab_mtbf(df_bd_filtered, df_forma9_filtered, fecha_evaluacion,
         "margin-bottom:8px;'>⚠️ Bottom 5 Pozos — Oportunidad de Optimización / Alerta</h6>",
         unsafe_allow_html=True
     )
-    if df_bd_filtered is not None and not df_bd_filtered.empty and 'RUN LIFE' in df_bd_filtered.columns:
-        df_rec = df_bd_filtered.sort_values('FECHA_RUN', ascending=False).copy()
+    if bd is not None and not bd.empty and 'RUN LIFE' in bd.columns:
+        df_rec = bd.sort_values('FECHA_RUN', ascending=False).copy()
         bottom5 = df_rec.nsmallest(5, 'RUN LIFE')[['POZO', 'RUN LIFE', 'ALS', 'FECHA_FALLA', 'PROVEEDOR']].copy()
         bottom5['ESTADO'] = bottom5['FECHA_FALLA'].apply(lambda x: '⚠ FALLA' if pd.notna(x) else 'LONGEVIDAD BAJA')
-        bottom5['RUN LIFE'] = bottom5['RUN LIFE'].apply(lambda x: f"{x:.0f}d" if pd.notna(x) else "0d")
-        bottom5 = bottom5.rename(columns={'POZO': 'Pozo', 'RUN LIFE': 'RL (d)', 'ALS': 'Tec.', 'PROVEEDOR': 'Prov.', 'ESTADO': 'Alerta'})
-        render_hud_table(bottom5[['Pozo', 'RL (d)', 'Tec.', 'Prov.', 'Alerta']])
+        bottom5['RL (d)'] = bottom5['RUN LIFE'].apply(lambda x: f"{float(x):.0f}d" if pd.notna(x) else "0d")
+        bottom5['Tec.'] = bottom5['ALS'].fillna('N/A').astype(str)
+        bottom5['Prov.'] = bottom5['PROVEEDOR'].fillna('N/A').astype(str)
+        bottom5['Pozo'] = bottom5['POZO'].astype(str)
+        bottom5['Alerta'] = bottom5['ESTADO']
+        _render_custom_table(bottom5[['Pozo', 'RL (d)', 'Tec.', 'Prov.', 'Alerta']], title="Bottom 5 Pozos")
     else:
         st.info("No hay datos para la tabla de eventos.")

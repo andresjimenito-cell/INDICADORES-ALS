@@ -251,12 +251,17 @@ def render_sidebar() -> dict:
 
     st.sidebar.markdown('</div>', unsafe_allow_html=True)
 
-    # ── Separador + Configuración (Upload) ───────────────────────────────────
+    # ── Separador + Herramientas (Upload en popover) ─────────────────────────
     st.sidebar.markdown(_divider(), unsafe_allow_html=True)
-    st.sidebar.markdown(_section_header("CONFIGURACIÓN"), unsafe_allow_html=True)
 
-    # Upload directo en sidebar (no popover) para evitar bugs
-    _render_upload_sidebar()
+    st.sidebar.markdown(_section_header("HERRAMIENTAS"), unsafe_allow_html=True)
+    st.sidebar.markdown('<div style="padding: 4px 10px 8px 10px;">', unsafe_allow_html=True)
+
+    # Upload en popover (como antes, pero fix bugs)
+    from upload_ui import render_upload_section
+    render_upload_section(sidebar=True)
+
+    st.sidebar.markdown('</div>', unsafe_allow_html=True)
 
     # ── Separador + estado de filtros activos ────────────────────────────────
     st.sidebar.markdown(_divider(), unsafe_allow_html=True)
@@ -294,7 +299,6 @@ def render_sidebar() -> dict:
     st.sidebar.markdown('<div style="padding: 4px 10px 8px 10px;">', unsafe_allow_html=True)
     if st.sidebar.button("🔄 RECARGAR DATOS", key="btn_reload_data", use_container_width=True, help="Recalcula indicadores con los archivos actuales"):
         st.session_state['_sidebar_loading'] = True
-        # Limpiar cache para forzar recálculo
         keys_to_clear = [k for k in st.session_state.keys() if k.startswith('df_') or k in ('reporte_runes', 'historico_run_life', 'reporte_fallas', 'df_trabajo', 'verificaciones')]
         for k in keys_to_clear:
             st.session_state.pop(k, None)
@@ -320,10 +324,3 @@ def render_sidebar() -> dict:
         'selected_proveedor': st.session_state.get('general_proveedor_filter', 'TODOS'),
         'selected_nick':      st.session_state.get('general_nick_filter',      'TODOS'),
     }
-
-
-def _render_upload_sidebar():
-    """Renderiza la sección de carga directamente en sidebar (sin popover)."""
-    from upload_ui import render_upload_section
-    # Usar el upload_ui pero forzando modo sidebar
-    render_upload_section(sidebar=True)
