@@ -461,16 +461,16 @@ def _css():
 .tbl-grid-bottom {{
     display: flex;
     gap: 12px;
-    height: 226px;
+    height: 216px;
 }}
 
 .tbl-card-fallados {{
     background: {_glow(_R, 0.10)}, linear-gradient(180deg,#ffffff 0%,#FFFCFC 100%);
     width: 46%;
     height: 100%;
-    justify-content: flex-start;
+    justify-content: space-between;
     align-items: flex-start;
-    padding: 10px 12px;
+    padding: 12px 14px;
     border-color: rgba(192,57,43,0.24);
     border-left: 3px solid {_R};
     gap: 0;
@@ -482,30 +482,30 @@ def _css():
 
 .tbl-fallados-note {{
     font-family: {_FS};
-    font-size: 8px;
+    font-size: 8.5px;
     font-weight: 700;
     color: {_G2};
-    line-height: 1.2;
+    line-height: 1.25;
     text-align: left;
     text-transform: uppercase;
     letter-spacing: 0.3px;
-    margin: 1px 0 3px;
+    margin: 1px 0 2px;
 }}
 
 .tbl-fallados-atrib {{
     border-top: 1px solid {_BR};
-    padding-top: 3px;
-    margin-top: 3px;
+    padding-top: 4px;
+    margin-top: 4px;
     width: 100%;
     text-align: left;
 }}
 
 /* El último bloque no debe rozar el borde inferior de la tarjeta */
-.tbl-fallados-atrib:last-child {{ padding-bottom: 0px; }}
+.tbl-fallados-atrib:last-child {{ padding-bottom: 2px; }}
 
 .tbl-fallados-atrib-lbl {{
     font-family: {_FS};
-    font-size: 8px;
+    font-size: 8.5px;
     font-weight: 600;
     color: {_T2};
     text-transform: uppercase;
@@ -515,7 +515,7 @@ def _css():
 
 .tbl-fallados-atrib-val {{
     font-family: {_FN};
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 700;
     color: {_T};
     font-variant-numeric: tabular-nums;
@@ -850,9 +850,8 @@ def _clasificar_fallas(df_bd, fecha_ini, fecha_fin):
     """
     Devuelve los eventos de falla del periodo con dos ejes de clasificación:
       · ETAPA → etapa de Run Life al momento de la falla (taxonomía del proyecto)
-      · TIPO  → 'ALS' cuando la falla es imputable al sistema (INDICADOR_MTBF == 1),
-                'No ALS' cuando es confirmada no imputable (INDICADOR_MTBF == 0),
-                'Pend Pulling' cuando la causa está pendiente / sin clasificar y no tiene pull.
+      · TIPO  → 'Pend Pulling' cuando a la fecha de corte aún no se ha realizado la extracción (FECHA_PULL > fecha_fin o NaT);
+                si ya se realizó la extracción: 'ALS' cuando INDICADOR_MTBF == 1 y 'No ALS' cuando INDICADOR_MTBF == 0.
     """
     vacio = pd.DataFrame(columns=['POZO', 'ETAPA', 'TIPO'])
     if df_bd is None or df_bd.empty or 'FECHA_FALLA' not in df_bd.columns:
@@ -869,14 +868,17 @@ def _clasificar_fallas(df_bd, fecha_ini, fecha_fin):
     rl_col = next((c for c in ('RUN LIFE', 'RUN_LIFE', 'RUNLIFE') if c in ev.columns), None)
     ev['ETAPA'] = (ev[rl_col].map(clasificar_runlife) if rl_col else 'N/A')
 
-    if 'INDICADOR_MTBF' in ev.columns:
-        cond_als = (ev['INDICADOR_MTBF'] == 1)
-        cond_no_als = (ev['INDICADOR_MTBF'] == 0)
-        cond_pend = ev['INDICADOR_MTBF'].isna() & (ev['FECHA_PULL'].isna() if 'FECHA_PULL' in ev.columns else True)
-        ev['TIPO'] = np.where(cond_als, 'ALS', np.where(cond_no_als, 'No ALS', np.where(cond_pend, 'Pend Pulling', 'No ALS')))
+    # Pull realizado a la fecha de corte (fecha_fin)
+    if 'FECHA_PULL' in ev.columns:
+        pull_ok = ev['FECHA_PULL'].notna() & (ev['FECHA_PULL'].dt.normalize() <= fecha_fin)
     else:
-        pull_ok = ev['FECHA_PULL'].notna() if 'FECHA_PULL' in ev.columns else pd.Series(False, index=ev.index)
-        ev['TIPO'] = np.where(pull_ok, 'No ALS', 'Pend Pulling')
+        pull_ok = pd.Series(False, index=ev.index)
+
+    es_als = (ev['INDICADOR_MTBF'] == 1) if 'INDICADOR_MTBF' in ev.columns else pd.Series(False, index=ev.index)
+
+    # Si a la fecha de corte NO se ha completado el pull -> 'Pend Pulling'
+    # Si YA se completó el pull -> 'ALS' (si INDICADOR_MTBF == 1) o 'No ALS' (si INDICADOR_MTBF == 0)
+    ev['TIPO'] = np.where(~pull_ok, 'Pend Pulling', np.where(es_als, 'ALS', 'No ALS'))
 
     return ev[['POZO', 'ETAPA', 'TIPO']]
 
