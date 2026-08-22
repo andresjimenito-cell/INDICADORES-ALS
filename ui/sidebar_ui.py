@@ -257,9 +257,11 @@ def render_sidebar() -> dict:
     st.sidebar.markdown(_section_header("HERRAMIENTAS"), unsafe_allow_html=True)
     st.sidebar.markdown('<div style="padding: 4px 10px 8px 10px;">', unsafe_allow_html=True)
 
-    # Upload en popover (como antes, pero fix bugs)
+    # Upload en popover (único botón)
     from upload_ui import render_upload_section
-    render_upload_section(sidebar=True)
+
+    with st.sidebar.popover("⚙️ CARGAR DATOS / CONFIGURACIÓN", use_container_width=True):
+        render_upload_section(sidebar=False)  # sidebar=False: siempre usa st.*, no st.sidebar.*
 
     st.sidebar.markdown('</div>', unsafe_allow_html=True)
 

@@ -164,15 +164,15 @@ def render_upload_section(sidebar: bool = False):
     Estados: vacío, local, online, error.
     """
     ctx = st.sidebar if sidebar else st
-    
+
     # Inyectar CSS una vez
     ctx.markdown(POPOVER_CSS, unsafe_allow_html=True)
 
-    # Estado actual
-    f9_local = ctx.session_state.get('forma9_file')
-    f9_url = ctx.session_state.get('url_forma9_excel', '')
-    bd_local = ctx.session_state.get('bd_file')
-    bd_url = ctx.session_state.get('url_bd_excel', '')
+    # Estado actual — siempre leer de st.session_state (st.sidebar no lo tiene)
+    f9_local = st.session_state.get('forma9_file')
+    f9_url   = st.session_state.get('url_forma9_excel', '')
+    bd_local = st.session_state.get('bd_file')
+    bd_url   = st.session_state.get('url_bd_excel', '')
 
     f9_source = None
     f9_name = ""
@@ -188,9 +188,10 @@ def render_upload_section(sidebar: bool = False):
     elif bd_url:
         bd_source, bd_name = "online", "OneDrive"
 
-    f9_final = f9_local if f9_local else ctx.session_state.get('forma9_online_file')
-    bd_final = bd_local if bd_local else ctx.session_state.get('bd_online_file')
+    f9_final   = f9_local if f9_local else st.session_state.get('forma9_online_file')
+    bd_final   = bd_local if bd_local else st.session_state.get('bd_online_file')
     both_ready = bool(f9_final and bd_final)
+
 
     # ── TARJETA 1: FORMA 9 ──────────────────────────────────────────────────
     with ctx.container():
@@ -223,7 +224,7 @@ def render_upload_section(sidebar: bool = False):
         if url_f9 and not f9_local:
             fname = cached_onedrive_download(url_f9, 'forma9_online.xlsx')
             if fname:
-                ctx.session_state['forma9_online_file'] = fname
+                st.session_state['forma9_online_file'] = fname
             else:
                 ctx.error("❌ Error descargando F9")
 
@@ -264,7 +265,7 @@ def render_upload_section(sidebar: bool = False):
         if url_bd and not bd_local:
             fname = cached_onedrive_download(url_bd, 'bd_online.xlsx')
             if fname:
-                ctx.session_state['bd_online_file'] = fname
+                st.session_state['bd_online_file'] = fname
             else:
                 ctx.error("❌ Error descargando BD")
 
@@ -274,20 +275,20 @@ def render_upload_section(sidebar: bool = False):
     default_date = datetime.now().date().replace(day=1) - timedelta(days=1)
     default_start = default_date - timedelta(days=365)
 
-    f_ini = ctx.date_input("FECHA INICIO", value=ctx.session_state.get('fecha_ini_input', default_start), key="fecha_ini_input", max_value=datetime.now().date())
-    f_eval = ctx.date_input("FECHA EVALUACIÓN", value=ctx.session_state.get('fecha_eval', default_date), key="fecha_eval", max_value=datetime.now().date())
+    f_ini  = ctx.date_input("FECHA INICIO",       value=st.session_state.get('fecha_ini_input', default_start), key="fecha_ini_input", max_value=datetime.now().date())
+    f_eval = ctx.date_input("FECHA EVALUACIÓN",   value=st.session_state.get('fecha_eval', default_date),      key="fecha_eval",      max_value=datetime.now().date())
 
     ctx.markdown(f'<div class="pop-range">{f_ini.strftime("%d %b %Y").upper()} — {f_eval.strftime("%d %b %Y").upper()}</div>', unsafe_allow_html=True)
 
     # ── BOTÓN CALCULAR ─────────────────────────────────────────────────────
-    f9_f = f9_local if f9_local else ctx.session_state.get('forma9_online_file')
-    bd_f = bd_local if bd_local else ctx.session_state.get('bd_online_file')
+    f9_f  = f9_local if f9_local else st.session_state.get('forma9_online_file')
+    bd_f  = bd_local if bd_local else st.session_state.get('bd_online_file')
     ready = bool(f9_f and bd_f)
 
     calc = ctx.button("EJECUTAR CÁLCULOS" if ready else "CARGAR AMBOS", key="calcular_btn", use_container_width=True, disabled=not ready)
 
     # ── EXPORTAR ───────────────────────────────────────────────────────────
-    df_m = ctx.session_state.get('df_monthly_summary')
+    df_m = st.session_state.get('df_monthly_summary')
     if df_m is not None and not df_m.empty:
         ctx.markdown('<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(19,118,89,0.1);"></div>', unsafe_allow_html=True)
         xb = exportar_resumen_performance(df_m)
@@ -313,7 +314,7 @@ def render_upload_section(sidebar: bool = False):
                         save_cached_data(bd_calc, f9_calc, f_eval, rep_r, hist_rl, rep_f, fecha_ini=f_ini)
                         ctx.toast("✅ Datos guardados en caché")
 
-                        ctx.session_state.update({
+                        st.session_state.update({
                             'df_forma9_raw': f9_raw, 'df_bd_raw': bd_raw,
                             'df_bd_calculated': bd_calc, 'df_forma9_calculated': f9_calc,
                             'fecha_evaluacion_state': f_eval, 'fecha_inicio_state': f_ini,
