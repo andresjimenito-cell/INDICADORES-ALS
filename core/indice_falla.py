@@ -12,17 +12,23 @@ except Exception:
 from datetime import timedelta
 
 _colors_raw = get_colors()
-# Support both flat dict and nested dict (ui.theme returns nested)
-_brand = _colors_raw.get('brand', _colors_raw)
-_surface = _colors_raw.get('surface', _colors_raw)
-_chart = _colors_raw.get('chart', {})
-COLOR_PRINCIPAL = _brand.get('primary', _colors_raw.get('primary', '#2E7D46'))
-_bg_raw = _surface.get('background', _colors_raw.get('background', '#ffffff'))
-if isinstance(_bg_raw, str) and _bg_raw.strip().lower() in ('#ffffff', 'white', '#f7f8f5', '#f7f8f5'):
+# Soporte de dict anidado (ui.theme) y dict plano (fallback)
+try:
+    COLOR_PRINCIPAL   = _colors_raw['brand']['primary']
+except (KeyError, TypeError):
+    COLOR_PRINCIPAL   = _colors_raw.get('primary', '#2E7D46')  # type: ignore[union-attr]
+try:
+    _bg_raw = _colors_raw['surface']['background']
+except (KeyError, TypeError):
+    _bg_raw = _colors_raw.get('background', '#ffffff')  # type: ignore[union-attr]
+try:
+    _chart_series = _colors_raw['chart']['series']
+except (KeyError, TypeError):
+    _chart_series = [COLOR_PRINCIPAL, '#C98A2C', '#1F4620', '#223A5E']
+if isinstance(_bg_raw, str) and _bg_raw.strip().lower() in ('#ffffff', 'white', '#f7f8f5'):
     COLOR_FONDO_OSCURO = None
 else:
-    COLOR_FONDO_OSCURO = _bg_raw or '#1a1a2e'
-_chart_series = _chart.get('series', [COLOR_PRINCIPAL, '#C98A2C', '#1F4620', '#223A5E'])
+    COLOR_FONDO_OSCURO = (_bg_raw if isinstance(_bg_raw, str) else None) or '#1a1a2e'
 get_color_sequence = lambda mode=None: _chart_series
 get_plotly_layout = get_plotly_layout
 
