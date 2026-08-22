@@ -1,4 +1,4 @@
-﻿"""
+"""
 tabs/tab_tablero.py  â€”  v4.2 Ultra Refined Minimalist Dashboard
 ==============================================================
 Tablero Ejecutivo de Alto Impacto con estÃ©tica industrial Parex.
@@ -20,13 +20,15 @@ from calculations import clasificar_runlife
 
 class _NpEncoder(json.JSONEncoder):
     """Convierte tipos numpy a Python nativos para json.dumps."""
-    def default(self, obj):
-        if isinstance(obj, np.integer): return int(obj)
-        if isinstance(obj, np.floating): return None if np.isnan(obj) else float(obj)
-        if isinstance(obj, np.ndarray): return obj.tolist()
-        return super().default(obj)
+    def default(self, o):
+        if isinstance(o, np.integer): return int(o)
+        if isinstance(o, np.floating): return None if np.isnan(o) else float(o)
+        if isinstance(o, np.ndarray): return o.tolist()
+        return super().default(o)
 
-_jdumps = lambda obj: _jdumps(obj, cls=_NpEncoder)
+def _jdumps(obj):
+    return json.dumps(obj, cls=_NpEncoder)
+
 
 # â”€â”€ Paleta Corporativa Parex â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 _G   = "#2E7D46"        # Verde principal

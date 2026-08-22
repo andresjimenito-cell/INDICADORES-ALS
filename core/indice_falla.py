@@ -18,11 +18,13 @@ COLOR_PRINCIPAL    : str = get_brand_color('primary')          # '#2E7D46'
 _bg_raw            : str = get_surface_color('background')     # '#F7F8F5'
 COLOR_FONDO_OSCURO        = None  # tema claro — sin fondo oscuro
 try:
-    _chart_series: list = get_colors()['chart']['series']
-except (KeyError, TypeError):
+    _raw_series = get_colors().get('chart', {}).get('series', [])
+    _chart_series = list(_raw_series) if isinstance(_raw_series, (list, tuple)) else [COLOR_PRINCIPAL, '#C98A2C', '#1F4620', '#223A5E']
+except Exception:
     _chart_series = [COLOR_PRINCIPAL, '#C98A2C', '#1F4620', '#223A5E']
 get_color_sequence = lambda mode=None: _chart_series
 get_plotly_layout  = get_plotly_layout
+
 
 
 @st.cache_data(show_spinner=False)
