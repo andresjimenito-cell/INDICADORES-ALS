@@ -6,21 +6,24 @@ import plotly.express as px
 import json
 from ui.theme import get_colors, get_plotly_layout, styled_title, plotly_styled_title
 
-_colors = get_colors()
-COLOR_PRINCIPAL = _colors.get('primary', '#00ff99')
-_bg_raw = _colors.get('background', None)
-if isinstance(_bg_raw, str) and _bg_raw.strip().lower() in ('#ffffff', 'white'):
+_colors_raw = get_colors()
+try:
+    COLOR_PRINCIPAL = _colors_raw['brand']['primary']
+except (KeyError, TypeError):
+    COLOR_PRINCIPAL = '#2E7D46'
+try:
+    _bg_raw = _colors_raw['surface']['background']
+except (KeyError, TypeError):
+    _bg_raw = '#ffffff'
+if isinstance(_bg_raw, str) and _bg_raw.strip().lower() in ('#ffffff', 'white', '#f7f8f5'):
     COLOR_FONDO_OSCURO = None
 else:
-    COLOR_FONDO_OSCURO = _bg_raw or '#1a1a2e'
-get_color_sequence = _colors.get('color_sequence', lambda mode=None: [
-    '#00A2FF',  # 1. Azul Zafiro Eléctrico
-    '#55228A',  # 2. Verde Lima Neón
-    '#0011D1',  # 3. Azul Cobalto Profundo
-    '#00FF0D',  # 4. Verde Neón Puro
-    '#4B0073',  # 5. Morado Índigo Profundo
-    '#000980'   # 6. Azul Ultra Oscuro Medianoche
-])
+    COLOR_FONDO_OSCURO = (_bg_raw if isinstance(_bg_raw, str) else None) or '#1a1a2e'
+try:
+    _chart_series = _colors_raw['chart']['series']
+except (KeyError, TypeError):
+    _chart_series = [COLOR_PRINCIPAL, '#C98A2C', '#1F4620', '#223A5E']
+get_color_sequence = lambda mode=None: _chart_series
 get_plotly_layout = get_plotly_layout
 styled_title = styled_title
 
