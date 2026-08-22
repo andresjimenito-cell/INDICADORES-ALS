@@ -848,12 +848,12 @@ def _balance_pozos(df_bd, df_f9, fecha_ini, fecha_fin):
 
 def _clasificar_fallas(df_bd, fecha_ini, fecha_fin):
     """
-    Devuelve los eventos de falla del periodo con dos ejes de clasificación:
-      · ETAPA → etapa de Run Life al momento de la falla (taxonomía del proyecto)
-      · TIPO  → 'Pend Pulling' cuando a la fecha de corte aún no se ha realizado la extracción (FECHA_PULL > fecha_fin o NaT);
-                si ya se realizó la extracción: 'ALS' cuando INDICADOR_MTBF == 1 y 'No ALS' cuando INDICADOR_MTBF == 0.
+    Devuelve los eventos de falla del periodo con sus atributos:
+      · ETAPA     → etapa de Run Life al momento de la falla (taxonomía del proyecto)
+      · ES_ALS    → True si es falla imputable al sistema ALS (INDICADOR_MTBF == 1)
+      · PEND_PULL → True si aún no se ha realizado la extracción a la fecha de corte (FECHA_PULL > fecha_fin o NaT)
     """
-    vacio = pd.DataFrame(columns=['POZO', 'ETAPA', 'TIPO'])
+    vacio = pd.DataFrame(columns=['POZO', 'ETAPA', 'ES_ALS', 'PEND_PULL'])
     if df_bd is None or df_bd.empty or 'FECHA_FALLA' not in df_bd.columns:
         return vacio
 
@@ -876,21 +876,28 @@ def _clasificar_fallas(df_bd, fecha_ini, fecha_fin):
 
     es_als = (ev['INDICADOR_MTBF'] == 1) if 'INDICADOR_MTBF' in ev.columns else pd.Series(False, index=ev.index)
 
-    # Si a la fecha de corte NO se ha completado el pull -> 'Pend Pulling'
-    # Si YA se completó el pull -> 'ALS' (si INDICADOR_MTBF == 1) o 'No ALS' (si INDICADOR_MTBF == 0)
-    ev['TIPO'] = np.where(~pull_ok, 'Pend Pulling', np.where(es_als, 'ALS', 'No ALS'))
+    ev['ES_ALS'] = es_als
+    ev['PEND_PULL'] = ~pull_ok
 
-    return ev[['POZO', 'ETAPA', 'TIPO']]
+    return ev[['POZO', 'ETAPA', 'ES_ALS', 'PEND_PULL']]
 
 
 def _matriz_fallas(df_ev):
-    """Matriz etapa × tipo de falla, en el orden fijo de la taxonomía."""
-    matriz = {et: {t: 0 for t in TIPOS_FALLA} for et in RL_ETAPAS}
+    """
+    Matriz etapa × tipo de falla:
+      · 'ALS': Total de fallas ALS (con o sin pull)
+      · 'No ALS': Total de fallas No ALS (con o sin pull)
+      · 'Pend Pulling': Cuántas de esas fallas todavía no tienen fecha de pull
+    """
+    matriz = {et: {'ALS': 0, 'No ALS': 0, 'Pend Pulling': 0} for et in RL_ETAPAS}
     if df_ev is None or df_ev.empty:
         return matriz
-    for (etapa, tipo), n in df_ev.groupby(['ETAPA', 'TIPO']).size().items():
-        if etapa in matriz and tipo in matriz[etapa]:
-            matriz[etapa][tipo] = int(n)
+    for et in RL_ETAPAS:
+        sub = df_ev[df_ev['ETAPA'] == et]
+        if not sub.empty:
+            matriz[et]['ALS'] = int((sub['ES_ALS'] == True).sum())
+            matriz[et]['No ALS'] = int((sub['ES_ALS'] == False).sum())
+            matriz[et]['Pend Pulling'] = int((sub['PEND_PULL'] == True).sum())
     return matriz
 
 
@@ -2288,10 +2295,8 @@ def render_tab_tablero(
 
     # ── 2. Fallas del último año por etapa de Run Life ───────────────────────
     with col_b2:
-        _tot_antig = sum(sum(v) for v in series_antig.values())
-        # Un segmento por debajo del 7% de la pila más alta no tiene sitio para
-        # su etiqueta: se oculta para que no se encime con la de al lado.
-        _pila_max = max((sum(series_antig[t][i] for t in TIPOS_FALLA)
+        _tot_antig = sum(mat_periodo[et]['ALS'] + mat_periodo[et]['No ALS'] for et in RL_ETAPAS)
+        _pila_max = max((series_antig['ALS'][i] + series_antig['No ALS'][i]
                          for i in range(len(RL_ETAPAS))), default=0)
         _umbral = _pila_max * 0.07
         _series_antig_js = [
@@ -2301,19 +2306,19 @@ def render_tab_tablero(
                 "stack": "fallas",
                 "barMaxWidth": 52,
                 "data": [
-                    {"value": v, "label": {"show": bool(v > 0 and v >= _umbral)}}
-                    for v in series_antig[t]
+                    {"value": series_antig[t][i], "label": {"show": bool(series_antig[t][i] > 0 and series_antig[t][i] >= _umbral)}}
+                    for i in range(len(RL_ETAPAS))
                 ],
                 "itemStyle": {"color": TIPO_COLOR[t], "borderRadius": [2, 2, 0, 0]},
                 "label": {
                     "show": True,
-                    "color": "#ffffff" if t != 'Pend Pulling' else _T,
+                    "color": "#ffffff",
                     "fontSize": 12,
                     "fontWeight": "bold",
                     "formatter": "{c}",
                 },
             }
-            for t in TIPOS_FALLA
+            for t in ['ALS', 'No ALS']
         ]
 
         fa_html = f"""
@@ -2399,10 +2404,21 @@ def render_tab_tablero(
                     borderWidth: 1,
                     borderRadius: 10,
                     padding: [8, 12],
-                    textStyle: {{ color: "{_T}", fontSize: 12.5, fontFamily: "Inter, Segoe UI, sans-serif" }}
+                    textStyle: {{ color: "{_T}", fontSize: 12.5, fontFamily: "Inter, Segoe UI, sans-serif" }},
+                    formatter: function(params) {{
+                        var i = params[0].dataIndex;
+                        var als = {json.dumps(series_antig['ALS'])}[i];
+                        var noAls = {json.dumps(series_antig['No ALS'])}[i];
+                        var pend = {json.dumps(series_antig['Pend Pulling'])}[i];
+                        return '<b>' + params[0].name + '</b><br/>' +
+                               'Total: <b>' + (als + noAls) + ' fallas</b><br/>' +
+                               '<span style="color:{_G};">●</span> ALS: ' + als + '<br/>' +
+                               '<span style="color:{_N};">●</span> No ALS: ' + noAls + '<br/>' +
+                               '<span style="color:#9FB6C9;">●</span> Pendientes de pull: ' + pend;
+                    }}
                 }},
                 legend: {{
-                    data: {json.dumps(TIPOS_FALLA)},
+                    data: ["ALS", "No ALS"],
                     bottom: 0,
                     icon: "circle",
                     itemHeight: 7,
@@ -2459,14 +2475,14 @@ def render_tab_tablero(
 
         _tot_row = "".join(f'<td><span class="v">{tot_mes[t]}</span></td>'
                            for t in TIPOS_FALLA)
-        _tot_mes_all = sum(tot_mes.values())
-        _resumen_mes = " / ".join(str(tot_mes[t]) for t in TIPOS_FALLA)
+        _tot_mes_all = tot_mes['ALS'] + tot_mes['No ALS']
+        _resumen_mes = f"ALS: {tot_mes['ALS']} · No ALS: {tot_mes['No ALS']} · Pend. pull: {tot_mes['Pend Pulling']}"
 
         tabla_html = f"""
 <div class="tbl-fallas-panel">
   <div class="tbl-fallas-head">
     <div class="tbl-fallas-title">Fallas de {mes_curso_lbl}</div>
-    <div class="tbl-fallas-sub">ALS / No ALS / Pend. pull: <b>{_resumen_mes}</b></div>
+    <div class="tbl-fallas-sub"><b>{_resumen_mes}</b></div>
   </div>
   <table class="tbl-ft">
     <thead>
@@ -2482,7 +2498,7 @@ def render_tab_tablero(
       <tr class="tot"><td class="et">Total ({_tot_mes_all})</td>{_tot_row}</tr>
     </tbody>
   </table>
-  <div class="tbl-fallas-foot">Categoría según Run Life a la falla · Pend. P. aún sin intervención</div>
+  <div class="tbl-fallas-foot">Fallas clasificadas por causa · Pend. P. indica eventos aún sin fecha de extracción</div>
 </div>
 """.replace("\n", " ")
 
