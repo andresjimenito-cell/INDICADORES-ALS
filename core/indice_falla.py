@@ -11,14 +11,19 @@ except Exception:
         get_plotly_layout = lambda: {}
 from datetime import timedelta
 
-_colors = get_colors()
-COLOR_PRINCIPAL = _colors.get('primary', '#00ff99')
-_bg_raw = _colors.get('background', None)
-if isinstance(_bg_raw, str) and _bg_raw.strip().lower() in ('#ffffff', 'white'):
+_colors_raw = get_colors()
+# Support both flat dict and nested dict (ui.theme returns nested)
+_brand = _colors_raw.get('brand', _colors_raw)
+_surface = _colors_raw.get('surface', _colors_raw)
+_chart = _colors_raw.get('chart', {})
+COLOR_PRINCIPAL = _brand.get('primary', _colors_raw.get('primary', '#2E7D46'))
+_bg_raw = _surface.get('background', _colors_raw.get('background', '#ffffff'))
+if isinstance(_bg_raw, str) and _bg_raw.strip().lower() in ('#ffffff', 'white', '#f7f8f5', '#f7f8f5'):
     COLOR_FONDO_OSCURO = None
 else:
     COLOR_FONDO_OSCURO = _bg_raw or '#1a1a2e'
-get_color_sequence = _colors.get('color_sequence', lambda mode=None: [COLOR_PRINCIPAL, '#00cfff', '#FFDE31', '#5AFFDA'])
+_chart_series = _chart.get('series', [COLOR_PRINCIPAL, '#C98A2C', '#1F4620', '#223A5E'])
+get_color_sequence = lambda mode=None: _chart_series
 get_plotly_layout = get_plotly_layout
 
 @st.cache_data(show_spinner=False)

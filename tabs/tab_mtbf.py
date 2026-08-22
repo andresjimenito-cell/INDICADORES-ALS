@@ -75,16 +75,18 @@ def _kaplan_meier(df_bd):
         if not als_str or als_str in ('NAN', 'NONE', 'N/A'):
             continue
 
-        times = pd.to_numeric(grp['RUN LIFE'], errors='coerce').dropna().values
-        if len(times) < 2:
+        # Filtrar solo runs con Run Life positivo
+        grp_valid = grp[pd.to_numeric(grp['RUN LIFE'], errors='coerce').fillna(0) > 0].copy()
+        times = pd.to_numeric(grp_valid['RUN LIFE'], errors='coerce').dropna().values
+        if len(times) < 5:
             continue
 
-        events = (grp['FECHA_FALLA'].notna() if 'FECHA_FALLA' in grp.columns
-                  else pd.Series([True] * len(grp))).values[:len(times)]
+        has_falla = grp_valid['FECHA_FALLA'].notna() if 'FECHA_FALLA' in grp_valid.columns else pd.Series([True] * len(grp_valid))
+        events = has_falla.values[:len(times)]
 
         order = np.argsort(times)
         t_sorted = times[order]
-        e_sorted = np.array(events)[order]
+        e_sorted = np.asarray(events, dtype=bool)[order]
 
         unique_t, counts = np.unique(t_sorted, return_counts=True)
         surv = 1.0
@@ -92,14 +94,14 @@ def _kaplan_meier(df_bd):
         x_vals = [0.0]
         y_vals = [100.0]
 
-        for ut in unique_t:
+        for ut, cnt in zip(unique_t, counts):
             mask_t = (t_sorted == ut)
-            d_i = np.sum(e_sorted[mask_t])
-            if n_at_risk > 0:
+            d_i = int(np.sum(e_sorted[mask_t]))   # Fallas exactamente en tiempo ut
+            if n_at_risk > 0 and d_i > 0:
                 surv *= (1.0 - d_i / n_at_risk)
             x_vals.append(float(ut))
             y_vals.append(round(surv * 100.0, 1))
-            n_at_risk -= len(mask_t)
+            n_at_risk -= cnt   # ← correcto: restar el conteo en este tiempo
 
         curves[als_str] = {
             'x': x_vals,
