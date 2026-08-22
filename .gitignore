@@ -1,10 +1,22 @@
-__pycache__/
+```
+# Compiled Python files
 *.pyc
-cache_data/
-saved_uploads/
-.env
-.venv
-env/
+__pycache__/
+
+# Dependencies
 venv/
-*.xlsx
-*.csv
+.venv/
+
+# Logs and temp files
+*.log
+*.tmp
+
+# Environment files
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+```
