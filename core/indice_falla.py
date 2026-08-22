@@ -99,7 +99,15 @@ def calcular_indice_falla_anual(df_bd, df_forma9, fecha_evaluacion, fecha_inicio
             (df_bd_mes['FECHA_PULL_NORM'].isna() | (df_bd_mes['FECHA_PULL_NORM'] > fecha_fin_mes))
         ]['POZO'].nunique()
 
-        pozos_on = df_forma9_mes[df_forma9_mes['DIAS TRABAJADOS'] > 0]['POZO'].nunique()
+        mask_f9_on = (pd.to_numeric(df_forma9_mes.get('DIAS TRABAJADOS', 0), errors='coerce').fillna(0) > 0)
+        fluid_cols_f9 = [c for c in df_forma9_mes.columns if any(k in str(c).upper() for k in ['BOPD', 'BFPD', 'BWPD', 'PETROLEO', 'FLUIDO', 'AGUA'])]
+        if fluid_cols_f9:
+            mask_fluid = pd.Series(False, index=df_forma9_mes.index)
+            for fc in fluid_cols_f9:
+                mask_fluid = mask_fluid | (pd.to_numeric(df_forma9_mes[fc], errors='coerce').fillna(0) > 0)
+            mask_f9_on = mask_f9_on & mask_fluid
+
+        pozos_on = df_forma9_mes[mask_f9_on]['POZO'].nunique()
 
         fallas_totales_mes = df_bd_mes[
             (df_bd_mes['FECHA_FALLA_NORM'] >= current_month_ts) & 
@@ -113,7 +121,7 @@ def calcular_indice_falla_anual(df_bd, df_forma9, fecha_evaluacion, fecha_inicio
         ].shape[0]
         
         # 2. Cálculos para RLE < 1500
-        pozos_on_names = df_forma9_mes[df_forma9_mes['DIAS TRABAJADOS'] > 0]['POZO'].unique()
+        pozos_on_names = df_forma9_mes[mask_f9_on]['POZO'].unique()
         
         # Obtener las corridas de pozos que estuvieron activos en algún momento de este mes
         df_bd_mes_activos = df_bd_mes[

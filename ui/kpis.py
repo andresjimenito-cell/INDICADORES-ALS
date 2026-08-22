@@ -175,12 +175,21 @@ def mostrar_kpis(df_bd, reporte_runes=None, reporte_run_life=None, indice_resume
             (df_forma9['FECHA_FORMA9'].dt.year == anio_eval)
         ]
         
+        mask_f9_eval = (df_forma9_eval['DIAS TRABAJADOS'] > 0)
+        fluid_cols_f9 = [c for c in df_forma9_eval.columns if any(k in str(c).upper() for k in ['BOPD', 'BFPD', 'BWPD', 'PETROLEO', 'FLUIDO', 'AGUA'])]
+        if fluid_cols_f9:
+            mask_fluid = pd.Series(False, index=df_forma9_eval.index)
+            for fc in fluid_cols_f9:
+                mask_fluid = mask_fluid | (pd.to_numeric(df_forma9_eval[fc], errors='coerce').fillna(0) > 0)
+            mask_f9_eval = mask_f9_eval & mask_fluid
+
         if selected_als != 'TODOS' and 'ALS' in df_forma9_eval.columns:
             df_forma9_eval_als = df_forma9_eval[df_forma9_eval['ALS'] == selected_als]
-            pozos_on_als = df_forma9_eval_als[df_forma9_eval_als['DIAS TRABAJADOS'] > 0]['POZO'].nunique()
-            pozos_on_todos = df_forma9_eval[df_forma9_eval['DIAS TRABAJADOS'] > 0]['POZO'].nunique()
+            mask_als = mask_f9_eval.loc[df_forma9_eval_als.index]
+            pozos_on_als = df_forma9_eval_als[mask_als]['POZO'].nunique()
+            pozos_on_todos = df_forma9_eval[mask_f9_eval]['POZO'].nunique()
         else:
-            pozos_on_todos = df_forma9_eval[df_forma9_eval['DIAS TRABAJADOS'] > 0]['POZO'].nunique()
+            pozos_on_todos = df_forma9_eval[mask_f9_eval]['POZO'].nunique()
             pozos_on_als = pozos_on_todos
         
         pozos_off_todos = operativos_todos - pozos_on_todos if operativos_todos >= pozos_on_todos else 0

@@ -2128,11 +2128,18 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                         mes_end = (mes_start + pd.offsets.MonthEnd(0)).normalize()
 
                         if df_f9_b is not None and not df_f9_b.empty and 'FECHA_FORMA9_NORM' in df_f9_b.columns:
-                            f9_mes = df_f9_b[
+                            mask_f9_m = (
                                 (df_f9_b['FECHA_FORMA9_NORM'] >= mes_start) &
                                 (df_f9_b['FECHA_FORMA9_NORM'] <= mes_end) &
-                                (df_f9_b['DIAS TRABAJADOS'] > 0)
-                            ]
+                                (pd.to_numeric(df_f9_b.get('DIAS TRABAJADOS', 0), errors='coerce').fillna(0) > 0)
+                            )
+                            fluid_cols_f9 = [c for c in df_f9_b.columns if any(k in str(c).upper() for k in ['BOPD', 'BFPD', 'BWPD', 'PETROLEO', 'FLUIDO', 'AGUA'])]
+                            if fluid_cols_f9:
+                                mask_fluid = pd.Series(False, index=df_f9_b.index)
+                                for fc in fluid_cols_f9:
+                                    mask_fluid = mask_fluid | (pd.to_numeric(df_f9_b[fc], errors='coerce').fillna(0) > 0)
+                                mask_f9_m = mask_f9_m & mask_fluid
+                            f9_mes = df_f9_b[mask_f9_m]
                             pozos_f9_set = set(f9_mes['POZO'].unique()) if 'POZO' in f9_mes.columns else set()
                             activos_set = pozos_bloque_set & pozos_f9_set
                             activos_mes = len(activos_set)
@@ -2149,11 +2156,17 @@ def render_tab_indices(df_bd_filtered, df_forma9_filtered, fecha_evaluacion, sel
                         p_start = pd.to_datetime(f"{anio_prev}-{m:02d}-01").normalize()
                         p_end = (p_start + pd.offsets.MonthEnd(0)).normalize()
                         if df_f9_b is not None and not df_f9_b.empty and 'FECHA_FORMA9_NORM' in df_f9_b.columns:
-                            f9_m_prev = df_f9_b[
+                            mask_f9_prev = (
                                 (df_f9_b['FECHA_FORMA9_NORM'] >= p_start) &
                                 (df_f9_b['FECHA_FORMA9_NORM'] <= p_end) &
-                                (df_f9_b['DIAS TRABAJADOS'] > 0)
-                            ]
+                                (pd.to_numeric(df_f9_b.get('DIAS TRABAJADOS', 0), errors='coerce').fillna(0) > 0)
+                            )
+                            if fluid_cols_f9:
+                                mask_fluid_prev = pd.Series(False, index=df_f9_b.index)
+                                for fc in fluid_cols_f9:
+                                    mask_fluid_prev = mask_fluid_prev | (pd.to_numeric(df_f9_b[fc], errors='coerce').fillna(0) > 0)
+                                mask_f9_prev = mask_f9_prev & mask_fluid_prev
+                            f9_m_prev = df_f9_b[mask_f9_prev]
                             p_f9_set = set(f9_m_prev['POZO'].unique()) if 'POZO' in f9_m_prev.columns else set()
                             p_activos_set = pozos_bloque_set & p_f9_set
                             pozos_on_prev_meses.append(len(p_activos_set))

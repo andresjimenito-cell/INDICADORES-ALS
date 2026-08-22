@@ -787,7 +787,7 @@ TIPO_COLOR = {'ALS': _G, 'No ALS': _N, 'Pend Pulling': '#9FB6C9'}
 
 
 def _pozos_on(df_f9, fecha):
-    """Conjunto de pozos que reportaron días trabajados en el mes de `fecha`."""
+    """Conjunto de pozos que reportaron días trabajados y producción de fluido > 0 en el mes de `fecha`."""
     if df_f9 is None or df_f9.empty or 'FECHA_FORMA9' not in df_f9.columns:
         return set()
     f9 = df_f9.copy()
@@ -795,6 +795,14 @@ def _pozos_on(df_f9, fecha):
     mask = (f9['_F9'].dt.month == fecha.month) & (f9['_F9'].dt.year == fecha.year)
     if 'DIAS TRABAJADOS' in f9.columns:
         mask = mask & (pd.to_numeric(f9['DIAS TRABAJADOS'], errors='coerce').fillna(0) > 0)
+    
+    fluid_cols = [c for c in f9.columns if any(k in str(c).upper() for k in ['BOPD', 'BFPD', 'BWPD', 'PETROLEO', 'FLUIDO', 'AGUA'])]
+    if fluid_cols:
+        mask_fluid = pd.Series(False, index=f9.index)
+        for fc in fluid_cols:
+            mask_fluid = mask_fluid | (pd.to_numeric(f9[fc], errors='coerce').fillna(0) > 0)
+        mask = mask & mask_fluid
+
     return set(f9[mask]['POZO'].astype(str).str.strip().unique())
 
 
@@ -990,7 +998,15 @@ def render_tab_tablero(
         dias_col  = 'DIAS TRABAJADOS' if 'DIAS TRABAJADOS' in df_f9.columns else None
         mask_on   = (df_f9['_F9'].dt.month == mes_eval) & (df_f9['_F9'].dt.year == anio_eval)
         if dias_col:
-            mask_on = mask_on & (df_f9[dias_col].fillna(0) > 0)
+            mask_on = mask_on & (pd.to_numeric(df_f9[dias_col], errors='coerce').fillna(0) > 0)
+        
+        fluid_cols = [c for c in df_f9.columns if any(k in str(c).upper() for k in ['BOPD', 'BFPD', 'BWPD', 'PETROLEO', 'FLUIDO', 'AGUA'])]
+        if fluid_cols:
+            mask_fluid = pd.Series(False, index=df_f9.index)
+            for fc in fluid_cols:
+                mask_fluid = mask_fluid | (pd.to_numeric(df_f9[fc], errors='coerce').fillna(0) > 0)
+            mask_on = mask_on & mask_fluid
+
         pozos_on  = set(df_f9[mask_on]['POZO'].astype(str).str.strip().unique())
         
         activos   = len(pozos_on)
@@ -1087,7 +1103,13 @@ def render_tab_tablero(
                 dias_c = 'DIAS TRABAJADOS' if 'DIAS TRABAJADOS' in df_f9c.columns else None
                 mm = (df_f9c['_F9'].dt.month == m) & (df_f9c['_F9'].dt.year == y)
                 if dias_c:
-                    mm = mm & (df_f9c[dias_c].fillna(0) > 0)
+                    mm = mm & (pd.to_numeric(df_f9c[dias_c], errors='coerce').fillna(0) > 0)
+                fluid_cols_c = [c for c in df_f9c.columns if any(k in str(c).upper() for k in ['BOPD', 'BFPD', 'BWPD', 'PETROLEO', 'FLUIDO', 'AGUA'])]
+                if fluid_cols_c:
+                    mask_f_c = pd.Series(False, index=df_f9c.index)
+                    for fc in fluid_cols_c:
+                        mask_f_c = mask_f_c | (pd.to_numeric(df_f9c[fc], errors='coerce').fillna(0) > 0)
+                    mm = mm & mask_f_c
                 on_m = int(df_f9c[mm]['POZO'].nunique())
             op_m = int(df[
                 (df['_RUN'] <= end_m_ts) &
@@ -1190,9 +1212,19 @@ def render_tab_tablero(
         ].copy()
         
         bopd_col = next((c for c in df_month_perf.columns if 'BOPD' in str(c).upper() or 'PETROLEO DIA' in str(c).upper() or 'PETROLEO_DIA' in str(c).upper()), None)
-        if bopd_col:
-            df_month_perf[bopd_col] = pd.to_numeric(df_month_perf[bopd_col], errors='coerce').fillna(0)
-            df_on_perf = df_month_perf[df_month_perf[bopd_col] > 0].copy()
+        dias_c_perf = next((c for c in df_month_perf.columns if 'DIAS' in str(c).upper()), None)
+        mask_dias_perf = (pd.to_numeric(df_month_perf[dias_c_perf], errors='coerce').fillna(0) > 0) if dias_c_perf else pd.Series(True, index=df_month_perf.index)
+        fluid_cols_perf = [c for c in df_month_perf.columns if any(k in str(c).upper() for k in ['BOPD', 'BFPD', 'BWPD', 'PETROLEO', 'FLUIDO', 'AGUA'])]
+        if fluid_cols_perf:
+            mask_f_perf = pd.Series(False, index=df_month_perf.index)
+            for fc in fluid_cols_perf:
+                mask_f_perf = mask_f_perf | (pd.to_numeric(df_month_perf[fc], errors='coerce').fillna(0) > 0)
+        else:
+            mask_f_perf = pd.Series(True, index=df_month_perf.index)
+
+        df_on_perf = df_month_perf[mask_dias_perf & mask_f_perf].copy()
+        if bopd_col and not df_on_perf.empty:
+            df_on_perf[bopd_col] = pd.to_numeric(df_on_perf[bopd_col], errors='coerce').fillna(0)
             df_sum_perf = df_on_perf.groupby('POZO', as_index=False).agg({bopd_col: 'mean'}) 
             df_sum_perf.rename(columns={bopd_col: 'BOPD'}, inplace=True)
         else:
@@ -2593,10 +2625,18 @@ def render_tab_tablero(
             
         for mes_str in meses_a_evaluar:
             df_m = df_f9_p[df_f9_p['MES_STR'] == mes_str]
-            if not df_m.empty and petr_col:
-                df_on = df_m[df_m[petr_col].fillna(0) > 0].copy()
-                oil_sum = float(df_on[petr_col].sum())
-                water_sum = float(df_on[water_col].sum()) if water_col else 0.0
+            if not df_m.empty:
+                dias_col_p = next((c for c in df_m.columns if 'DIAS' in str(c).upper()), None)
+                mask_p_on = (pd.to_numeric(df_m[dias_col_p], errors='coerce').fillna(0) > 0) if dias_col_p else pd.Series(True, index=df_m.index)
+                fluid_cols_p = [c for c in df_m.columns if any(k in str(c).upper() for k in ['BOPD', 'BFPD', 'BWPD', 'PETROLEO', 'FLUIDO', 'AGUA'])]
+                if fluid_cols_p:
+                    mask_f_p = pd.Series(False, index=df_m.index)
+                    for fc in fluid_cols_p:
+                        mask_f_p = mask_f_p | (pd.to_numeric(df_m[fc], errors='coerce').fillna(0) > 0)
+                    mask_p_on = mask_p_on & mask_f_p
+                df_on = df_m[mask_p_on].copy()
+                oil_sum = float(pd.to_numeric(df_on[petr_col], errors='coerce').fillna(0).sum()) if petr_col else 0.0
+                water_sum = float(pd.to_numeric(df_on[water_col], errors='coerce').fillna(0).sum()) if water_col else 0.0
                 fluid_sum = oil_sum + water_sum
                 pozos_on = int(df_on['POZO'].nunique())
             else:

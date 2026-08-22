@@ -237,7 +237,14 @@ def generar_reporte_completo(df_bd, df_forma9, fecha_evaluacion):
         (df_forma9['FECHA_FORMA9'].dt.normalize() >= (fecha_evaluacion - pd.Timedelta(days=30))) &
         (df_forma9['FECHA_FORMA9'].dt.normalize() <= fecha_evaluacion)
     ]
-    pozos_on  = df_forma9_eval[df_forma9_eval['DIAS TRABAJADOS'] > 0]['POZO'].nunique()
+    mask_on_calc = (pd.to_numeric(df_forma9_eval.get('DIAS TRABAJADOS', 0), errors='coerce').fillna(0) > 0)
+    fluid_cols = [c for c in df_forma9_eval.columns if any(k in str(c).upper() for k in ['BOPD', 'BFPD', 'BWPD', 'PETROLEO', 'FLUIDO', 'AGUA'])]
+    if fluid_cols:
+        mask_fluid = pd.Series(False, index=df_forma9_eval.index)
+        for fc in fluid_cols:
+            mask_fluid = mask_fluid | (pd.to_numeric(df_forma9_eval[fc], errors='coerce').fillna(0) > 0)
+        mask_on_calc = mask_on_calc & mask_fluid
+    pozos_on  = df_forma9_eval[mask_on_calc]['POZO'].nunique()
     pozos_off = abs(pozos_operativos - pozos_on)
     totales_count = extraidos_count + running_count
 

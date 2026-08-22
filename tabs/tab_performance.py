@@ -72,10 +72,20 @@ def render_tab_performance(df_bd_filtered, df_forma9_filtered, fecha_evaluacion)
         ].copy()
 
         bopd_col = next((c for c in df_month.columns if 'BOPD' in str(c).upper() or 'PETROLEO DIA' in str(c).upper() or 'PETROLEO_DIA' in str(c).upper()), None)
+        dias_col = next((c for c in df_month.columns if 'DIAS' in str(c).upper()), None)
+        mask_dias = (pd.to_numeric(df_month[dias_col], errors='coerce').fillna(0) > 0) if dias_col else pd.Series(True, index=df_month.index)
+        
+        fluid_cols = [c for c in df_month.columns if any(k in str(c).upper() for k in ['BOPD', 'BFPD', 'BWPD', 'PETROLEO', 'FLUIDO', 'AGUA'])]
+        if fluid_cols:
+            mask_fluid = pd.Series(False, index=df_month.index)
+            for fc in fluid_cols:
+                mask_fluid = mask_fluid | (pd.to_numeric(df_month[fc], errors='coerce').fillna(0) > 0)
+        else:
+            mask_fluid = pd.Series(True, index=df_month.index)
 
-        if bopd_col:
-            df_month[bopd_col] = pd.to_numeric(df_month[bopd_col], errors='coerce').fillna(0)
-            df_on = df_month[df_month[bopd_col] > 0].copy()
+        df_on = df_month[mask_dias & mask_fluid].copy()
+        if bopd_col and not df_on.empty:
+            df_on[bopd_col] = pd.to_numeric(df_on[bopd_col], errors='coerce').fillna(0)
             df_sum = df_on.groupby('POZO', as_index=False).agg({bopd_col: 'mean'})
             df_sum.rename(columns={bopd_col: 'BOPD'}, inplace=True)
         else:
