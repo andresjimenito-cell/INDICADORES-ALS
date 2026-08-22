@@ -806,7 +806,7 @@ def _pozos_on(df_f9, fecha):
     return set(f9[mask]['POZO'].astype(str).str.strip().unique())
 
 
-def _balance_pozos(df_bd, df_f9, fecha_ini, fecha_fin):
+def _balance_pozos(df_bd_raw, df_f9, fecha_ini, fecha_fin):
     """
     Balance de pozos ON entre dos cortes mensuales.
 
@@ -817,20 +817,27 @@ def _balance_pozos(df_bd, df_f9, fecha_ini, fecha_fin):
       · Reactivados → entran y ya existían antes del periodo
       · Fallados    → salen y registran falla dentro del periodo
       · Apagados    → salen sin falla registrada
+
+    NOTA: Usa df_bd_raw SIN filtrar por fecha_eval para capturar todas las fallas
+    del periodo, aunque la corrida haya empezado después de fecha_fin.
     """
+    # Pozos ON al inicio y fin del periodo (desde Forma 9)
     on_ini = _pozos_on(df_f9, fecha_ini)
     on_fin = _pozos_on(df_f9, fecha_fin)
 
     entrantes = on_fin - on_ini
     salientes = on_ini - on_fin
 
+    # Construir primera_corrida y con_falla desde BD SIN FILTRAR
     primera_corrida, con_falla = {}, set()
-    if df_bd is not None and not df_bd.empty and 'POZO' in df_bd.columns:
-        bd = df_bd.copy()
+    if df_bd_raw is not None and not df_bd_raw.empty and 'POZO' in df_bd_raw.columns:
+        bd = df_bd_raw.copy()
         bd['_P'] = bd['POZO'].astype(str).str.strip()
         if 'FECHA_RUN' in bd.columns:
+            bd['FECHA_RUN'] = pd.to_datetime(bd['FECHA_RUN'], errors='coerce')
             primera_corrida = bd.groupby('_P')['FECHA_RUN'].min().to_dict()
         if 'FECHA_FALLA' in bd.columns:
+            bd['FECHA_FALLA'] = pd.to_datetime(bd['FECHA_FALLA'], errors='coerce')
             fallas = bd[bd['FECHA_FALLA'].notna()]
             fallas = fallas[
                 (fallas['FECHA_FALLA'].dt.normalize() >= fecha_ini) &
@@ -842,15 +849,23 @@ def _balance_pozos(df_bd, df_f9, fecha_ini, fecha_fin):
               if pd.notna(primera_corrida.get(p)) and primera_corrida[p] >= fecha_ini}
     reactivados = entrantes - nuevos
     fallados = {p for p in salientes if p in con_falla}
-    apagados = salientes - fallados
+    
+    # FIX: También contar fallados que NO salieron del ON (fallaron y se reactivaron en el periodo)
+    # Estos están en con_falla pero NO en salientes porque volvieron a estar ON al final
+    fallados_reactivados = {p for p in con_falla if p in on_fin and p in on_ini}
+    fallados_total = fallados | fallados_reactivados
+    
+    apagados = salientes - fallados  # Solo los que salieron y NO fallaron
 
     return {
-        'base':        len(on_ini),
-        'nuevos':      len(nuevos),
-        'reactivados': len(reactivados),
-        'fallados':    len(fallados),
-        'apagados':    len(apagados),
-        'final':       len(on_fin),
+        'base':         len(on_ini),
+        'nuevos':       len(nuevos),
+        'reactivados':  len(reactivados),
+        'fallados':     len(fallados_total),  # Incluye reactivados que fallaron
+        'apagados':     len(apagados),
+        'final':        len(on_fin),
+        'fallados_salientes': len(fallados),          # Para depuración
+        'fallados_reactivados': len(fallados_reactivados),  # Para depuración
     }
 
 
@@ -1279,10 +1294,12 @@ def render_tab_tablero(
 
     # ── Balance de pozos ON del periodo (waterfall) ───────────────────────────
     try:
-        balance = _balance_pozos(df_resumen, df_forma9_untr, fecha_ini_dt, fecha_eval_date)
+        # Usar df_raw (sin filtrar) para capturar TODAS las fallas del periodo
+        balance = _balance_pozos(df_raw, df_forma9_untr, fecha_ini_dt, fecha_eval_date)
     except Exception:
         balance = {'base': 0, 'nuevos': 0, 'reactivados': 0,
-                   'fallados': 0, 'apagados': 0, 'final': 0}
+                   'fallados': 0, 'apagados': 0, 'final': 0,
+                   'fallados_salientes': 0, 'fallados_reactivados': 0}
 
     # ── Fallas del periodo y del mes en curso, por etapa y tipo ───────────────
     try:

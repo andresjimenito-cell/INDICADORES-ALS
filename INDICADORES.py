@@ -35,7 +35,7 @@ for subfolder in ['core', 'data', 'ui', 'tabs']:
 # Forzar recarga de módulos locales para evitar problemas de caché con el wrapper app.py
 _modules = [
     'header_ui', 'sidebar_ui', 'upload_ui', 'data_loader', 'styles', 
-    'calculations', 'kpis', 'descargar',
+    'calculations', 'descargar',
     'tabs.tab_performance', 'tabs.tab_mtbf', 
     'tabs.tab_fallas', 'tabs.tab_indices', 'tabs.tab_tablero', 'tabs.tab_campanas'
 ]
@@ -45,7 +45,6 @@ for _m in _modules:
 
 import pandas as pd
 from datetime import datetime
-from ui import kpis
 
 from data.config import COLOR_PRINCIPAL
 from ui.styles import apply_all_styles
